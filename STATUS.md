@@ -2,14 +2,14 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Routing/Geo/Optimization architecture extension
+CURRENT_STEP: V1 domain/event skeleton
 STATUS: done
-AGENT: architecture-bootstrap
+AGENT: backend-v1-bootstrap
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Интеграция полезных идей из анализа открытых TMS/VRP-решений в архитектуру.
-WORK_AREA: released; ownership освобождён
+SCOPE: Первый исполняемый backend-контур: canonical domain, events/outbox, policy/audit, deterministic routing/optimization, load workflow, PostgreSQL baseline и Compose.
+WORK_AREA: backend/*; migrations/*; tests/*; docker/*
 OWNER: none
 
 ## Product rollout
@@ -24,62 +24,51 @@ OWNER: none
 
 ## Completed
 
-- Repository `JoTalbot/logistics` подключён.
-- Product vision и V1→V10 autonomy model сохранены.
-- Product specification сохранена в `docs/PRODUCT_SPEC.md`.
-- Human workflow сохранён в `docs/HUMAN_WORKFLOW.md`.
-- Distributed AI-agent operating protocol сохранён в `AGENTS.md`.
-- Практический workflow агентов сохранён в `docs/AGENT_WORKFLOW.md`.
-- Немедленный commit/push после логически завершённого шага закреплён в `AGENTS.md`.
-- Техническая архитектура V1→V10 сохранена в `docs/ARCHITECTURE.md`.
-- Приоритетный roadmap сохранён в `docs/ROADMAP.md`.
-- Экосистема и стратегия интеграций сохранена в `docs/ECOSYSTEM_AND_INTEGRATIONS.md`.
-- Routing/optimization architecture сохранена в `docs/ROUTING_OPTIMIZATION.md`.
+- Product vision, V1→V10 autonomy model, product specification, human workflow и distributed agent protocol.
+- Техническая архитектура, roadmap и ecosystem/integration strategy.
+- Routing/Geo/Optimization architecture: VROOM adapter candidate, OR-Tools advanced path, RoutingProvider, canonical geo pipeline, context-aware MatrixCache и replay benchmarks.
+- V1 backend skeleton: canonical domain contracts, deterministic normalize→score→opportunity workflow.
+- Event envelope, EventBus abstraction и outbox abstraction.
+- Policy/authorization и audit primitives.
+- PostgreSQL baseline schema для tenants, parties, loads, stops, opportunities, outbox и audit.
+- Minimal FastAPI API и Docker Compose с PostgreSQL 17.
+- Deterministic tests и backend implementation skill.
 
-## Routing decisions
+## Current implementation
 
-- VROOM выбран первоначальным general-purpose VRP solver candidate за внутренним `OptimizationService` adapter.
-- OR-Tools сохранён как advanced/experimental solver для нестандартных ограничений и objective functions.
-- `RoutingProvider` отделён от solver и поддерживает OSRM, Valhalla и коммерческие providers.
-- Геокодирование проходит через canonical address pipeline с confidence, provenance и freshness.
-- `MatrixCache` является необязательным оптимизационным слоем и использует полный context-aware fingerprint.
-- Routing/solver benchmarks и historical replay добавлены в evaluation track.
-- Локальные OSRM/Valhalla datasets являются deployment assets и не обязательны для минимального локального запуска.
+`load → normalize → score → opportunity → event`
 
-## Active
+External providers are not yet business truth. Deterministic adapters make replay/testing possible before autonomous external actions.
 
-- Переход от документации к V1 domain/event skeleton.
+## Research applied
 
-## Parallel Work Areas
+- FastAPI official database guidance.
+- PostgreSQL official RLS/security documentation.
+- NATS official documentation for future messaging adapter.
+- OpenTelemetry Python official documentation for future telemetry.
+- Existing project architecture, roadmap, routing design and agent protocol.
 
-| Area | Owner | Status |
-|---|---|---|
-| docs/architecture | none | done |
-| docs/product | initial-bootstrap | active |
-| backend | unassigned | open |
-| integrations | unassigned | open |
-| ai-agents | unassigned | open |
-| voice | unassigned | open |
-| risk | unassigned | open |
-| finance | unassigned | open |
-| frontend | unassigned | open |
-| infrastructure | unassigned | open |
+## Deferred hardening
+
+- Transactional PostgreSQL repositories + Alembic lifecycle.
+- Final PostgreSQL RLS role/session design.
+- NATS/JetStream EventBus adapter.
+- Production RoutingProvider and OptimizationService adapters.
+- Full OpenTelemetry instrumentation.
 
 ## Next
 
-1. Bootstrap V1 repository skeleton.
-2. Implement PostgreSQL domain migrations and canonical contracts.
-3. Implement event envelope + outbox + EventBus interface.
-4. Implement policy/authorization and audit primitives.
-5. Implement canonical geo/routing/optimization contracts and deterministic fakes.
-6. Implement deterministic `load → normalize → score → opportunity` workflow.
-7. Add replay/simulation fixtures before real autonomous actions.
+1. Run CI/runtime tests and fix implementation issues.
+2. Add transactional PostgreSQL repositories and Alembic lifecycle.
+3. Add NATS/JetStream EventBus adapter without changing domain contracts.
+4. Finalize RLS tenant isolation with the real DB role/session model.
+5. Connect real routing/optimization adapters and replay benchmarks.
 
 ## Handoff
 
-DONE: Routing/geo/optimization architecture extension completed.
-VERIFIED: New routing architecture was committed to `main`; existing architecture, roadmap and integration strategy were updated with current blob SHAs before writes.
-FILES: `docs/ROUTING_OPTIMIZATION.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/ECOSYSTEM_AND_INTEGRATIONS.md`, `STATUS.md`.
-COMMITS: `d9b7768fba4ffa57b58a4c0ddd13679bd0012b55`, `0eb6dc835e10e0dcac65528cbe05101b1b9ac40b`, `9dc905e3df4fb19136a595d3efdbdf7bd9deab00`, `88d4709313295ba208b214c18a89cc7b11ff3c73`.
-OPEN_ISSUES: Exact provider contracts, legal terms, API versions and production sizing must be revalidated during each implementation step.
-NEXT_STEP: V1 domain/event skeleton.
+DONE: V1 domain/event skeleton implemented.
+VERIFIED: Repository structure reviewed; deterministic tests added; implementation boundaries documented; remote commit will be verified after push.
+RESEARCHED: FastAPI, PostgreSQL, NATS and OpenTelemetry official documentation plus existing project architecture.
+FILES: `backend/`, `migrations/0001_initial.sql`, `tests/`, `docker/`, `docker-compose.yml`, `pyproject.toml`, `docs/agent-skills/backend-v1-bootstrap.md`, `docs/agent-log/backend-v1-bootstrap/2026-09-10-domain-event-skeleton.md`.
+OPEN_ISSUES: Runtime CI, transactional persistence, final RLS model, broker adapter and real routing providers remain next-stage work.
+NEXT_STEP: Runtime verification and transactional persistence.
