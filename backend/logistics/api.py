@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from .review import ReviewDecision, ReviewError, apply_review_decision
 
 
-app = FastAPI(title="AI Logistics OS", version="0.3.0")
+app = FastAPI(title="AI Logistics OS", version="0.4.0")
 
 
 @app.get("/health")
@@ -99,6 +99,109 @@ def review_metrics(
         "negotiation_pending": int(negotiation_pending),
         "pending_total": int(publication_pending + negotiation_pending),
         "review_decisions_total": int(audit_total),
+    }
+
+
+@app.get("/api/v1/review/recommendations")
+def review_recommendations(
+    tenant_id: UUID,
+    limit: int = 50,
+    x_operator_token: str | None = Header(default=None),
+) -> list[dict]:
+    """Return persisted explainable opportunity recommendations for an operator."""
+    _operator_auth(x_operator_token)
+    if not 1 <= limit <= 100:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    with psycopg.connect(_dsn()) as conn:
+        rows = conn.execute(
+            """
+            SELECT id, load_id, status, score, estimated_cost, estimated_margin,
+                   risk_adjusted_margin, recommended_price, market_median_price,
+                   recommendation_reasons, recommendation_updated_at, created_at
+            FROM opportunities
+            WHERE tenant_id=%s AND recommendation_updated_at IS NOT NULL
+            ORDER BY recommendation_updated_at DESC
+            LIMIT %s
+            """,
+            (tenant_id, limit),
+        ).fetchall()
+    return [
+        {
+            "id": str(row[0]),
+            "load_id": str(row[1]),
+            "status": row[2],
+            "score": float(row[3]),
+            "estimated_cost": float(row[4]),
+            "estimated_margin": float(row[5]),
+            "risk_adjusted_margin": float(row[6]),
+            "recommended_price": float(row[7]) if row[7] is not None else None,
+            "market_median_price": float(row[8]) if row[8] is not None else None,
+            "recommendation_reasons": row[9],
+            "recommendation_updated_at": row[10].isoformat(),
+            "created_at": row[11].isoformat(),
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/review/audit/report")
+def review_audit_report(
+    tenant_id: UUID,
+    days: int = 30,
+    x_operator_token: str | None = Header(default=None),
+) -> dict:
+    """Summarize review decisions and queue age without exposing operator secrets."""
+    _operator_auth(x_operator_token)
+    if not 1 <= days <= 365:
+        raise HTTPException(status_code=422, detail="days must be between 1 and 365")
+    with psycopg.connect(_dsn()) as conn:
+        decision_rows = conn.execute(
+            """
+            SELECT decision, count(*)
+            FROM review_audit
+            WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day')
+            GROUP BY decision
+            ORDER BY decision
+            """,
+            (tenant_id, days),
+        ).fetchall()
+        trend_rows = conn.execute(
+            """
+            SELECT date_trunc('day', created_at) AS day, decision, count(*)
+            FROM review_audit
+            WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day')
+            GROUP BY 1, 2
+            ORDER BY 1 ASC, 2 ASC
+            """,
+            (tenant_id, days),
+        ).fetchall()
+        queue_age = conn.execute(
+            """
+            SELECT count(*),
+                   COALESCE(EXTRACT(EPOCH FROM (now() - min(created_at))), 0),
+                   COALESCE(EXTRACT(EPOCH FROM (now() - avg(created_at))), 0)
+            FROM (
+              SELECT created_at FROM publication_intents
+              WHERE tenant_id=%s AND status IN ('prepared','retry')
+              UNION ALL
+              SELECT created_at FROM negotiation_sessions
+              WHERE tenant_id=%s AND (requires_human=true OR state='review')
+            ) pending
+            """,
+            (tenant_id, tenant_id),
+        ).fetchone()
+    return {
+        "window_days": days,
+        "decisions": {row[0]: int(row[1]) for row in decision_rows},
+        "daily_trend": [
+            {"day": row[0].date().isoformat(), "decision": row[1], "count": int(row[2])}
+            for row in trend_rows
+        ],
+        "queue_age": {
+            "pending_total": int(queue_age[0]),
+            "oldest_seconds": int(queue_age[1]),
+            "average_age_seconds": int(queue_age[2]),
+        },
     }
 
 
