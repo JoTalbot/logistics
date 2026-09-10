@@ -31,6 +31,8 @@ jobs:
           cache: pip
       - name: Install package and test dependencies
         run: python -m pip install -e '.[test,observability]'
+      - name: Check dependency consistency
+        run: python -m pip check
       - name: Apply SQL migrations
         env:
           PGPASSWORD: logistics
@@ -45,3 +47,5 @@ jobs:
           DATABASE_URL: postgresql://logistics:logistics@127.0.0.1:5432/logistics
           LARDI_API_KEY: ${{ secrets.LARDI_API_KEY }}
         run: pytest
+      - name: Run local release smoke checks
+        run: python scripts/release_smoke.py
