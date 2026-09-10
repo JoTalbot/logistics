@@ -8,9 +8,10 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from .review import ReviewDecision, ReviewError, apply_review_decision
-from .prospect_store import list_prospects
+from .prospect_store import list_prospects, set_prospect_suppression
+from .customer_opportunity_store import list_customer_opportunities
 
-app = FastAPI(title="AI Logistics OS", version="0.5.0")
+app = FastAPI(title="AI Logistics OS", version="0.6.0")
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -26,6 +27,12 @@ class ReviewRequest(BaseModel):
     resource_id: UUID
     decision: str
     operator_ref: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+class ProspectSuppressionRequest(BaseModel):
+    tenant_id: UUID
+    prospect_id: UUID
+    suppressed: bool
     reason: str = Field(min_length=1)
 
 def _operator_auth(token: str | None) -> None:
@@ -80,12 +87,32 @@ def review_recommendations(tenant_id: UUID, limit: int = 50, x_operator_token: s
 
 @app.get("/api/v1/review/prospects")
 def review_prospects(tenant_id: UUID, limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
-    """Return tenant-scoped customer prospects for operator review only."""
     _operator_auth(x_operator_token)
     if not 1 <= limit <= 100:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
     with psycopg.connect(_dsn()) as conn:
         return list_prospects(conn, tenant_id=tenant_id, limit=limit)
+
+@app.post("/api/v1/review/prospects/suppression")
+def review_prospect_suppression(request: ProspectSuppressionRequest, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
+    _operator_auth(x_operator_token)
+    with psycopg.connect(_dsn()) as conn:
+        changed = set_prospect_suppression(conn, tenant_id=request.tenant_id, prospect_id=request.prospect_id, suppressed=request.suppressed, reason=request.reason)
+        conn.commit()
+    if not changed:
+        raise HTTPException(status_code=404, detail="prospect not found")
+    return {"status": "updated", "prospect_id": str(request.prospect_id), "suppressed": request.suppressed}
+
+@app.get("/api/v1/review/customer-opportunities")
+def review_customer_opportunities(tenant_id: UUID, status: str = "candidate", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
+    _operator_auth(x_operator_token)
+    if not 1 <= limit <= 100:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    try:
+        with psycopg.connect(_dsn()) as conn:
+            return list_customer_opportunities(conn, tenant_id=tenant_id, status=status, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.get("/api/v1/review/audit/report")
 def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str | None = Header(default=None)) -> dict:
