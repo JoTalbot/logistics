@@ -24,7 +24,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations/0001_initial.sql:/docker-entrypoint-initdb.d/0001_initial.sql:ro
       - ./migrations/0002_telegram_ingestion.sql:/docker-entrypoint-initdb.d/0002_telegram_ingestion.sql:ro
-      - ./migrations/0003_telegram_canonical_loads.sql:/docker-entrypoint-initdb.d/0003_canonical_loads.sql:ro
+      - ./migrations/0003_telegram_canonical_loads.sql:/docker-entrypoint-initdb.d/0003_telegram_canonical_loads.sql:ro
       - ./migrations/0004_local_llm.sql:/docker-entrypoint-initdb.d/0004a_local_llm.sql:ro
       - ./migrations/0004_outbox_delivery.sql:/docker-entrypoint-initdb.d/0004b_outbox_delivery.sql:ro
       - ./migrations/0005_llm_batches.sql:/docker-entrypoint-initdb.d/0005_llm_batches.sql:ro
