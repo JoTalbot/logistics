@@ -5,6 +5,7 @@ import psycopg
 import pytest
 
 from logistics.api import readiness, review_business_kpis, review_metrics, review_priority_metrics, review_summary
+from logistics.business_kpi import BusinessKPI
 
 
 def test_review_metrics_requires_operator_token(monkeypatch):
@@ -60,7 +61,7 @@ def test_review_business_kpis_returns_tenant_scoped_snapshot(monkeypatch):
     conn.__enter__.return_value = conn
     with patch("logistics.api.psycopg.connect", return_value=conn) as connect, patch(
         "logistics.api.snapshot_kpis",
-        return_value=MagicMock(**expected),
+        return_value=BusinessKPI(**expected),
     ) as snapshot:
         result = review_business_kpis(tenant_id, x_operator_token="operator-secret")
 
