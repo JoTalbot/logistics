@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — recurring demand recomputation + duplicate detection
-STATUS: recurring_demand_scheduled
-AGENT: logistics-commercial-batch-v10
+CURRENT_STEP: Customer discovery V1 — operator observability hardening
+STATUS: v12_operator_observability
+AGENT: logistics-commercial-batch-v12
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -53,7 +53,11 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Multi-tenant recurring-demand recomputation with bounded 90-day history and six-hour scheduler.
 - Docker Compose scheduler service with restart policy and PostgreSQL health dependency.
 - Tenant-scoped likely duplicate-load detection using normalized route/cargo/weight/currency signatures and bounded creation-time windows.
-- Unit coverage for recurring-demand rehydration, scheduler validation and duplicate-load safeguards.
+- Connected duplicate-load grouping so transitively related duplicate pairs are presented as one group.
+- Real PostgreSQL integration coverage for tenant isolation of review/discovery stores and duplicate detection.
+- Durable recurring-demand scheduler run history with running/succeeded/failed state, tenant/pattern counts and bounded error text.
+- Authenticated operator endpoint for recurring-demand scheduler health.
+- Authenticated operator endpoint for tenant-scoped duplicate-load groups.
 
 ## Current implementation
 
@@ -66,6 +70,10 @@ Market discovery:
 Customer discovery:
 
 `Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → recurring-demand evidence → authenticated operator queue → authorized contact intent → authenticated human review → first load → recurring customer`
+
+Operator observability:
+
+`review queue + recommendations + prospects + customer opportunities + recurring demand + duplicate groups + scheduler health + audit report`
 
 Customer opportunity score:
 
@@ -91,6 +99,7 @@ External provider network operations remain behind explicit adapters. No browser
 
 - Hosted CI Run #101 `34520924164` passed on the prior persisted-recommendation/status head.
 - Latest direct commits are present on `main`; GitHub connector currently returns no workflow runs/status checks for these direct commits, so latest CI is not claimed as green.
+- Real PostgreSQL integration tests are configured through `DATABASE_URL`; they skip cleanly when PostgreSQL is unavailable.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
 
@@ -100,12 +109,13 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Add stronger database-level duplicate identity/indexing where safe and expand real PostgreSQL tenant-isolation integration coverage.
-2. Add operator visibility for duplicate-load groups and recurring-demand recomputation health.
-3. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
-4. Add provider-specific contact adapters only where permissions are verified, while keeping autonomous sending disabled.
-5. Re-run Lardi read-only smoke only after provider support confirms the edge block or supplies an authorized API path.
-6. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
+1. Add a compact authenticated operator summary endpoint aggregating queue, duplicate and scheduler health without exposing cross-tenant data.
+2. Add stale scheduler-run detection and operational thresholds.
+3. Add stronger DB duplicate identity materialization only if replay evidence demonstrates low false-positive risk.
+4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
+5. Add provider-specific contact adapters only where permissions are verified, while keeping autonomous sending disabled.
+6. Re-run Lardi read-only smoke only after provider support confirms the edge block or supplies an authorized API path.
+7. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
 
 ## Security
 
@@ -117,8 +127,8 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts and audited contact review queue.
-VERIFIED: Hosted CI Run #101 `34520924164` for the prior head.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts, audited contact review queue, duplicate grouping and scheduler health observability.
+VERIFIED: Hosted CI Run #101 `34520924164` for the prior head; PostgreSQL integration path is wired into CI.
 PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; stronger PostgreSQL duplicate/tenant integration coverage; provider-specific contact adapters; external publication remains gated.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; CI visibility for direct commits; stronger DB duplicate identity only if evidence supports it; provider-specific contact adapters; external publication remains gated.
