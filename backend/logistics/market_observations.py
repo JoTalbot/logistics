@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Iterable
 
 
 @dataclass(frozen=True)
@@ -44,27 +44,59 @@ def normalize_lardi_response(response: Any, *, observed_at: datetime | None = No
         items = response
     else:
         items = []
-
     return [
         MarketObservation("lardi-trans", stable_external_ref(item, source="lardi-trans"), observed, item)
         for item in items if isinstance(item, dict)
     ]
 
 
-def upsert_market_observations(conn: Any, tenant_id: str, observations: list[MarketObservation]) -> int:
+def upsert_market_observations(conn: Any, tenant_id: str, observations: Iterable[MarketObservation]) -> int:
+    """Persist current state and append immutable historical snapshots.
+
+    Older observations never overwrite a newer current snapshot. Equal timestamps are
+    idempotent. The history table is intentionally append-only for replay and trends.
+    """
     count = 0
     for observation in observations:
+        payload = _stable_json(observation.payload)
         conn.execute(
+            """
+            INSERT INTO market_observation_history
+                (tenant_id, source, external_ref, observed_at, payload)
+            VALUES (%s, %s, %s, %s, %s::jsonb)
+            ON CONFLICT (tenant_id, source, external_ref, observed_at) DO NOTHING
+            """,
+            (tenant_id, observation.source, observation.external_ref, observation.observed_at, payload),
+        )
+        result = conn.execute(
             """
             INSERT INTO market_observations (tenant_id, source, external_ref, observed_at, payload)
             VALUES (%s, %s, %s, %s, %s::jsonb)
             ON CONFLICT (tenant_id, source, external_ref)
             DO UPDATE SET observed_at = EXCLUDED.observed_at, payload = EXCLUDED.payload
+            WHERE EXCLUDED.observed_at >= market_observations.observed_at
+            RETURNING id
             """,
-            (tenant_id, observation.source, observation.external_ref, observation.observed_at, _stable_json(observation.payload)),
+            (tenant_id, observation.source, observation.external_ref, observation.observed_at, payload),
         )
-        count += 1
+        if result.fetchone() is not None:
+            count += 1
     return count
+
+
+def observation_is_fresh(observed_at: datetime, *, now: datetime | None = None, max_age_seconds: int = 86400) -> bool:
+    if max_age_seconds < 0:
+        raise ValueError("max_age_seconds must be non-negative")
+    current = now or datetime.now(timezone.utc)
+    if observed_at.tzinfo is None:
+        observed_at = observed_at.replace(tzinfo=timezone.utc)
+    return current - observed_at <= __import__("datetime").timedelta(seconds=max_age_seconds)
+
+
+def extract_verified_fields(item: dict[str, Any], *, verified_fields: Iterable[str]) -> dict[str, Any]:
+    """Extract only provider fields explicitly verified by an integration contract."""
+    allowed = frozenset(verified_fields)
+    return {key: item[key] for key in allowed if key in item}
 
 
 def extract_price(item: dict[str, Any]) -> tuple[Decimal | None, str | None]:
