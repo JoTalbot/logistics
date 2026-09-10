@@ -20,6 +20,11 @@ Priority order:
 | Identity/secrets | standard OIDC/secret-manager adapters | P0 |
 | AI tools | MCP + internal tool contracts | P0 |
 | Model providers | model gateway | P0 |
+| Route solver | VROOM adapter | P0 |
+| Advanced solver | OR-Tools adapter | P1 |
+| Routing/matrix | RoutingProvider abstraction | P0 |
+| Geo intelligence | address normalization + geocoding pipeline | P0 |
+| Matrix cache | provider-neutral cache abstraction | P1 |
 
 ## Tier 1 — Ukraine
 
@@ -53,13 +58,44 @@ Never make the domain layer depend on DELLA-specific object names.
 Create a `RoutingProvider` contract supporting:
 
 - route distance/time;
+- matrix distance/time;
 - alternative routes;
 - restrictions;
 - ETA;
 - geocoding;
 - reverse geocoding.
 
+Initial candidates:
+
+- OSRM for lightweight/self-hosted routing and matrices;
+- Valhalla for richer routing scenarios and self-hosted regional deployments;
+- commercial providers where traffic, coverage, restrictions or economics justify them.
+
 Use at least one primary and one fallback provider when economics justify it.
+
+### Optimization
+
+Create an `OptimizationService` contract separate from the business optimizer.
+
+- VROOM: initial general-purpose VRP solver.
+- OR-Tools: advanced/experimental solver for validated special constraints and objectives.
+- Future commercial or specialized solvers can be added without changing domain models.
+
+A solver result is never itself a business decision. Business logic evaluates feasibility, cost, risk, margin and service impact before accepting it.
+
+### Geo intelligence
+
+Implement a canonical pipeline:
+
+`raw address → parse → normalize → entity resolution → geocode → confidence → canonical location → routing matrix`
+
+Persist provenance, confidence, provider/version and freshness metadata. Never silently downgrade a high-confidence location to a lower-confidence result.
+
+### Matrix caching
+
+Use a `MatrixCache` abstraction. Cache fingerprints should include normalized locations, routing provider/version, map-data freshness, routing profile, access restrictions and traffic/departure context when applicable.
+
+Cache is an optimization only and is never authoritative business state.
 
 ### Communications
 
@@ -175,8 +211,11 @@ A provider may be L5 for ingestion while remaining L1 for outbound actions. Capa
 - Trans.eu official freight exchange documentation.
 - Teleroute/Wtransnet official product documentation.
 - Cargo.LT official product information.
-- OpenAI Agents SDK documentation for agent/tool orchestration. citeturn0search8
-- MCP 2026-07-28 specification and SDK ecosystem. citeturn0search6turn0search18
+- VROOM project documentation and solver capabilities.
+- OSRM HTTP API and routing/matrix services.
+- Valhalla matrix/routing API.
+- OpenAI Agents SDK documentation for agent/tool orchestration.
+- MCP specification and SDK ecosystem.
 
 ## Rule for future providers
 
