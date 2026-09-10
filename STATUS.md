@@ -58,3 +58,7 @@ DONE: Telegram ingestion V1 runtime-green; publication contract, rendering, prov
 VERIFIED: Remote GitHub state.
 NOT YET VERIFIED: Hosted CI for publication adapter batch.
 NEXT_STEP: Verify CI → outbox delivery hardening → authorized provider transports → demand discovery.
+
+## OCI collector deployment — 2026-09-10
+
+Runtime prepared in /opt/logistics. PostgreSQL healthy; image built; unit tests 17 passed, 4 integration tests skipped. Manual GitHub workflow transfers Telegram configuration with a restricted SSH key. Collector is NOT running: awaiting interactive Telegram login. Commands: deploy/README.md. Existing publication work remains unchanged.

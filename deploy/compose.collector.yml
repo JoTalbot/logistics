@@ -1,0 +1,38 @@
+name: logistics-collector
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: /etc/logistics/postgres.env
+    volumes:
+      - logistics_pg:/var/lib/postgresql/data
+      - /opt/logistics/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U logistics -d logistics]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  collector:
+    build:
+      context: /opt/logistics
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file: /etc/logistics/collector.env
+    environment:
+      PYTHONUNBUFFERED: '1'
+    command: [python, /runtime/collector.py]
+    volumes:
+      - /opt/logistics/deploy/collector.py:/runtime/collector.py:ro
+      - /etc/logistics/telegram.json:/etc/logistics/telegram.json:ro
+      - /var/lib/logistics/telegram:/state
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  logistics_pg:
