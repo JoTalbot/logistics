@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from logistics.market_observations import normalize_lardi_response
+from logistics.market_observations import MarketObservation, normalize_lardi_response, stable_external_ref
+from logistics.price_intelligence import summarize_prices
 
 
 def test_normalization_preserves_provider_payload_and_id():
@@ -19,3 +20,18 @@ def test_normalization_hashes_items_without_provider_id():
     second = normalize_lardi_response([item], observed_at=datetime(2026, 9, 11, tzinfo=timezone.utc))[0]
     assert first.external_ref == second.external_ref
     assert len(first.external_ref) == 64
+    assert first.external_ref == stable_external_ref(item, source="lardi-trans")
+
+
+def test_price_summary_is_deterministic():
+    observations = [
+        MarketObservation("lardi-trans", "1", datetime.now(timezone.utc), {"price": "1000", "currency": "EUR"}),
+        MarketObservation("lardi-trans", "2", datetime.now(timezone.utc), {"offered_price": 1500, "currency": "EUR"}),
+        MarketObservation("lardi-trans", "3", datetime.now(timezone.utc), {"price": {"amount": "2000", "currency": "EUR"}}),
+    ]
+    snapshot = summarize_prices(observations)
+    assert snapshot.count == 3
+    assert snapshot.currency == "EUR"
+    assert snapshot.median_price == 1500
+    assert snapshot.minimum_price == 1000
+    assert snapshot.maximum_price == 2000
