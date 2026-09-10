@@ -2,76 +2,59 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Telegram load ingestion V1 hardening
-STATUS: runtime_green
-AGENT: telegram-load-ingestion-v1
+CURRENT_STEP: Publication adapters V1
+STATUS: implemented_pending_runtime_ci
+AGENT: publication-adapters-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Сбор Telegram-объявлений, детерминированный разбор, атомарная PostgreSQL persistence/checkpoint, validation/confidence gate, canonical Load persistence, transactional outbox, replay fixtures и optional OpenTelemetry. Публикация и наценка пока не входят в этот шаг.
+SCOPE: Контракт публикации канонического груза, provider-neutral renderer, provenance, явная роль экспедитора, markup policy gates и human-on-critical-risk. Реальная внешняя публикация пока не подключается.
 
 ## Completed
 
 - Product vision, V1→V10 autonomy model, product specification, human workflow и distributed agent protocol.
-- Техническая архитектура, roadmap и ecosystem/integration strategy.
-- Routing/Geo/Optimization architecture: VROOM adapter candidate, OR-Tools advanced path, RoutingProvider, canonical geo pipeline, context-aware MatrixCache и replay benchmarks.
-- V1 backend skeleton: canonical domain contracts, deterministic normalize→score→opportunity workflow.
-- Event envelope, EventBus abstraction и outbox abstraction.
-- Policy/authorization и audit primitives.
-- PostgreSQL baseline schema для tenants, parties, loads, stops, opportunities, outbox и audit.
-- Minimal FastAPI API and Docker Compose with PostgreSQL 17.
-- Deterministic tests and backend implementation skill.
-- Telegram ingestion: configured source chats, Telethon collection helper, deterministic parser, provenance envelope and parser tests.
-- Telegram persistence: source checkpoints, source-message deduplication and parsed-ad storage with PostgreSQL UPSERT semantics.
-- Telegram canonicalization: validation/confidence gate and ParsedLoadAd → canonical Load conversion.
-- Telegram worker: checkpoint is advanced only inside the same DB transaction that persists source message and parsed result.
-- GitHub Actions CI definition with PostgreSQL 17 service and clean SQL migration execution.
-- Docker Compose fresh-database initialization includes Telegram migrations 0002 and 0003.
-- Canonical Telegram loads with two stops are persisted transactionally for accepted ads.
-- Durable LOAD_FOUND / LOAD_UPDATED outbox events are emitted transactionally and protected by idempotency keys.
-- Deterministic Telegram replay fixtures cover accepted and rejected messages.
-- Ingestion observability includes counters, structured logs and optional OpenTelemetry traces/metrics export.
+- Technical architecture, roadmap and ecosystem/integration strategy.
+- Routing/Geo/Optimization architecture and canonical geo pipeline.
+- V1 backend skeleton, canonical domain, deterministic normalize→score→opportunity workflow.
+- Policy/authorization and audit primitives.
+- PostgreSQL baseline plus Telegram ingestion migrations.
+- Telegram collection, deterministic parsing, canonicalization, atomic persistence/checkpointing and transactional outbox.
+- Replay fixtures, PostgreSQL integration tests and optional OpenTelemetry.
+- Hosted CI run `34502076880` green for the completed Telegram ingestion batch.
+- Publication adapter contract and provider-neutral renderer.
+- Publication policy gate for autonomy role, bounded markup, cancelled-load rejection and human approval for critical risk.
+- Publication payload preserves source provenance and explicitly represents the role as `forwarder`.
 
 ## Current implementation
 
-`Telegram message → deterministic parser → atomic source+parsed persistence → validation → canonical Load + load_stops → transactional outbox → checkpoint`
+`canonical Load → PublicationRequest → PolicyEngine → PublicationAdapter → PublicationPayload`
 
-Incomplete/low-confidence ads remain non-canonical and are not published externally. No automatic markup or reposting is implemented in this stage.
+The renderer does not perform network publication. Provider-specific transport must be implemented separately through permitted official APIs or explicitly authorized mechanisms.
 
 ## Verification
 
-- Hosted GitHub Actions run `34502076880` completed successfully.
-- Job `102955049856` completed successfully.
-- Package installation passed.
-- PostgreSQL 17 migration execution passed for all three migrations.
-- Unit and integration test step passed.
-- Remote repository state confirmed through GitHub.
+- Telegram ingestion hosted CI run `34502076880` passed package installation, all three PostgreSQL migrations and unit/integration tests.
+- Publication adapter tests are committed and will be verified by the next hosted CI run.
 - Local runtime execution remains unavailable in the current environment.
-
-## Telegram sources
-
-- https://t.me/vantazhni_perevezennya_ua
-- https://t.me/truck_world
-- https://t.me/TURKIYA_UZBEKISTON_GRUBA_N1
-- https://t.me/gruzoperevozki_ua
 
 ## Next batch
 
-1. Provider-specific publication adapters with provenance, role representation, markup and policy gates.
-2. Operational replay/benchmark reporting and outbox delivery worker hardening.
-3. Demand discovery and customer-opportunity graph.
-4. Carrier matching, pricing, negotiation and human-on-exception workflows.
+1. Harden outbox delivery with retries, leases, idempotent publication intents and replay reporting.
+2. Add authorized provider transport adapters only where official/contractually permitted interfaces exist.
+3. Build demand discovery and customer-opportunity graph.
+4. Build carrier matching, pricing, negotiation and human-on-exception workflows.
 
 ## Security
 
-`TG_API_ID` and `TG_API_HASH` remain runtime secrets. A Telethon user session is also a secret and must not be committed. No credentials are stored in the repository.
+Credentials and provider sessions remain runtime secrets and must not be committed.
 
 ## Compliance
 
-Telegram parsing remains deterministic/local. No LLM enrichment or AI/ML training pipeline is introduced. Production operation requires verification of source permissions, applicable platform terms, privacy/retention requirements and law.
+Provider publication is gated and transport-neutral. No claim is made that any marketplace permits automation. Each integration must verify current terms, API permissions, privacy/retention requirements and applicable law before activation.
 
 ## Handoff
 
-DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion, canonical DB persistence, transactional outbox events, replay fixtures, worker orchestration, CI definition, fresh-DB Docker initialization and ingestion observability.
-VERIFIED: Hosted CI green on run 34502076880; migrations and tests passed.
-NEXT_STEP: Publication adapters → outbox delivery hardening → demand discovery → matching/pricing/negotiation.
+DONE: Telegram ingestion V1 runtime-green; publication contract, rendering, provenance, role representation and policy gates implemented.
+VERIFIED: Remote GitHub state.
+NOT YET VERIFIED: Hosted CI for publication adapter batch.
+NEXT_STEP: Verify CI → outbox delivery hardening → authorized provider transports → demand discovery.
