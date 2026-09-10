@@ -64,3 +64,7 @@ NEXT_STEP: Verify CI → outbox delivery hardening → authorized provider trans
 Runtime prepared in /opt/logistics. PostgreSQL healthy; image built; unit tests 17 passed, 4 integration tests skipped. Manual GitHub workflow transfers Telegram configuration with a restricted SSH key. Collector is running after operator login. Live verification: 400 source messages across all four configured chats, 10 canonical loads, zero container restarts. Historical backfill disabled at user request. Latest-100 bootstrap completed for all four sources; incremental-only collection verified. Existing historical data retained. Commands: deploy/README.md. Existing publication work remains unchanged.
 
 Latest-100 mode: fixed resumable snapshot per source, persistent completion across restarts; 20 tests passed, 4 integration tests skipped. Live bootstrap complete for all 4 sources; new messages observed afterwards.
+
+## Read-only quality audit — 2026-09-10
+
+Latest 100 stored messages per source (400 total), 13 pass canonical rules; this is not measured accuracy. No parser exceptions on replay. Synthetic tests found dash-route, spaced-price, currency, weight-unit, cargo, vehicle/date limitations. 47 normalized-text duplicate groups, 106 excess copies; no duplicate source/message keys. Report: docs/agent-log/oci-collector-deployment/quality-audit-2026-09-10.md. Runtime unchanged. Next: currency/price correctness, regression tests and locally human-labelled quality evaluation before reparsing production data.
