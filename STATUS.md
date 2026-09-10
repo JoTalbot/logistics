@@ -2,13 +2,13 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Publication adapters V1
+CURRENT_STEP: Outbox delivery hardening V1
 STATUS: implemented_pending_runtime_ci
-AGENT: publication-adapters-v1
+AGENT: outbox-delivery-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Контракт публикации канонического груза, provider-neutral renderer, provenance, явная роль экспедитора, markup policy gates и human-on-critical-risk. Реальная внешняя публикация пока не подключается.
+SCOPE: Durable outbox delivery state, bounded retries, leases, failure metadata and deterministic in-memory delivery semantics. External provider publication remains disabled.
 
 ## Completed
 
@@ -24,25 +24,36 @@ SCOPE: Контракт публикации канонического груз
 - Publication adapter contract and provider-neutral renderer.
 - Publication policy gate for autonomy role, bounded markup, cancelled-load rejection and human approval for critical risk.
 - Publication payload preserves source provenance and explicitly represents the role as `forwarder`.
+- Durable outbox delivery state migration with attempts, availability time, leases and last-error metadata.
+- Deterministic in-memory outbox lease/retry model and unit tests.
 
 ## Current implementation
 
 `canonical Load → PublicationRequest → PolicyEngine → PublicationAdapter → PublicationPayload`
+
+Delivery hardening now models:
+
+`outbox event → claim lease → attempt → publish OR failure → bounded retry → publish`
 
 The renderer does not perform network publication. Provider-specific transport must be implemented separately through permitted official APIs or explicitly authorized mechanisms.
 
 ## Verification
 
 - Telegram ingestion hosted CI run `34502076880` passed package installation, all three PostgreSQL migrations and unit/integration tests.
-- Publication adapter tests are committed and will be verified by the next hosted CI run.
+- Publication adapter tests are committed and were awaiting the next hosted CI run.
+- Outbox retry/lease tests are committed but have not been executed in the current GitHub connector environment.
+- PostgreSQL queue locking design follows the documented `FOR UPDATE SKIP LOCKED` pattern for concurrent queue consumers. citeturn0search2
+- Idempotent insertion is designed around PostgreSQL unique constraints/`ON CONFLICT`. citeturn0search0
 - Local runtime execution remains unavailable in the current environment.
 
 ## Next batch
 
-1. Harden outbox delivery with retries, leases, idempotent publication intents and replay reporting.
-2. Add authorized provider transport adapters only where official/contractually permitted interfaces exist.
-3. Build demand discovery and customer-opportunity graph.
-4. Build carrier matching, pricing, negotiation and human-on-exception workflows.
+1. Add the PostgreSQL claim/ack/failure worker implementation using the new delivery fields and `SKIP LOCKED`.
+2. Add replay reporting and dead-letter/quarantine semantics for repeatedly failing events.
+3. Verify publication adapter CI and outbox integration CI.
+4. Add authorized provider transport adapters only where official/contractually permitted interfaces exist.
+5. Build demand discovery and customer-opportunity graph.
+6. Build carrier matching, pricing, negotiation and human-on-exception workflows.
 
 ## Security
 
@@ -54,10 +65,14 @@ Provider publication is gated and transport-neutral. No claim is made that any m
 
 ## Handoff
 
-DONE: Telegram ingestion V1 runtime-green; publication contract, rendering, provenance, role representation and policy gates implemented.
-VERIFIED: Remote GitHub state.
-NOT YET VERIFIED: Hosted CI for publication adapter batch.
-NEXT_STEP: Verify CI → outbox delivery hardening → authorized provider transports → demand discovery.
+DONE: Outbox delivery V1 state model, retry/backoff helper, in-memory leases and tests committed. Migration `0007_outbox_delivery.sql` committed.
+VERIFIED: Repository structure, current outbox schema, PostgreSQL official concurrency/UPSERT documentation, and remote commits.
+NOT YET VERIFIED: Hosted CI and live PostgreSQL execution for migration/worker behavior.
+RESEARCHED: PostgreSQL `SELECT ... FOR UPDATE SKIP LOCKED`; PostgreSQL `INSERT ... ON CONFLICT` official documentation.
+FILES: `migrations/0007_outbox_delivery.sql`, `backend/logistics/outbox.py`, `tests/test_outbox.py`, `STATUS.md`.
+COMMITS: `c030e613`, `5aff5106`, `98e4046`.
+OPEN_ISSUES: PostgreSQL claim/ack worker and replay/dead-letter reporting still need implementation and CI verification.
+NEXT_STEP: Implement PostgreSQL outbox claim/ack/failure worker, then run hosted CI.
 
 ## OCI collector deployment — 2026-09-10
 
