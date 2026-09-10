@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
@@ -90,7 +90,7 @@ def observation_is_fresh(observed_at: datetime, *, now: datetime | None = None, 
     current = now or datetime.now(timezone.utc)
     if observed_at.tzinfo is None:
         observed_at = observed_at.replace(tzinfo=timezone.utc)
-    return current - observed_at <= __import__("datetime").timedelta(seconds=max_age_seconds)
+    return current - observed_at <= timedelta(seconds=max_age_seconds)
 
 
 def extract_verified_fields(item: dict[str, Any], *, verified_fields: Iterable[str]) -> dict[str, Any]:
