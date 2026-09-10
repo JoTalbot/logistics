@@ -27,18 +27,8 @@ class PriceEstimate:
 
 
 def estimate_price(load: Load, inputs: PricingInput) -> PriceEstimate:
-    del load  # Pricing inputs are deliberately explicit and auditable.
-    if (
-        inputs.distance_km < 0
-        or inputs.fuel_cost_per_km < 0
-        or inputs.tolls < 0
-        or inputs.driver_cost < 0
-        or inputs.overhead < 0
-        or inputs.risk_rate < 0
-        or inputs.risk_rate > 1
-        or inputs.target_margin_rate < 0
-        or inputs.target_margin_rate >= 1
-    ):
+    del load
+    if (inputs.distance_km < 0 or inputs.fuel_cost_per_km < 0 or inputs.tolls < 0 or inputs.driver_cost < 0 or inputs.overhead < 0 or inputs.risk_rate < 0 or inputs.risk_rate > 1 or inputs.target_margin_rate < 0 or inputs.target_margin_rate >= 1):
         raise ValueError("invalid pricing inputs")
     variable = inputs.distance_km * inputs.fuel_cost_per_km
     cost = variable + inputs.tolls + inputs.driver_cost + inputs.overhead
@@ -55,20 +45,8 @@ def score_opportunity(load: Load, estimate: PriceEstimate, risk_penalty: Decimal
     risk_adjusted = load.offered_price - estimate.cost - estimate.risk_reserve
     ratio = risk_adjusted / load.offered_price if load.offered_price else Decimal("0")
     score = max(Decimal("0"), min(Decimal("1"), ratio - risk_penalty))
-    reasons = []
-    if risk_adjusted > 0:
-        reasons.append("positive_risk_adjusted_margin")
-    else:
-        reasons.append("negative_risk_adjusted_margin")
-    return Opportunity(
-        tenant_id=load.tenant_id,
-        load_id=load.id,
-        score=float(score),
-        estimated_cost=estimate.cost,
-        estimated_margin=margin,
-        risk_adjusted_margin=risk_adjusted,
-        reasons=reasons,
-    )
+    reasons = ["positive_risk_adjusted_margin" if risk_adjusted > 0 else "negative_risk_adjusted_margin"]
+    return Opportunity(tenant_id=load.tenant_id, load_id=load.id, score=float(score), estimated_cost=estimate.cost, estimated_margin=margin, risk_adjusted_margin=risk_adjusted, reasons=reasons)
 
 
 @dataclass(frozen=True)
@@ -88,8 +66,7 @@ def match_carriers(load: Load, carriers: Iterable[Vehicle]) -> list[MatchCandida
         if carrier.available_from is not None:
             score += 0.2
             reasons.append("availability_known")
-        score = min(1.0, score)
-        result.append(MatchCandidate(str(carrier.carrier_party_id), score, tuple(reasons)))
+        result.append(MatchCandidate(str(carrier.carrier_party_id), min(1.0, score), tuple(reasons)))
     return sorted(result, key=lambda item: item.score, reverse=True)
 
 
@@ -114,5 +91,7 @@ def next_counteroffer(current: Decimal, policy: NegotiationPolicy, round_no: int
     floor = max(policy.min_price, policy.target_price * (Decimal("1") - policy.max_discount_rate))
     if current <= floor:
         return current, True
-    proposal = max(floor, current - (current - policy.target_price) / Decimal("2"))
+    if current >= policy.target_price:
+        return current, False
+    proposal = min(policy.target_price, current + (policy.target_price - current) / Decimal("2"))
     return proposal.quantize(Decimal("0.01")), False
