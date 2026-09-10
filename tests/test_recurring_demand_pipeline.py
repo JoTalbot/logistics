@@ -32,17 +32,16 @@ class FakeConnection:
 
 
 def _load(created_at):
-    from logistics.domain import GeoPoint, Load
+    from logistics.domain import CanonicalLocation, Load, LoadStop
     return Load(
         id=uuid4(),
         external_ref=str(uuid4()),
-        source="test",
         cargo_type="Food",
-        weight_kg=Decimal("1000"),
+        weight_kg=1000,
         currency="EUR",
         stops=(
-            GeoPoint(sequence=1, location="UA", country_code="UA"),
-            GeoPoint(sequence=2, location="PL", country_code="PL"),
+            LoadStop(sequence=0, kind="pickup", location=CanonicalLocation(raw_address="UA", normalized_address="UA", country_code="UA")),
+            LoadStop(sequence=1, kind="delivery", location=CanonicalLocation(raw_address="PL", normalized_address="PL", country_code="PL")),
         ),
         created_at=created_at,
     )
