@@ -5,11 +5,11 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 
-from .domain import CanonicalLocation, GeoPoint, Load, Opportunity
+from .domain import CanonicalLocation, Load, Opportunity
 
 
 def normalize_address(raw: str) -> CanonicalLocation:
-    text = re.sub(r"\\s+", " ", raw.strip())
+    text = re.sub(r"\s+", " ", raw.strip())
     text = re.sub(r"[,;]+", ", ", text)
     return CanonicalLocation(raw_address=raw, normalized_address=text, confidence=0.0)
 
