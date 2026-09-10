@@ -38,3 +38,7 @@ All four sources completed their initial 100-message snapshot. Subsequent increm
 ## Local LLM normalization
 
 A separate local-only `normalizer` service now enriches stored messages using installed Ollama qwen2.5:1.5b. Results are review-only in telegram_llm_jobs, not automatic canonical loads. See [LOCAL_LLM.md](LOCAL_LLM.md) for resource limits, queue status, rights/terms, validation and recovery. PostgreSQL now binds 127.0.0.1:15439 for the host-network normalizer; it is not publicly exposed.
+
+### Batch normalization
+
+Normalizer now packs up to 100 pending ads into one protected JSON file and makes one local inference call per file, bounded by context. Validated outputs are saved individually. See [BATCH_PROCESSING.md](BATCH_PROCESSING.md). A live 3-ad/1-request/3-result batch passed; the first full-limit batch contains 31 ads and is still processing at this handoff.

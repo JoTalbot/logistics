@@ -47,6 +47,7 @@ services:
       PYTHONUNBUFFERED: '1'
     volumes:
       - /opt/logistics/deploy/llm_worker.py:/runtime/llm_worker.py:ro
+      - /var/lib/logistics/llm-batches:/batches
     mem_limit: 384m
     cpus: 0.5
     cap_drop: [ALL]

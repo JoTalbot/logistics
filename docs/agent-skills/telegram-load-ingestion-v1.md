@@ -36,3 +36,7 @@ Route, weight, volume, price/currency, cargo/vehicle hints, loading date text, p
 - Use PostgreSQL UPSERT semantics for retries.
 - CI must exercise both Python tests and the SQL migration path.
 - Respect Telegram API/content terms and source-specific rules.
+
+## Batch normalization operations
+
+For opt-in local LLM mode, use deploy/BATCH_PROCESSING.md: max100 pending per file, context-bounded, exactly one inference per file, required ID-keyed responses, independent review-only records, persistent retries and per-batch audit. Never assume model output completeness or correctness from valid JSON alone.

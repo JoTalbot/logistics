@@ -72,3 +72,7 @@ Latest 100 stored messages per source (400 total), 13 pass canonical rules; this
 ## Local LLM normalization — 2026-09-10
 
 Operator requested local LLM processing. Added separate PostgreSQL queue + Ollama qwen2.5:1.5b worker (installed model, digest pinned). Latest 100 stored messages/source queued once, then newly stored messages. Loopback-only Ollama and DB, restricted DB role, strict schema, source-evidence checks, deterministic unit/currency/date normalization; ALL outputs require human review and remain separate from loads. 29 unit tests passed, 4 integration tests skipped. Synthetic live extraction verified route/weight/price/currency but model falsely flagged multiple_ads; no accuracy claim. First live job completed successfully. CPU inference may create backlog; collector continues independently. Details: deploy/LOCAL_LLM.md. Next: local labelled evaluation and review UI; no auto-publication.
+
+## Batch local LLM — 2026-09-10
+
+Requested up to 100 pending messages/file/request, separate normalized DB records. Implemented context-bounded packing, protected JSON inputs, keyed required output IDs, per-record validation/persistence and retries, batch audit table (migration 0005). No raw text exported. 35 tests passed, 4 skipped. Live test: 3 ads / 1 inference / 3 saved, 139.5 sec; not an accuracy or speedup claim. Limit now 100; active batch contains 31 ads and is not yet verified complete. Raw files retained 24h after batch termination then cleaned by worker. Existing review-only policy retained. Details: deploy/BATCH_PROCESSING.md.
