@@ -46,7 +46,7 @@ The architecture deliberately separates **business state**, **AI reasoning**, **
                         │
               Adapter / Integration Layer
                         │
-   DELLA • Lardi • TMS • Maps • GPS • Voice • Docs
+   Exchanges • TMS • Maps • GPS • Voice • Docs
    Payments • Insurance • EDO • Email • Messaging
 ```
 
@@ -65,8 +65,10 @@ These are **architecture candidates**, not irreversible dependencies.
 | Cache | Redis-compatible abstraction | Never make cache authoritative |
 | Object storage | S3-compatible abstraction | Documents/audio/evidence, encrypted |
 | Search | PostgreSQL FTS initially; dedicated engine later | Avoid premature distributed search |
-
-The current MCP specification is stateless at its protocol core, which is useful for horizontally scalable tool gateways. citeturn0search6 OpenAI's current Agents SDK documentation covers orchestration, guardrails, state/results and observability. citeturn0search8 Temporal is appropriate for workflows that must resume after crashes or infrastructure failures. citeturn0search1 NATS provides the initial event-streaming candidate. citeturn0search0
+| Route solver | VROOM adapter initially | Solver is replaceable; business objective remains in domain/optimizer |
+| Advanced solver | OR-Tools adapter | Use for validated special constraints/objectives, not as a hard dependency |
+| Routing/matrix | RoutingProvider abstraction | OSRM/Valhalla/commercial providers can be substituted |
+| Geo intelligence | Canonical address/geocode pipeline | Normalize and score locations before optimization |
 
 ## 4. Domain boundaries
 
@@ -166,7 +168,7 @@ Initial event families:
 
 `LOAD_FOUND`, `LOAD_UPDATED`, `PRICE_OBSERVED`, `OPPORTUNITY_SCORED`, `CARRIER_MATCHED`, `NEGOTIATION_STARTED`, `MESSAGE_SENT`, `QUOTE_RECEIVED`, `DEAL_AGREED`, `CONTRACT_SIGNED`, `DOCUMENT_RECEIVED`, `TRUCK_ASSIGNED`, `TRUCK_DEPARTED`, `ETA_CHANGED`, `EXCEPTION_OPENED`, `DELIVERY_CONFIRMED`, `INVOICE_ISSUED`, `PAYMENT_RECEIVED`, `RISK_CHANGED`, `AGENT_ACTION_PROPOSED`, `AGENT_ACTION_APPROVED`, `AGENT_ACTION_EXECUTED`, `AGENT_ACTION_REJECTED`.
 
-Use an outbox pattern for reliable publication of DB state changes to the event bus. Debezium documents the outbox pattern specifically for keeping persisted service state consistent with published events. citeturn0search11
+Use an outbox pattern for reliable publication of DB state changes to the event bus.
 
 ## 6. Agent architecture
 
@@ -223,7 +225,7 @@ Policy evaluation occurs **before** tool execution and is recorded with the deci
 
 ## 8. Data architecture
 
-PostgreSQL is the transactional source of truth. Use normalized domain tables plus append-only audit/event records. Multi-tenancy uses application authorization plus database controls; PostgreSQL Row-Level Security can provide per-user/tenant row restrictions and defaults to deny when no policy permits access. citeturn0search9
+PostgreSQL is the transactional source of truth. Use normalized domain tables plus append-only audit/event records. Multi-tenancy uses application authorization plus database controls; PostgreSQL Row-Level Security can provide per-user/tenant row restrictions.
 
 Separate storage classes:
 
@@ -249,11 +251,11 @@ Use durable workflows for processes that span minutes/hours/days or require retr
 - human approval waits;
 - recurring market scans.
 
-Use ordinary service calls for short synchronous operations. This avoids turning every HTTP request into a distributed workflow circus, because humanity has already suffered enough distributed systems diagrams.
+Use ordinary service calls for short synchronous operations.
 
 ## 10. Integration architecture
 
-Every provider is an adapter implementing stable internal contracts:
+Every provider is an adapter implementing stable internal contracts. Provider-specific objects are mapped into canonical domain objects at the boundary.
 
 ```text
 ProviderAdapter
@@ -268,9 +270,41 @@ ProviderAdapter
 └── health()
 ```
 
-Adapters must expose capability discovery, rate limits, freshness, provenance and failure state. Provider-specific objects are mapped into canonical domain objects at the boundary.
+Adapters must expose capability discovery, rate limits, freshness, provenance and failure state.
 
-## 11. AI/model gateway
+## 11. Routing and optimization architecture
+
+Routing and optimization are separate from economic decision-making.
+
+```text
+Business Optimizer
+   │
+   ├── profit/risk/service constraints
+   │
+   ▼
+OptimizationService
+   ├── VROOMAdapter
+   ├── ORToolsAdapter
+   └── future solver adapters
+   │
+   ▼
+RoutingProvider
+   ├── OSRMAdapter
+   ├── ValhallaAdapter
+   └── commercial providers
+```
+
+The business layer decides which loads/capacity/opportunities are worth pursuing. The solver determines a feasible physical execution plan. A solver result must be validated and fed back into business economics before a decision is accepted.
+
+Canonical geo pipeline:
+
+`raw address → parse → normalize → entity resolve → geocode → confidence → canonical location → matrix/route`
+
+Introduce `MatrixCache` behind an interface. Its fingerprint includes normalized locations, provider/version, map-data freshness, routing profile, relevant restrictions and traffic/departure context. Cached matrices are never authoritative.
+
+VROOM is the initial general-purpose solver candidate. OR-Tools is the advanced/experimental candidate for unusual constraints or objective formulations. Full details live in `docs/ROUTING_OPTIMIZATION.md`.
+
+## 12. AI/model gateway
 
 Never couple domain logic directly to one model vendor.
 
@@ -287,7 +321,7 @@ The Model Gateway selects models based on:
 
 A decision record must capture model/provider/version and relevant policy metadata without storing secrets.
 
-## 12. Simulation and shadow mode
+## 13. Simulation and shadow mode
 
 Before autonomous external actions, the same domain commands must support:
 
@@ -300,9 +334,9 @@ Before autonomous external actions, the same domain commands must support:
 
 Simulation must answer: **what would the AI have done, what would it have earned, what risk would it have created, and what actually happened?**
 
-## 13. Observability
+## 14. Observability
 
-OpenTelemetry is the standard instrumentation layer for traces, metrics and logs. It is vendor-neutral and designed to correlate telemetry across distributed components. citeturn0search2turn0search4
+OpenTelemetry is the standard instrumentation layer for traces, metrics and logs.
 
 Required correlation IDs:
 
@@ -319,9 +353,11 @@ Business metrics must include:
 - exception rate;
 - human intervention rate;
 - provider failure rate;
-- cash conversion cycle.
+- cash conversion cycle;
+- optimization solve latency;
+- route quality/regression metrics.
 
-## 14. Reliability
+## 15. Reliability
 
 Every external integration has:
 
@@ -334,9 +370,9 @@ Every external integration has:
 - fallback provider where feasible;
 - dead-letter/reconciliation path.
 
-Critical financial and shipment workflows must be recoverable after process/node/network failure.
+Critical financial, optimization and shipment workflows must be recoverable after process/node/network failure.
 
-## 15. Security
+## 16. Security
 
 - Least privilege.
 - Tenant isolation.
@@ -349,7 +385,7 @@ Critical financial and shipment workflows must be recoverable after process/node
 - PII minimization and retention policies.
 - Sanctions/compliance checks before applicable transactions.
 
-## 16. V1→V10 evolution
+## 17. V1→V10 evolution
 
 | Version | Architecture capability |
 |---|---|
@@ -364,7 +400,7 @@ Critical financial and shipment workflows must be recoverable after process/node
 | V9 | Profit/risk optimization: treasury, portfolio and strategy |
 | V10 | AI CEO: strategic control with human exception/governance |
 
-## 17. V1 deployment topology
+## 18. V1 deployment topology
 
 Start as a modular monolith plus worker processes, not a microservice zoo.
 
@@ -377,12 +413,13 @@ Application Core ─── PostgreSQL
   ├── Workflow Worker ─ Temporal
   ├── Adapter Gateway
   ├── AI/Model Gateway
+  ├── Optimization Gateway ─── VROOM
   └── OTel Collector
 ```
 
-Split services only when scaling, security, ownership or reliability requires it. The interfaces must be service-ready from the beginning.
+Routing datasets remain optional deployment assets. Local development must be possible without downloading full regional OSM datasets.
 
-## 18. Non-negotiable architectural invariants
+## 19. Non-negotiable architectural invariants
 
 1. Domain state is authoritative; model output is not.
 2. AI cannot bypass authorization/policy.
@@ -393,4 +430,7 @@ Split services only when scaling, security, ownership or reliability requires it
 7. Ukraine is the first market, not a permanent architecture constraint.
 8. Simulation/shadow mode precedes dangerous autonomy.
 9. Profit is optimized subject to risk and compliance constraints.
-10. All completed engineering work is committed and pushed immediately according to `AGENTS.md`.
+10. Solver and routing providers are replaceable.
+11. Business objectives are not delegated blindly to a routing solver.
+12. Cached routing data is non-authoritative and freshness-aware.
+13. All completed engineering work is committed and pushed immediately according to `AGENTS.md`.
