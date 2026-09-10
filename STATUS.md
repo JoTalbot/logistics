@@ -2,13 +2,13 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Telegram load ingestion V1
+CURRENT_STEP: Telegram load ingestion V1 hardening
 STATUS: implemented_pending_runtime_ci
 AGENT: telegram-load-ingestion-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Сбор сообщений из заданных Telegram-источников, идемпотентное сохранение, checkpoint/dedup, детерминированный разбор и безопасная канонизация объявлений о грузах. Публикация и наценка намеренно не входят в этот шаг.
+SCOPE: Сбор Telegram-объявлений, детерминированный разбор, атомарная PostgreSQL persistence/checkpoint, validation/confidence gate, canonical Load conversion и CI quality gate. Публикация и наценка пока не входят в этот шаг.
 
 ## Completed
 
@@ -25,12 +25,21 @@ SCOPE: Сбор сообщений из заданных Telegram-источни
 - Telegram persistence: source checkpoints, source-message deduplication and parsed-ad storage with PostgreSQL UPSERT semantics.
 - Telegram canonicalization: validation/confidence gate and ParsedLoadAd → canonical Load conversion.
 - Telegram worker: checkpoint is advanced only inside the same DB transaction that persists source message and parsed result.
+- GitHub Actions CI definition with PostgreSQL 17 service and clean SQL migration execution.
+- Docker Compose fresh-database initialization now includes Telegram migration 0002.
+- Telegram ingestion skill/log updated with atomicity and CI lessons.
 
 ## Current implementation
 
 `Telegram message → deterministic parser → atomic source+parsed persistence → checkpoint → validation → canonical Load`
 
 Incomplete/low-confidence ads remain non-canonical and are not published externally. No automatic markup or reposting is implemented in this stage.
+
+## Verification
+
+- Remote repository state confirmed through GitHub after the batch.
+- CI workflow was added, but GitHub currently reports no workflow run for the new CI commits. Therefore runtime CI is **not yet verified**.
+- Local runtime execution is still unavailable in the current environment.
 
 ## Telegram sources
 
@@ -39,20 +48,25 @@ Incomplete/low-confidence ads remain non-canonical and are not published externa
 - https://t.me/TURKIYA_UZBEKISTON_GRUBA_N1
 - https://t.me/gruzoperevozki_ua
 
-## Next
+## Next batch
 
-1. Runtime CI and PostgreSQL integration execution.
-2. Add observability counters/traces and deterministic replay fixtures.
-3. Add canonical Load persistence and event publication after validation.
-4. Add provider-specific publication adapters only after ingestion is reliable, with explicit provenance, role representation, markup and policy gates.
-5. Keep Telegram parsing deterministic unless a legally compliant data/licensing path for AI/ML use is established.
+1. Get the hosted CI run green and fix any runtime failures.
+2. Add persistent canonical `loads` + `load_stops` creation for accepted Telegram ads.
+3. Emit durable `LOAD_FOUND` / `LOAD_UPDATED` outbox events transactionally with canonical state.
+4. Add deterministic replay fixtures and observability counters/traces.
+5. Only after ingestion is reliable, build provider-specific publication adapters with provenance, role representation, markup and policy gates.
 
 ## Security
 
 `TG_API_ID` and `TG_API_HASH` remain runtime secrets. A Telethon user session is also a secret and must not be committed. No credentials are stored in the repository.
 
+## Compliance
+
+Telegram parsing remains deterministic/local. No LLM enrichment or AI/ML training pipeline is introduced. Production operation requires verification of source permissions, applicable platform terms, privacy/retention requirements and law.
+
 ## Handoff
 
-DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion and worker orchestration.
-VERIFIED: All changes in this batch were written to the remote repository.
-NOT YET VERIFIED: Runtime CI/database integration execution in the current environment.
+DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion, worker orchestration, CI definition and fresh-DB Docker initialization.
+VERIFIED: Remote commits and file state confirmed.
+NOT YET VERIFIED: Hosted CI execution result.
+NEXT_STEP: Hosted CI → canonical Load persistence + transactional outbox events → replay/observability.
