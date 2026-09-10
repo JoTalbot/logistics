@@ -13,6 +13,8 @@ from .customer_opportunity_store import list_customer_opportunities
 from .recurring_demand_store import list_patterns
 from .contact_outbox import list_contact_intents
 from .contact_review import decide_contact_intent
+from .duplicate_loads import find_duplicate_load_groups
+from .recurring_demand_health import scheduler_health
 
 app = FastAPI(title="AI Logistics OS", version="0.7.2")
 
@@ -106,6 +108,20 @@ def review_recurring_demand(tenant_id: UUID, status: str = "active", limit: int 
     try:
         with psycopg.connect(_dsn()) as conn: return list_patterns(conn, tenant_id=tenant_id, status=status, limit=limit)
     except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+@app.get("/api/v1/review/recurring-demand/health")
+def review_recurring_demand_health(x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
+    _operator_auth(x_operator_token)
+    with psycopg.connect(_dsn()) as conn: return scheduler_health(conn)
+
+@app.get("/api/v1/review/duplicate-loads")
+def review_duplicate_loads(tenant_id: UUID, window_hours: int = 48, limit: int = 1000, x_operator_token: str | None = Header(default=None)) -> list[list[str]]:
+    _operator_auth(x_operator_token)
+    try:
+        with psycopg.connect(_dsn()) as conn:
+            groups = find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=window_hours, limit=limit)
+    except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return [[str(load_id) for load_id in group] for group in groups]
 
 @app.get("/api/v1/review/contact-intents")
 def review_contact_intents(tenant_id: UUID, status: str = "pending", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
