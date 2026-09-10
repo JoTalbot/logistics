@@ -1,0 +1,28 @@
+name: Configure Telegram collector
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: logistics-telegram-config
+  cancel-in-progress: false
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Transfer configuration through restricted SSH key
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          DEPLOY_KEY: ${{ secrets.LOGISTICS_CONFIG_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.LOGISTICS_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$work/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$work/known_hosts"
+          python3 -c 'import os,json; print(json.dumps({k:os.environ[k] for k in ("TG_API_ID","TG_API_HASH")}))' | ssh -T -i "$work/key" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$work/known_hosts" root@129.213.177.56
