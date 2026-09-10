@@ -7,9 +7,10 @@ from datetime import datetime, timedelta, timezone
 import psycopg
 
 from .recurring_demand_db import recompute_recurring_demand
+from .recurring_demand_health import finish_run, start_run
 
 
-def recompute_all_tenants(conn, *, now: datetime, days: int = 90, limit: int = 5000) -> int:
+def recompute_all_tenants(conn, *, now: datetime, days: int = 90, limit: int = 5000) -> tuple[int, int]:
     if days < 1 or days > 3650:
         raise ValueError("days must be between 1 and 3650")
     if limit < 1 or limit > 50_000:
@@ -25,7 +26,7 @@ def recompute_all_tenants(conn, *, now: datetime, days: int = 90, limit: int = 5
             since=since,
             limit=limit,
         )
-    return total
+    return len(tenants), total
 
 
 def run_forever(*, interval_seconds: int = 21_600, days: int = 90, limit: int = 5000) -> None:
@@ -37,8 +38,16 @@ def run_forever(*, interval_seconds: int = 21_600, days: int = 90, limit: int = 
     while True:
         now = datetime.now(timezone.utc)
         with psycopg.connect(dsn) as conn:
-            total = recompute_all_tenants(conn, now=now, days=days, limit=limit)
-            conn.commit()
+            run_id = start_run(conn, started_at=now)
+            try:
+                tenant_count, total = recompute_all_tenants(conn, now=now, days=days, limit=limit)
+            except Exception as exc:
+                finish_run(conn, run_id=run_id, completed_at=datetime.now(timezone.utc), status="failed", tenant_count=0, pattern_count=0, error_text=str(exc)[:2000])
+                conn.commit()
+                raise
+            else:
+                finish_run(conn, run_id=run_id, completed_at=datetime.now(timezone.utc), status="succeeded", tenant_count=tenant_count, pattern_count=total)
+                conn.commit()
         print(f"recurring-demand scheduled recomputation: {total} patterns", flush=True)
         time.sleep(interval_seconds)
 
