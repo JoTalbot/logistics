@@ -60,7 +60,7 @@ def _priority_metrics(conn: object, *, tenant_id: UUID, high_priority_threshold:
     if stale_after_hours < 1: raise ValueError("stale_after_hours must be at least 1")
     rows = conn.execute("""SELECT priority_status, count(*),
                                   COALESCE(EXTRACT(EPOCH FROM (now()-min(priority_updated_at))), 0),
-                                  COALESCE(EXTRACT(EPOCH FROM (now()-avg(priority_updated_at))), 0)
+                                  COALESCE(avg(EXTRACT(EPOCH FROM (now()-priority_updated_at))), 0)
                              FROM opportunities
                             WHERE tenant_id=%s AND priority_score IS NOT NULL AND priority_updated_at IS NOT NULL
                             GROUP BY priority_status
