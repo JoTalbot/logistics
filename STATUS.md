@@ -84,3 +84,7 @@ Read-only audit: 31-item batch still processing after 477s, not verified complet
 ## Enqueue and numeric V2 — 2026-09-10
 
 User approved items1–3. Independent enqueuer now runs every10s; verified0 unqueued with normalizer paused. Version2 source-grounded weight units/ranges and monetary labels/currencies; pending478 jobs upgraded, completedV1 preserved. Read-only numeric replay on31 previous results: weight3→15; sums11→6 (unsupported removed), currency remains0; no accuracy claim. 56 tests passed,4 skipped. Matched benchmark on same10 unique real short ads running in order5/3/10; batch5 completed10/10 in243.99s, other cases pending. Inference paused only for benchmark, collector/enqueuer continue; wrapper restores selected limit and normalizer automatically. See deploy/QUEUE_AND_NUMBERS_V2.md.
+
+## Completed: queue/numbers/benchmark V2
+
+Matched10-ad benchmark completed: size3=176.71s/4requests, size5=243.99s/2requests, size10=187.31s/1request; all returned10/10 schema-valid outputs. Selected size3 provisionally; one fixed-order pass on short ads/shared host, no semantic accuracy claim. Normalizer restored; first production V2 batch saved3 in56.07s, later6 completedV2 including cache. Enqueuer heartbeat fresh and unqueued0 during benchmark. Original content never exported. Full results: docs/agent-log/oci-collector-deployment/queue-v2-benchmark-results.md and batch-benchmark-2026-09-10.json. All three requested items complete; backlog remains, throughput monitoring and human review still needed.

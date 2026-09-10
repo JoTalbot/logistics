@@ -1,0 +1,140 @@
+{
+  "started_at": "2026-09-10T17:45:55Z",
+  "parser_version": "local-qwen-extract-v2",
+  "model_digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+  "context": 16384,
+  "dataset_count": 10,
+  "dataset_sources": {
+    "https://t.me/TURKIYA_UZBEKISTON_GRUBA_N1": 3,
+    "https://t.me/gruzoperevozki_ua": 3,
+    "https://t.me/truck_world": 2,
+    "https://t.me/vantazhni_perevezennya_ua": 2
+  },
+  "manifest": [
+    {
+      "id": 1,
+      "source_message_id": "2d42cf5e-932d-4ed3-98bb-5d7cbed55070",
+      "sha256": "7123a9b3ca20029263bfe12e1ce060e75f25a8257ef410e740878484bcbf834b"
+    },
+    {
+      "id": 2,
+      "source_message_id": "885701e8-33d6-4c02-94a1-886138a9f7be",
+      "sha256": "e1b83f74819c46781e46a6bf635927cfcfa984222fa3ef3dbf550fc66927eace"
+    },
+    {
+      "id": 3,
+      "source_message_id": "d41f2cf4-ea39-47ed-b13c-ada792f667ba",
+      "sha256": "0eb846fa3ad5a37b31fd0c0fc48cc4b3d24f873cb38030ac96b6d0cfcc71be3c"
+    },
+    {
+      "id": 4,
+      "source_message_id": "8fde6e90-fe74-4ffc-bcdd-bd50482c7bd8",
+      "sha256": "48d19804a8b25727699b5078da680aec21f91fb0fd99705d0825c3875b3fdcd0"
+    },
+    {
+      "id": 5,
+      "source_message_id": "42e5099b-8960-4597-8535-4979ab958b32",
+      "sha256": "191c3b18b7db899947e43bfe42aff85effb4a838a374c3a46c9191af4cfe5074"
+    },
+    {
+      "id": 6,
+      "source_message_id": "80c74b75-f8cd-4905-a0bd-1d8a15ae935b",
+      "sha256": "698828b713251dc2b22b1defd3922f5d18e12d5327a4759c997c29a4340c6fbf"
+    },
+    {
+      "id": 7,
+      "source_message_id": "2e4fe466-4e1d-4e69-96b3-dead49153fbc",
+      "sha256": "ea44609b56e848ea6d34a62aeea3f3423464c9229b8e220106f309ed9f2ef721"
+    },
+    {
+      "id": 8,
+      "source_message_id": "f252e0e6-e598-46e1-888a-b48fab6c4b7f",
+      "sha256": "94dc614c19874cd80c0d74aee2237ad9e92f41885c83399f15c29ebc39c7b2f6"
+    },
+    {
+      "id": 9,
+      "source_message_id": "fe180935-c7e5-44a8-8643-d171b439aef2",
+      "sha256": "ae0c4aae269703344018f99c071ead34a169dd01cbf3cfb1a906a982cc645398"
+    },
+    {
+      "id": 10,
+      "source_message_id": "ba5bf8cd-a476-4d72-a7ee-b055fab6a274",
+      "sha256": "4d09a8c43dc47a07ca654fbd32cc8dd3d35080bf8bfd35ffc2fdfd49a45c5105"
+    }
+  ],
+  "method": "same 10 unique real short ads per case; order 5,3,10; no application cache; one pass; shared host; field presence not accuracy",
+  "cases": [
+    {
+      "batch_size": 5,
+      "requests": 2,
+      "valid_results": 10,
+      "failed_results": 0,
+      "seconds": 243.99,
+      "with_route": 2,
+      "with_weight": 5,
+      "with_price_currency": 1,
+      "unsupported_fields": 62,
+      "errors": [],
+      "load_before": [
+        1.51513671875,
+        3.0830078125,
+        4.13916015625
+      ],
+      "seconds_per_input": 24.4,
+      "load_after": [
+        1.35693359375,
+        2.16943359375,
+        3.515625
+      ]
+    },
+    {
+      "batch_size": 3,
+      "requests": 4,
+      "valid_results": 10,
+      "failed_results": 0,
+      "seconds": 176.71,
+      "with_route": 2,
+      "with_weight": 4,
+      "with_price_currency": 1,
+      "unsupported_fields": 42,
+      "errors": [],
+      "load_before": [
+        1.35693359375,
+        2.16943359375,
+        3.515625
+      ],
+      "seconds_per_input": 17.67,
+      "load_after": [
+        1.33251953125,
+        1.810546875,
+        3.14013671875
+      ]
+    },
+    {
+      "batch_size": 10,
+      "requests": 1,
+      "valid_results": 10,
+      "failed_results": 0,
+      "seconds": 187.31,
+      "with_route": 2,
+      "with_weight": 4,
+      "with_price_currency": 1,
+      "unsupported_fields": 60,
+      "errors": [],
+      "load_before": [
+        1.33251953125,
+        1.810546875,
+        3.14013671875
+      ],
+      "seconds_per_input": 18.73,
+      "load_after": [
+        1.80029296875,
+        1.71826171875,
+        2.85205078125
+      ]
+    }
+  ],
+  "status": "completed",
+  "recommended_batch_size": 3,
+  "recommendation_basis": "fastest complete 10/10 case; does not establish semantic accuracy"
+}
