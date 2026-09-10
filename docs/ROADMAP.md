@@ -48,7 +48,19 @@ Capabilities:
 - source provenance;
 - freshness monitoring.
 
-**Exit:** operator can see profitable opportunities with explainable margin estimates.
+**Routing and geo foundation:**
+
+- canonical address parsing and normalization;
+- geocoding with confidence and provenance;
+- `RoutingProvider` abstraction;
+- deterministic fake routing provider for tests;
+- `OptimizationService` abstraction;
+- VROOM adapter;
+- optional OSRM/Valhalla adapters;
+- matrix cache abstraction with freshness-aware fingerprints;
+- route/optimization benchmark fixtures.
+
+**Exit:** operator can see profitable opportunities with explainable margin estimates, and selected opportunities can be transformed into validated feasible routes.
 
 ## Phase 2 — Pricing and Matching
 
@@ -61,6 +73,7 @@ Capabilities:
 - Opportunity portfolio.
 - Profit Hunter.
 - Explainable recommendations.
+- Business Optimizer integrating routing feasibility and route cost into economic scoring.
 
 **Exit:** recommendations consistently outperform simple manual heuristics on replay data.
 
@@ -101,6 +114,8 @@ Capabilities:
 - Incident management.
 - Automatic customer updates.
 - Proof of delivery.
+- Route recalculation through the routing abstraction.
+- Optimization fallback when a provider is unavailable.
 
 **Exit:** AI can manage normal shipment execution and route exceptions to humans.
 
@@ -127,6 +142,8 @@ Capabilities:
 - Geographic arbitrage.
 - Network heatmap.
 - Counterfactual engine.
+- Solver portfolio comparison.
+- Historical routing replay and regression detection.
 
 **Exit:** system optimizes portfolios of loads/trucks instead of isolated transactions.
 
@@ -189,19 +206,17 @@ Idempotency, retries, provider health, reconciliation, disaster recovery, backup
 
 ### Evaluation
 
-Historical replay, synthetic scenarios, agent evaluations, negotiation benchmarks, pricing calibration and regression suites.
+Historical replay, synthetic scenarios, agent evaluations, negotiation benchmarks, pricing calibration and regression suites. Routing benchmarks must measure feasibility, solution quality, latency and business economics.
 
 ### Observability
 
-Distributed tracing, metrics, structured logs, business KPIs and cost attribution.
+Distributed tracing, metrics, structured logs, business KPIs and cost attribution. Include optimization/provider latency and route-quality regression metrics.
 
 ### Documentation
 
 Architecture Decision Records, integration contracts, runbooks, agent skills and handoff logs.
 
 ## First engineering batch
-
-The first implementation batch should be deliberately small:
 
 1. `backend/` application skeleton.
 2. PostgreSQL schema/migrations for tenant, user, load, party, opportunity, deal and audit records.
@@ -210,9 +225,11 @@ The first implementation batch should be deliberately small:
 5. Adapter abstraction.
 6. Policy/authorization service.
 7. Simulation/shadow execution interface.
-8. One deterministic end-to-end workflow: `load → normalize → score → opportunity`.
-9. Test fixtures and replay dataset format.
-10. Local Docker Compose for DB/event bus/app/worker.
+8. Canonical geo + routing/optimization contracts.
+9. Deterministic fake routing/solver fixtures.
+10. One deterministic end-to-end workflow: `load → normalize → score → opportunity`.
+11. Test fixtures and replay dataset format.
+12. Local Docker Compose for DB/event bus/app/worker; routing services remain optional profiles.
 
 Do **not** start autonomous negotiation, financial commitments or production voice calls until simulation, policy, audit and rollback/escalation mechanisms are in place.
 
