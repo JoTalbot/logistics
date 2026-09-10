@@ -21,7 +21,7 @@ def test_duplicate_detection_is_tenant_scoped_and_deterministic():
             return Result()
 
     conn = Conn()
-    assert find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=48) == [[left, right]]
+    assert find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=48) == [sorted([left, right], key=str)]
     assert conn.params[0] == tenant_id
 
 
