@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Iterable
 
 from .customer_opportunities import CustomerOpportunity, rank_customer_opportunities
 from .domain import Load, Vehicle
 from .market_ops import MatchCandidate, PriceEstimate, PricingInput, estimate_price, match_carriers, score_opportunity
-from .recurring_demand import DemandPattern, demand_pattern_key, detect_recurring_demand, pattern_freshness
+from .recurring_demand import demand_pattern_key, detect_recurring_demand, pattern_freshness
 
 
 @dataclass(frozen=True)
