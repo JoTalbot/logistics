@@ -53,3 +53,5 @@ jobs:
         run: pytest
       - name: Run local release smoke checks
         run: python scripts/release_smoke.py
+      - name: Build hardened API image
+        run: docker build -f docker/api.Dockerfile -t logistics-api:ci .
