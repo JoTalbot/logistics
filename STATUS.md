@@ -2,25 +2,27 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V15 — durable commercial priority queue
-STATUS: v15_commercial_priority
-AGENT: logistics-commercial-batch-v15
+CURRENT_STEP: V16 — operator control plane hardening
+STATUS: v16_operator_control_plane
+AGENT: logistics-commercial-batch-v16
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
 SCOPE: Historical market observations, explainable opportunity economics, authenticated human review and provenance-first customer discovery. No autonomous external commitment or outreach is enabled.
 
-## V15 completed
+## V16 completed
 
-- Durable `opportunities.priority_score`, `priority_reasons`, `priority_updated_at` and controlled `priority_status` fields.
-- Tenant-scoped priority queue index.
-- Deterministic priority decision service with validation and persistence.
-- Authenticated `/api/v1/review/priorities` operator queue endpoint.
-- Unit coverage for priority score/status validation and persistence.
+- Tenant-scoped priority queue SLA metrics: counts by status, oldest age, average age, high-priority open count and stale-open count.
+- Configurable priority SLA threshold validation with safe defaults: high priority `0.8`, stale after `12h`.
+- Authenticated `/api/v1/review/priorities/metrics` operator endpoint.
+- `/api/v1/review/summary` now exposes priority queue health and a conservative tenant-scoped `operational_status`.
+- Scheduler failure/staleness remains critical; stale open priority work marks the operator summary degraded.
+- API unit coverage for priority metrics validation, tenant scoping and summary health behavior.
+- No new migration was required; V16 uses existing durable priority fields from V15.
 
 ## Commercial chain
 
-`Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → recurring demand → deterministic priority → operator queue`
+`Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → recurring demand → deterministic priority → operator queue → SLA/health visibility`
 
 V14 priority formula:
 
@@ -37,7 +39,7 @@ The commercial pipeline remains deterministic and explainable. It does not publi
 - Human review audit and authenticated operator APIs.
 - Authorized contact intents with suppression and mandatory human approval.
 - Tenant-scoped duplicate detection and scheduler health thresholds.
-- Compact tenant-safe operator summary.
+- Durable commercial priority queue with tenant isolation.
 
 ## Verification
 
@@ -53,8 +55,8 @@ Lardi discovery remains read-only. Canonical provider mapping remains blocked un
 
 ## Next batch
 
-1. V16: strengthen operator control plane with priority queue metrics, SLA/age visibility and safe aggregate health.
-2. Add tenant-isolation coverage for summary and priority queue.
+1. V17: reliability hardening: replay/idempotency/recovery checks around commercial priority recomputation and operator state.
+2. Add real PostgreSQL tenant-isolation coverage for summary and priority metrics/queue.
 3. Add duplicate replay telemetry before considering stronger DB identity materialization.
 4. Add provider-specific canonical mappings only from verified Lardi samples after access is restored.
 5. Keep contact adapters and external publication gated behind explicit provider permissions, terms, privacy and legal verification.
@@ -65,7 +67,7 @@ Credentials remain runtime secrets. Review APIs require `REVIEW_OPERATOR_TOKEN`.
 
 ## Handoff
 
-DONE: V15 durable commercial priority queue, deterministic priority persistence and authenticated operator exposure.
-PENDING: CI verification for latest direct commits; provider-side Lardi access; provider-specific mappings.
+DONE: V16 operator control-plane hardening with priority SLA/age visibility, aggregate health and tenant-scoped tests.
+PENDING: CI verification for latest direct commits; provider-side Lardi access; provider-specific mappings; deeper PostgreSQL isolation coverage.
 REQUIRED HUMAN ACTION: Lardi provider/support action before another live smoke. No repository-secret change is required.
 OPEN_ISSUES: provider access/mapping, CI visibility for direct commits, duplicate identity evidence, contact adapters and external publication permissions.
