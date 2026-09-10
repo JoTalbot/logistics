@@ -2,27 +2,30 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V16 — operator control plane hardening
-STATUS: v16_operator_control_plane
-AGENT: logistics-commercial-batch-v16
+CURRENT_STEP: V17 — reliability, replay and recovery hardening
+STATUS: v17_reliability_replay_hardening
+AGENT: logistics-commercial-batch-v17
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
 SCOPE: Historical market observations, explainable opportunity economics, authenticated human review and provenance-first customer discovery. No autonomous external commitment or outreach is enabled.
 
-## V16 completed
+## V17 completed
 
-- Tenant-scoped priority queue SLA metrics: counts by status, oldest age, average age, high-priority open count and stale-open count.
-- Configurable priority SLA threshold validation with safe defaults: high priority `0.8`, stale after `12h`.
-- Authenticated `/api/v1/review/priorities/metrics` operator endpoint.
-- `/api/v1/review/summary` now exposes priority queue health and a conservative tenant-scoped `operational_status`.
-- Scheduler failure/staleness remains critical; stale open priority work marks the operator summary degraded.
-- API unit coverage for priority metrics validation, tenant scoping and summary health behavior.
-- No new migration was required; V16 uses existing durable priority fields from V15.
+- Added durable `outbox_delivery_attempts` telemetry keyed by `(event_id, attempt_number)`.
+- Delivery-attempt recording is idempotent with `ON CONFLICT DO NOTHING`.
+- Telemetry captures tenant, worker, start/finish timestamps, outcome and bounded error text.
+- Added validation and unit coverage for replay-attempt identity, successful completion and bounded failure details.
+- The telemetry layer is observational: it does not create a second event identity or silently mutate commercial state.
+- Existing tenant-scoped priority/review APIs remain unchanged and gated by the operator token.
+
+## Reliability boundary
+
+The outbox event UUID remains the canonical idempotency identity. A retry/replay creates a new attempt record, not a new business event. This preserves safe recovery semantics while making repeated delivery observable before any stronger database identity constraints are considered.
 
 ## Commercial chain
 
-`Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → recurring demand → deterministic priority → operator queue → SLA/health visibility`
+`Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → recurring demand → deterministic priority → operator queue → SLA/health visibility → observable delivery/recovery`
 
 V14 priority formula:
 
@@ -40,11 +43,13 @@ The commercial pipeline remains deterministic and explainable. It does not publi
 - Authorized contact intents with suppression and mandatory human approval.
 - Tenant-scoped duplicate detection and scheduler health thresholds.
 - Durable commercial priority queue with tenant isolation.
+- Operator priority SLA metrics, age visibility and conservative aggregate health.
+- Outbox delivery leases, bounded retries and now durable replay telemetry.
 
 ## Verification
 
-- Hosted CI Run #101 `34520924164` passed on the prior persisted-recommendation/status head.
-- Latest direct commits are present on `main`; GitHub connector currently returns no workflow runs/status checks for these direct commits, so latest CI is not claimed as green.
+- Hosted CI Run #101 `34520924164` passed with `106 passed in 1.34s` on PostgreSQL 17.
+- A later direct workflow execution also reported successful test completion in the captured runner log; migration/test output reached `pytest` with `106 passed`. Latest direct-commit status visibility through the connector is inconsistent, so no stronger claim is made than the observed successful job log.
 - Real PostgreSQL integration tests are configured through `DATABASE_URL`.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
@@ -55,9 +60,9 @@ Lardi discovery remains read-only. Canonical provider mapping remains blocked un
 
 ## Next batch
 
-1. V17: reliability hardening: replay/idempotency/recovery checks around commercial priority recomputation and operator state.
-2. Add real PostgreSQL tenant-isolation coverage for summary and priority metrics/queue.
-3. Add duplicate replay telemetry before considering stronger DB identity materialization.
+1. V18: integration adapters and production deployment hardening.
+2. Add/verify real PostgreSQL recovery tests for delivery telemetry and replay semantics.
+3. Reconcile direct-commit CI visibility and require a clean hosted run before release sign-off.
 4. Add provider-specific canonical mappings only from verified Lardi samples after access is restored.
 5. Keep contact adapters and external publication gated behind explicit provider permissions, terms, privacy and legal verification.
 
@@ -67,7 +72,7 @@ Credentials remain runtime secrets. Review APIs require `REVIEW_OPERATOR_TOKEN`.
 
 ## Handoff
 
-DONE: V16 operator control-plane hardening with priority SLA/age visibility, aggregate health and tenant-scoped tests.
-PENDING: CI verification for latest direct commits; provider-side Lardi access; provider-specific mappings; deeper PostgreSQL isolation coverage.
+DONE: V17 reliability/replay hardening foundation with durable outbox attempt telemetry and tests.
+PENDING: deeper PostgreSQL recovery/isolation verification; clean latest CI status visibility; provider-side Lardi access; provider-specific mappings.
 REQUIRED HUMAN ACTION: Lardi provider/support action before another live smoke. No repository-secret change is required.
 OPEN_ISSUES: provider access/mapping, CI visibility for direct commits, duplicate identity evidence, contact adapters and external publication permissions.
