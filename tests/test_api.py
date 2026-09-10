@@ -46,7 +46,7 @@ def test_review_priority_metrics_is_tenant_scoped_and_exposes_sla(monkeypatch):
         MagicMock(fetchone=lambda: (1,)),
     ]
     with patch("logistics.api.psycopg.connect", return_value=conn):
-        result = review_priority_metrics(tenant_id, "operator-secret")
+        result = review_priority_metrics(tenant_id, x_operator_token="operator-secret")
 
     assert result == {
         "tenant_id": str(tenant_id),
@@ -65,7 +65,7 @@ def test_review_priority_metrics_is_tenant_scoped_and_exposes_sla(monkeypatch):
 def test_review_priority_metrics_validates_thresholds(monkeypatch):
     monkeypatch.setenv("REVIEW_OPERATOR_TOKEN", "operator-secret")
     with pytest.raises(Exception) as exc:
-        review_priority_metrics(uuid4(), "operator-secret", high_priority_threshold=1.1)
+        review_priority_metrics(uuid4(), high_priority_threshold=1.1, x_operator_token="operator-secret")
     assert getattr(exc.value, "status_code", None) == 422
 
 
@@ -79,7 +79,6 @@ def test_review_summary_keeps_priority_metrics_tenant_scoped(monkeypatch):
         MagicMock(fetchone=lambda: (0,)),
         MagicMock(fetchone=lambda: (0,)),
         MagicMock(fetchone=lambda: (0,)),
-        MagicMock(fetchone=lambda: (0,)),
         MagicMock(fetchall=lambda: []),
         MagicMock(fetchone=lambda: (0,)),
         MagicMock(fetchone=lambda: (0,)),
@@ -87,7 +86,7 @@ def test_review_summary_keeps_priority_metrics_tenant_scoped(monkeypatch):
     with patch("logistics.api.psycopg.connect", return_value=conn), patch(
         "logistics.api.scheduler_health",
         return_value={"operational_status": "healthy", "status": "succeeded"},
-    ):
+    ), patch("logistics.api.find_duplicate_load_groups", return_value=[]):
         result = review_summary(tenant_id, x_operator_token="operator-secret")
 
     assert result["tenant_id"] == str(tenant_id)
