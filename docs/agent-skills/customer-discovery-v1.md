@@ -21,16 +21,31 @@ The discovery core must not itself fetch websites, scrape pages, harvest contact
 - BusinessContact
 - CustomerOpportunity
 - DiscoverySource
+- Prospect
+- QualificationResult
+- ContactPlan
 
 Every externally obtained observation must preserve source, URL/reference, capture time and permission/provenance metadata.
 
 ## Qualification
 
-Rank prospects using deterministic signals such as lane fit, cargo fit, shipment frequency, geography, estimated economics, freshness and existing relationship. Do not infer sensitive attributes or fabricate contacts.
+`qualify_prospect()` uses only explicit, non-sensitive business signals and produces a deterministic 0–1 score, tier and reason list. The current weights are:
+
+- lane fit: 20%
+- cargo fit: 15%
+- recurring demand: 20%
+- geography fit: 10%
+- economic fit: 20%
+- fresh signal: 10%
+- existing relationship: 5%
+
+Tiers are A (≥0.75), B (≥0.50) and C (<0.50). No sensitive attributes are inferred and no contacts are fabricated.
 
 ## Contact policy
 
-Contact is a separate stage. It must use an authorized channel and applicable legal/commercial rules. Suppression and opt-out state must be respected before outreach.
+`prepare_contact_plan()` creates an internal contact intent only. It requires an explicit target, channel and authorization state. Suppression/opt-out forces authorization off. `contact_is_sendable()` never sends a message and requires the human-approval gate to remain enabled.
+
+Contact is a separate stage and must use an authorized channel plus applicable legal/commercial rules. Suppression and opt-out state must be respected before outreach.
 
 ## Safety
 
