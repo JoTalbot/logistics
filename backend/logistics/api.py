@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from .review import ReviewDecision, ReviewError, apply_review_decision
 
 
-app = FastAPI(title="AI Logistics OS", version="0.2.0")
+app = FastAPI(title="AI Logistics OS", version="0.3.0")
 
 
 @app.get("/health")
@@ -72,6 +72,34 @@ def review_queue(
         {"id": str(row[0]), "resource_type": row[1], "provider": row[2], "status": row[3], "created_at": row[4].isoformat()}
         for row in rows
     ]
+
+
+@app.get("/api/v1/review/metrics")
+def review_metrics(
+    tenant_id: UUID,
+    x_operator_token: str | None = Header(default=None),
+) -> dict[str, int]:
+    """Operational counters for the authenticated human-review queue."""
+    _operator_auth(x_operator_token)
+    with psycopg.connect(_dsn()) as conn:
+        publication_pending = conn.execute(
+            "SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')",
+            (tenant_id,),
+        ).fetchone()[0]
+        negotiation_pending = conn.execute(
+            "SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')",
+            (tenant_id,),
+        ).fetchone()[0]
+        audit_total = conn.execute(
+            "SELECT count(*) FROM review_audit WHERE tenant_id=%s",
+            (tenant_id,),
+        ).fetchone()[0]
+    return {
+        "publication_pending": int(publication_pending),
+        "negotiation_pending": int(negotiation_pending),
+        "pending_total": int(publication_pending + negotiation_pending),
+        "review_decisions_total": int(audit_total),
+    }
 
 
 @app.post("/api/v1/review/decision")
