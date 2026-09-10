@@ -61,7 +61,8 @@ class TelegramChatConfig:
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d\s().-]{8,}\d)(?!\d)")
 _WEIGHT_RE = re.compile(r"(?<!\d)(\d{1,3}(?:[.,]\d{1,3})?)\s*(?:т|тонн?\b|tons?\b)", re.I)
 _VOLUME_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:м3|м³|куб(?:\.|ов)?\b)", re.I)
-_PRICE_RE = re.compile(r"(?<!\d)(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)?\b", re.I)
+_PRICE_WITH_CURRENCY_RE = re.compile(r"(?<!\d)(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)\b", re.I)
+_PRICE_LABEL_RE = re.compile(r"(?:ставка|цена|оплата|rate|price)\s*[:=-]?\s*(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)?\b", re.I)
 
 
 def _clean(value: str | None) -> str | None:
@@ -95,18 +96,30 @@ def _parse_route(text: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _currency(token: str | None) -> str | None:
+    if not token:
+        return None
+    token = token.lower()
+    if token in {"€", "eur"}:
+        return "EUR"
+    if token in {"$", "usd", "долл.", "долларов", "доллара"}:
+        return "USD"
+    return "UAH"
+
+
+def _parse_price(text: str) -> tuple[Decimal | None, str | None]:
+    match = _PRICE_LABEL_RE.search(text) or _PRICE_WITH_CURRENCY_RE.search(text)
+    if not match:
+        return None, None
+    return _parse_decimal(match.group(1)), _currency(match.group(2))
+
+
 def parse_load_ad(message: TelegramSourceMessage) -> ParsedLoadAd:
     text = message.text or ""
     origin, destination = _parse_route(text)
     weight_raw = _first_match(_WEIGHT_RE, text)
     volume_raw = _first_match(_VOLUME_RE, text)
-    price_match = _PRICE_RE.search(text)
-
-    price = _parse_decimal(price_match.group(1)) if price_match else None
-    currency = None
-    if price_match and price_match.group(2):
-        token = price_match.group(2).lower()
-        currency = "EUR" if token in {"€", "eur"} else "USD" if token in {"$", "usd", "долл.", "долларов", "доллара"} else "UAH"
+    price, currency = _parse_price(text)
 
     fields_found = sum(value is not None for value in (origin, destination, weight_raw, volume_raw, price))
     confidence = min(1.0, 0.2 * fields_found + (0.2 if message.text else 0.0))
