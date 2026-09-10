@@ -21,6 +21,17 @@ app = FastAPI(title="AI Logistics OS", version="0.7.3")
 @app.get("/health")
 def health() -> dict[str, str]: return {"status": "ok", "service": "logistics-api"}
 
+@app.get("/ready")
+def readiness() -> dict[str, str]:
+    """Readiness probe: verifies that the configured PostgreSQL database is reachable."""
+    try:
+        with psycopg.connect(_dsn(), connect_timeout=3) as conn:
+            conn.execute("SELECT 1").fetchone()
+    except (HTTPException, psycopg.Error) as exc:
+        detail = exc.detail if isinstance(exc, HTTPException) else "database is not ready"
+        raise HTTPException(status_code=503, detail=detail) from exc
+    return {"status": "ready", "service": "logistics-api"}
+
 @app.get("/api/v1")
 def api_info() -> dict[str, str]: return {"version": "v1", "mode": "market-intelligence"}
 
@@ -123,9 +134,9 @@ def review_summary(tenant_id: UUID, duplicate_window_hours: int = 48, x_operator
 def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, int]:
     _operator_auth(x_operator_token)
     with psycopg.connect(_dsn()) as conn:
-        publication_pending = conn.execute("SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')", (tenant_id,)).fetchone()[0]
-        negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')", (tenant_id,)).fetchone()[0]
-        audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s", (tenant_id,)).fetchone()[0]
+        publication_pending = conn.execute("SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')").fetchone()[0]
+        negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')").fetchone()[0]
+        audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s").fetchone()[0]
     return {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "pending_total": int(publication_pending + negotiation_pending), "review_decisions_total": int(audit_total)}
 
 @app.get("/api/v1/review/priorities/metrics")
@@ -180,53 +191,3 @@ def review_recurring_demand(tenant_id: UUID, status: str = "active", limit: int 
     try:
         with psycopg.connect(_dsn()) as conn: return list_patterns(conn, tenant_id=tenant_id, status=status, limit=limit)
     except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-@app.get("/api/v1/review/recurring-demand/health")
-def review_recurring_demand_health(x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
-    _operator_auth(x_operator_token)
-    with psycopg.connect(_dsn()) as conn: return scheduler_health(conn)
-
-@app.get("/api/v1/review/duplicate-loads")
-def review_duplicate_loads(tenant_id: UUID, window_hours: int = 48, limit: int = 1000, x_operator_token: str | None = Header(default=None)) -> list[list[str]]:
-    _operator_auth(x_operator_token)
-    try:
-        with psycopg.connect(_dsn()) as conn:
-            groups = find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=window_hours, limit=limit)
-    except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return [[str(load_id) for load_id in group] for group in groups]
-
-@app.get("/api/v1/review/contact-intents")
-def review_contact_intents(tenant_id: UUID, status: str = "pending", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
-    _operator_auth(x_operator_token)
-    try:
-        with psycopg.connect(_dsn()) as conn: return list_contact_intents(conn, tenant_id=tenant_id, status=status, limit=limit)
-    except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-@app.post("/api/v1/review/contact-intents/decision")
-def review_contact_intent_decision(request: ContactIntentDecisionRequest, x_operator_token: str | None = Header(default=None)) -> dict[str, str]:
-    _operator_auth(x_operator_token)
-    try:
-        with psycopg.connect(_dsn()) as conn:
-            status = decide_contact_intent(conn, tenant_id=request.tenant_id, contact_intent_id=request.contact_intent_id, action=request.action, operator_ref=request.operator_ref, reason=request.reason); conn.commit()
-    except LookupError as exc: raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc: raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"status": status, "contact_intent_id": str(request.contact_intent_id), "action": request.action}
-
-@app.get("/api/v1/review/audit/report")
-def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str | None = Header(default=None)) -> dict:
-    _operator_auth(x_operator_token)
-    if not 1 <= days <= 365: raise HTTPException(status_code=422, detail="days must be between 1 and 365")
-    with psycopg.connect(_dsn()) as conn:
-        decision_rows = conn.execute("SELECT decision, count(*) FROM review_audit WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day') GROUP BY decision ORDER BY decision", (tenant_id, days)).fetchall()
-        trend_rows = conn.execute("SELECT date_trunc('day', created_at), decision, count(*) FROM review_audit WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day') GROUP BY 1,2 ORDER BY 1,2", (tenant_id, days)).fetchall()
-        queue_age = conn.execute("SELECT count(*), COALESCE(EXTRACT(EPOCH FROM (now()-min(created_at))),0), COALESCE(EXTRACT(EPOCH FROM (now()-avg(created_at))),0) FROM (SELECT created_at FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry') UNION ALL SELECT created_at FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')) pending", (tenant_id, tenant_id)).fetchone()
-    return {"window_days": days, "decisions": {r[0]: int(r[1]) for r in decision_rows}, "daily_trend": [{"day": r[0].date().isoformat(), "decision": r[1], "count": int(r[2])} for r in trend_rows], "queue_age": {"pending_total": int(queue_age[0]), "oldest_seconds": int(queue_age[1]), "average_age_seconds": int(queue_age[2])}}
-
-@app.post("/api/v1/review/decision")
-def review_decision(request: ReviewRequest, x_operator_token: str | None = Header(default=None)) -> dict[str, str]:
-    _operator_auth(x_operator_token)
-    decision = ReviewDecision(resource_type=request.resource_type, resource_id=request.resource_id, decision=request.decision, operator_ref=request.operator_ref, reason=request.reason)
-    try:
-        with psycopg.connect(_dsn()) as conn: apply_review_decision(conn, tenant_id=request.tenant_id, decision=decision); conn.commit()
-    except ReviewError as exc: raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"status": "recorded", "resource_id": str(request.resource_id), "decision": request.decision}
