@@ -23,17 +23,20 @@ def to_priority_decision(candidate: CommercialCandidate) -> PriorityDecision:
     )
 
 
-def persist_priority_decision(conn: Any, *, tenant_id: UUID, decision: PriorityDecision, updated_at) -> None:
+def persist_priority_decision(conn: Any, *, tenant_id: UUID, decision: PriorityDecision, updated_at) -> bool:
     if decision.status not in {"candidate", "reviewed", "accepted", "rejected", "hold"}:
         raise ValueError("invalid priority status")
     if not 0 <= decision.priority_score <= 1:
         raise ValueError("priority_score must be between 0 and 1")
-    conn.execute(
+    result = conn.execute(
         """UPDATE opportunities
            SET priority_score=%s, priority_reasons=%s, priority_updated_at=%s, priority_status=%s
          WHERE tenant_id=%s AND load_id=%s""",
         (decision.priority_score, list(decision.reasons), updated_at, decision.status, tenant_id, decision.load_id),
     )
+    if getattr(result, "rowcount", 1) != 1:
+        raise LookupError("opportunity not found for tenant/load")
+    return True
 
 
 def persist_priority_decisions(conn: Any, *, tenant_id: UUID, candidates: Iterable[CommercialCandidate], updated_at) -> int:
