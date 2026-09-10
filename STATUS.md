@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — operator observability hardening
-STATUS: v12_operator_observability
-AGENT: logistics-commercial-batch-v12
+CURRENT_STEP: Customer discovery V1 — commercial chain and operator control plane
+STATUS: v13_operator_control_plane
+AGENT: logistics-commercial-batch-v13
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -58,6 +58,9 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Durable recurring-demand scheduler run history with running/succeeded/failed state, tenant/pattern counts and bounded error text.
 - Authenticated operator endpoint for recurring-demand scheduler health.
 - Authenticated operator endpoint for tenant-scoped duplicate-load groups.
+- Compact authenticated tenant-safe operator summary aggregating publication/negotiation/contact queues, candidate customer opportunities, duplicate groups and scheduler health.
+- Scheduler operational thresholds: 12-hour stale-success threshold and 2-hour running timeout, with explicit healthy/running/stale/failed/critical states and run age.
+- Unit coverage for scheduler threshold validation and stale/failed operational states.
 
 ## Current implementation
 
@@ -71,9 +74,9 @@ Customer discovery:
 
 `Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → recurring-demand evidence → authenticated operator queue → authorized contact intent → authenticated human review → first load → recurring customer`
 
-Operator observability:
+Operator control plane:
 
-`review queue + recommendations + prospects + customer opportunities + recurring demand + duplicate groups + scheduler health + audit report`
+`summary → review queue + customer opportunities + contact intents + duplicate groups + scheduler health + audit/recommendations`
 
 Customer opportunity score:
 
@@ -109,9 +112,9 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Add a compact authenticated operator summary endpoint aggregating queue, duplicate and scheduler health without exposing cross-tenant data.
-2. Add stale scheduler-run detection and operational thresholds.
-3. Add stronger DB duplicate identity materialization only if replay evidence demonstrates low false-positive risk.
+1. Wire the commercial chain into a single deterministic orchestration boundary: Telegram → market observation → recurring demand → carrier matching → route economics → margin → priority → operator queue.
+2. Add operator summary tests, including tenant-isolation coverage for aggregated counts and duplicate groups.
+3. Add safe duplicate replay telemetry before considering stronger DB identity materialization; do not convert probabilistic duplicate signatures into a hard UNIQUE constraint without evidence.
 4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
 5. Add provider-specific contact adapters only where permissions are verified, while keeping autonomous sending disabled.
 6. Re-run Lardi read-only smoke only after provider support confirms the edge block or supplies an authorized API path.
@@ -127,7 +130,7 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts, audited contact review queue, duplicate grouping and scheduler health observability.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts, audited contact review queue, duplicate grouping, scheduler health thresholds and compact operator control plane.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head; PostgreSQL integration path is wired into CI.
 PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
