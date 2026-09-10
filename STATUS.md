@@ -76,3 +76,7 @@ Operator requested local LLM processing. Added separate PostgreSQL queue + Ollam
 ## Batch local LLM — 2026-09-10
 
 Requested up to 100 pending messages/file/request, separate normalized DB records. Implemented context-bounded packing, protected JSON inputs, keyed required output IDs, per-record validation/persistence and retries, batch audit table (migration 0005). No raw text exported. 35 tests passed, 4 skipped. Live test: 3 ads / 1 inference / 3 saved, 139.5 sec; not an accuracy or speedup claim. Limit now 100; active batch contains 31 ads and is not yet verified complete. Raw files retained 24h after batch termination then cleaned by worker. Existing review-only policy retained. Details: deploy/BATCH_PROCESSING.md.
+
+## Batch quality check — 2026-09-10 17:32 UTC snapshot
+
+Read-only audit: 31-item batch still processing after 477s, not verified complete. Queue completed31/pending447/processing31/skipped6; 50 newly stored messages not yet enqueued because scheduling waits on inference. Collector saved61 messages in preceding10min. Host memory available about1.3GiB; 1min load11.94 on4CPU. Completed sample31 records =15 unique texts, all one source, only5 batch-mode records; no representative accuracy claim. Routes25, normalized weight3, price11/currency0, required fields complete0; 29 records had unsupported fields rejected. Need weight extraction/normalization review, independent enqueue, matched small-batch benchmark and human-labelled evaluation. Runtime unchanged. Report docs/agent-log/oci-collector-deployment/batch-quality-audit-2026-09-10.md.
