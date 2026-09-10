@@ -4,7 +4,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from logistics.api import readiness, review_metrics, review_priority_metrics, review_summary
+from logistics.api import readiness, review_business_kpis, review_metrics, review_priority_metrics, review_summary
 
 
 def test_review_metrics_requires_operator_token(monkeypatch):
@@ -31,6 +31,41 @@ def test_review_metrics_returns_operational_counts(monkeypatch):
         "pending_total": 5,
         "review_decisions_total": 7,
     }
+
+
+def test_review_business_kpis_requires_operator_token(monkeypatch):
+    monkeypatch.delenv("REVIEW_OPERATOR_TOKEN", raising=False)
+    with pytest.raises(Exception) as exc:
+        review_business_kpis(uuid4(), None)
+    assert getattr(exc.value, "status_code", None) == 503
+
+
+def test_review_business_kpis_returns_tenant_scoped_snapshot(monkeypatch):
+    monkeypatch.setenv("REVIEW_OPERATOR_TOKEN", "operator-secret")
+    tenant_id = uuid4()
+    expected = {
+        "ingestion_volume": 120,
+        "opportunities_created": 20,
+        "high_priority_opportunities": 5,
+        "open_priority_work": 8,
+        "successful_deliveries": 9,
+        "failed_deliveries": 1,
+        "delivery_success_rate": 0.9,
+        "recurring_demand_profiles": 7,
+        "fresh_recurring_demand_profiles": 4,
+        "provider_errors": 1,
+    }
+    conn = MagicMock()
+    conn.__enter__.return_value = conn
+    with patch("logistics.api.psycopg.connect", return_value=conn) as connect, patch(
+        "logistics.api.snapshot_kpis",
+        return_value=MagicMock(**expected),
+    ) as snapshot:
+        result = review_business_kpis(tenant_id, x_operator_token="operator-secret")
+
+    assert result == {"tenant_id": str(tenant_id), "kpis": expected}
+    connect.assert_called_once_with("postgresql://logistics:logistics@db/logistics", connect_timeout=3)
+    snapshot.assert_called_once_with(conn.execute, str(tenant_id))
 
 
 def test_review_priority_metrics_is_tenant_scoped_and_exposes_sla(monkeypatch):
