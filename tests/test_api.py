@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import psycopg
 import pytest
 
-from logistics.api import review_metrics, review_priority_metrics, review_summary
+from logistics.api import readiness, review_metrics, review_priority_metrics, review_summary
 
 
 def test_review_metrics_requires_operator_token(monkeypatch):
@@ -93,3 +94,30 @@ def test_review_summary_keeps_priority_metrics_tenant_scoped(monkeypatch):
     assert result["operational_status"] == "healthy"
     assert result["priority_queue"]["total"] == 0
     assert result["priority_queue"]["stale_open"] == 0
+
+
+def test_readiness_returns_ready_when_database_is_reachable(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://logistics:logistics@db/logistics")
+    conn = MagicMock()
+    conn.__enter__.return_value = conn
+    conn.execute.return_value.fetchone.return_value = (1,)
+    with patch("logistics.api.psycopg.connect", return_value=conn) as connect:
+        result = readiness()
+    assert result == {"status": "ready", "service": "logistics-api"}
+    connect.assert_called_once_with("postgresql://logistics:logistics@db/logistics", connect_timeout=3)
+    conn.execute.assert_called_once_with("SELECT 1")
+
+
+def test_readiness_returns_503_when_database_is_unreachable(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://logistics:logistics@db/logistics")
+    with patch("logistics.api.psycopg.connect", side_effect=psycopg.OperationalError("connection refused")):
+        with pytest.raises(Exception) as exc:
+            readiness()
+    assert getattr(exc.value, "status_code", None) == 503
+
+
+def test_readiness_returns_503_when_database_configuration_is_missing(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(Exception) as exc:
+        readiness()
+    assert getattr(exc.value, "status_code", None) == 503
