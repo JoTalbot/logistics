@@ -1,0 +1,22 @@
+{
+  "description": "Synthetic non-sensitive V20 commercial baseline. No real customer, provider, contact or financial commitment data.",
+  "tenant_id": "00000000-0000-0000-0000-000000000020",
+  "kpi_baseline": {
+    "ingestion_volume": 120,
+    "opportunities_created": 18,
+    "high_priority_opportunities": 5,
+    "open_priority_work": 7,
+    "successful_deliveries": 15,
+    "failed_deliveries": 3,
+    "recurring_demand_profiles": 6,
+    "fresh_recurring_demand_profiles": 4,
+    "provider_errors": 2
+  },
+  "replay_cases": [
+    {"case_id": "synthetic-001", "expected_minimum_price": "850.00", "observed_price": "1100.00", "outcome": "profitable"},
+    {"case_id": "synthetic-002", "expected_minimum_price": "1400.00", "observed_price": "1250.00", "outcome": "loss"},
+    {"case_id": "synthetic-003", "expected_minimum_price": "975.00", "observed_price": "975.00", "outcome": "unknown"},
+    {"case_id": "synthetic-004", "expected_minimum_price": "600.00", "observed_price": "760.00", "outcome": "profitable"},
+    {"case_id": "synthetic-005", "expected_minimum_price": "2100.00", "observed_price": "1800.00", "outcome": "loss"}
+  ]
+}
