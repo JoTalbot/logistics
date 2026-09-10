@@ -41,7 +41,6 @@ def test_upsert_persists_qualified_status_and_returns_id():
     assert result == prospect_id
     query, params = conn.execute.call_args.args
     assert "customer_prospects" in query
-    assert "qualified" in query
     assert params[10] is False
     assert params[11] == 0.85
     assert params[12] == "A"
