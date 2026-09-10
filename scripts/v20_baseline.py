@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 from logistics.commercial_replay import ReplayCase, evaluate_replay
@@ -20,8 +21,8 @@ def main() -> int:
     cases = [
         ReplayCase(
             case_id=item["case_id"],
-            expected_minimum_price=item["expected_minimum_price"],
-            observed_price=item["observed_price"],
+            expected_minimum_price=Decimal(item["expected_minimum_price"]),
+            observed_price=Decimal(item["observed_price"]),
             outcome=item["outcome"],
         )
         for item in baseline["replay_cases"]
