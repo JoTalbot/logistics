@@ -4,10 +4,20 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://logistics:logistics@postgres:5432/logistics
-      REVIEW_OPERATOR_TOKEN: ${REVIEW_OPERATOR_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REVIEW_OPERATOR_TOKEN: ${REVIEW_OPERATOR_TOKEN:?REVIEW_OPERATOR_TOKEN is required}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read()"]
       interval: 10s
@@ -24,9 +34,18 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://logistics:logistics@postgres:5432/logistics
-    command: ["python", "-m", "logistics.recurring_demand_scheduler"]
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    command: ["python", "-m", "logistics.recurring_demand_scheduler"]
     stop_grace_period: 30s
     depends_on:
       postgres:
@@ -35,11 +54,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: logistics
-      POSTGRES_USER: logistics
-      POSTGRES_PASSWORD: logistics
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-logistics}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations/0001_initial.sql:/docker-entrypoint-initdb.d/0001_initial.sql:ro
@@ -47,7 +64,7 @@ services:
       - ./migrations/0003_telegram_canonical_loads.sql:/docker-entrypoint-initdb.d/0003_telegram_canonical_loads.sql:ro
       - ./migrations/0004_local_llm.sql:/docker-entrypoint-initdb.d/0004a_local_llm.sql:ro
       - ./migrations/0004_outbox_delivery.sql:/docker-entrypoint-initdb.d/0004b_outbox_delivery.sql:ro
-      - ./migrations/0005_llm_batches.sql:/docker-entrypoint-initdb.d/0005_llm_batches.sql:ro
+      - ./migrations/0005_llm_batches.sql:/docker-entrypoint-initdb.d/0005_llm.sql:ro
       - ./migrations/0006_enqueue_heartbeat.sql:/docker-entrypoint-initdb.d/0006_enqueue_heartbeat.sql:ro
       - ./migrations/0007_outbox_delivery.sql:/docker-entrypoint-initdb.d/0007_outbox_delivery.sql:ro
       - ./migrations/0008_market_ops.sql:/docker-entrypoint-initdb.d/0008_market_ops.sql:ro
@@ -66,7 +83,7 @@ services:
       - ./migrations/0020_commercial_priority.sql:/docker-entrypoint-initdb.d/0020_commercial_priority.sql:ro
       - ./migrations/0021_outbox_delivery_telemetry.sql:/docker-entrypoint-initdb.d/0021_outbox_delivery_telemetry.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
