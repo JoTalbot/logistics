@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — commercial chain and operator control plane
-STATUS: v13_operator_control_plane
-AGENT: logistics-commercial-batch-v13
+CURRENT_STEP: V14 — unified commercial pipeline
+STATUS: v14_commercial_chain
+AGENT: logistics-commercial-batch-v14
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -61,10 +61,16 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Compact authenticated tenant-safe operator summary aggregating publication/negotiation/contact queues, candidate customer opportunities, duplicate groups and scheduler health.
 - Scheduler operational thresholds: 12-hour stale-success threshold and 2-hour running timeout, with explicit healthy/running/stale/failed/critical states and run age.
 - Unit coverage for scheduler threshold validation and stale/failed operational states.
+- V14 deterministic commercial candidate pipeline combining pricing, opportunity economics, carrier capacity matching, recurring-demand signal and priority ranking.
+- V14 tests covering recurring-demand prioritization and unavailable carrier capacity.
 
 ## Current implementation
 
 `Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → bounded negotiation → PublicationRequest → PolicyEngine → PublicationAdapter → Outbox`
+
+Commercial prioritization:
+
+`canonical loads → route economics → opportunity margin → carrier capacity matching → recurring-demand signal → deterministic priority → operator review`
 
 Market discovery:
 
@@ -78,15 +84,11 @@ Operator control plane:
 
 `summary → review queue + customer opportunities + contact intents + duplicate groups + scheduler health + audit/recommendations`
 
-Customer opportunity score:
+V14 priority formula:
 
-`55% demand fit + 30% commercial fit + 15% signal freshness`
+`65% opportunity score + 20% carrier availability signal + 15% recurring-demand signal`
 
-Freshness currently decays linearly to zero over 72 hours. Scoring is deterministic and explainable.
-
-Recurring demand:
-
-`persisted Telegram loads → tenant-scoped rehydration → route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity + recurrence + freshness → persisted pattern/evidence → operator review`
+The commercial pipeline is deterministic and explainable. It does not publish, contact or commit funds.
 
 Contact safety boundary:
 
@@ -112,7 +114,7 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Wire the commercial chain into a single deterministic orchestration boundary: Telegram → market observation → recurring demand → carrier matching → route economics → margin → priority → operator queue.
+1. V15: persist and expose commercial priority decisions with deterministic reason codes and operator queue integration.
 2. Add operator summary tests, including tenant-isolation coverage for aggregated counts and duplicate groups.
 3. Add safe duplicate replay telemetry before considering stronger DB identity materialization; do not convert probabilistic duplicate signatures into a hard UNIQUE constraint without evidence.
 4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
@@ -130,7 +132,7 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts, audited contact review queue, duplicate grouping, scheduler health thresholds and compact operator control plane.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts, audited contact review queue, duplicate grouping, scheduler health thresholds, compact operator control plane and unified commercial candidate scoring.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head; PostgreSQL integration path is wired into CI.
 PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
