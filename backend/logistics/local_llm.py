@@ -9,7 +9,7 @@ from typing import Literal
 from urllib.parse import urlparse
 from pydantic import BaseModel, ConfigDict, Field
 
-VERSION = 'local-qwen-extract-v2'
+VERSION = 'logistics-extract-v3'
 class ExtractedAd(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     kind: Literal['load', 'vehicle', 'other', 'unknown']
@@ -30,23 +30,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError('LLM redirects forbidden')
 
 def extract(text: str, *, endpoint: str, model: str) -> ExtractedAd:
-    url = urlparse(endpoint)
-    if url.scheme != 'http' or url.hostname not in {'127.0.0.1', '::1'} or url.username or url.password or url.query or url.fragment:
-        raise ValueError('Only explicit local loopback Ollama endpoints allowed')
-    if model != 'qwen2.5:1.5b':
-        raise ValueError('Only the verified installed local model is enabled')
-    if len(text) > 4000:
-        raise ValueError('Oversized message requires review; never silently truncate')
-    data = {'model': model, 'stream': False, 'format': ExtractedAd.model_json_schema(),
-            'keep_alive': '5m', 'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 400, 'num_thread': 1},
-            'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': text}]}
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    req = urllib.request.Request(endpoint.rstrip('/') + '/api/chat', data=json.dumps(data).encode(), headers={'Content-Type': 'application/json'})
-    with opener.open(req, timeout=150) as response:
-        payload = json.loads(response.read(131072))
-    if not payload.get('done') or payload.get('done_reason') != 'stop':
-        raise ValueError('Incomplete generation')
-    return ExtractedAd.model_validate_json(payload['message']['content'])
+    raise ValueError('Direct Ollama inference is disabled; use cloud-only batch transport')
 
 def squash(s):
     return re.sub(r'\s+', ' ', s).strip().casefold()

@@ -1,0 +1,185 @@
+--- /opt/aios/llm/llm_balancer.py
++++ /opt/aios/llm/llm_balancer.py
+@@ -69,7 +69,7 @@
+         self.timeout_sec = timeout
+         self.extra_headers = extra_headers or {}
+ 
+-    async def generate(self, prompt: str, system: Optional[str] = None) -> str:
++    async def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 1200, timeout_sec: Optional[float] = None, json_mode: bool = False) -> str:
+         api_key = self.get_next_key()
+         url = f"{self.base_url}/chat/completions"
+         messages = []
+@@ -81,8 +81,11 @@
+             "model": self.model,
+             "messages": messages,
+             "temperature": 0.3,
+-            "max_tokens": 1200
++            "max_tokens": max_tokens
+         }
++        if json_mode:
++            payload["response_format"] = {"type": "json_object"}
++            payload["temperature"] = 0
+         headers = {
+             "Authorization": f"Bearer {api_key}",
+             "Content-Type": "application/json",
+@@ -90,7 +93,7 @@
+         }
+ 
+         t0 = time.time()
+-        async with httpx.AsyncClient(timeout=self.timeout_sec) as client:
++        async with httpx.AsyncClient(timeout=timeout_sec or self.timeout_sec) as client:
+             resp = await client.post(url, json=payload, headers=headers)
+             if resp.status_code == 429:
+                 self.report_failure(cooldown_sec=60.0)
+@@ -100,7 +103,12 @@
+                 raise RuntimeError(f"{self.name} HTTP {resp.status_code}: {resp.text[:100]}")
+ 
+             data = resp.json()
+-            msg = data.get("choices", [{}])[0].get("message", {})
++            choice = data.get("choices", [{}])[0]
++            if json_mode and choice.get("finish_reason") == "length":
++                raise RuntimeError("Incomplete structured response")
++            msg = choice.get("message", {})
++            if json_mode and not msg.get("content"):
++                raise RuntimeError("Missing structured content")
+             text = msg.get("content", "") or msg.get("reasoning", "")
+             text = str(text).strip()
+             if not text:
+@@ -109,6 +117,7 @@
+             return text
+ 
+ 
++
+ class GeminiProvider(MultiKeyRotatingProvider):
+     name = "gemini-2.5-flash"
+     tier = "long_context"
+@@ -120,7 +129,7 @@
+         self.model = model
+         self.name = f"gemini-{model}"
+ 
+-    async def generate(self, prompt: str, system: Optional[str] = None) -> str:
++    async def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 1000, timeout_sec: Optional[float] = None, json_mode: bool = False) -> str:
+         api_key = self.get_next_key()
+         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={api_key}"
+         parts = []
+@@ -130,11 +139,13 @@
+         
+         payload = {
+             "contents": [{"parts": parts}],
+-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1000}
++            "generationConfig": {"temperature": 0.4, "maxOutputTokens": max_tokens}
+         }
+         
++        if json_mode:
++            payload["generationConfig"]["responseMimeType"] = "application/json"
+         t0 = time.time()
+-        async with httpx.AsyncClient(timeout=self.timeout_sec) as client:
++        async with httpx.AsyncClient(timeout=timeout_sec or self.timeout_sec) as client:
+             resp = await client.post(url, json=payload)
+             if resp.status_code == 429:
+                 self.report_failure(cooldown_sec=120.0)
+@@ -149,6 +160,7 @@
+             return text
+ 
+ 
++
+ class HuggingFaceProvider(MultiKeyRotatingProvider):
+     name = "hf-inference-qwen2.5-72b"
+     tier = "code"
+@@ -160,18 +172,18 @@
+         self.model = model
+         self.name = f"hf-{model.split('/')[-1]}"
+ 
+-    async def generate(self, prompt: str, system: Optional[str] = None) -> str:
++    async def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 500, timeout_sec: Optional[float] = None, json_mode: bool = False) -> str:
+         api_key = self.get_next_key()
+         url = f"https://api-inference.huggingface.co/models/{self.model}"
+         formatted = f"<|im_start|>system\n{system or 'You are an expert AIOS agent.'}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+         payload = {
+             "inputs": formatted,
+-            "parameters": {"max_new_tokens": 500, "temperature": 0.4, "return_full_text": False}
++            "parameters": {"max_new_tokens": max_tokens, "temperature": 0.4, "return_full_text": False}
+         }
+         headers = {"Authorization": f"Bearer {api_key}"}
+ 
+         t0 = time.time()
+-        async with httpx.AsyncClient(timeout=self.timeout_sec) as client:
++        async with httpx.AsyncClient(timeout=timeout_sec or self.timeout_sec) as client:
+             resp = await client.post(url, json=payload, headers=headers)
+             if resp.status_code != 200:
+                 self.report_failure(cooldown_sec=40.0)
+@@ -187,6 +199,7 @@
+             return text
+ 
+ 
++
+ class LizaRPAProvider(BaseLLMProvider):
+     name = "liza-rpa-gemini-web"
+     tier = "long_context"
+@@ -401,8 +414,8 @@
+         # Fast edge tier (default for interactive requests)
+         return "fast"
+ 
+-    async def ask(self, prompt: str, system: Optional[str] = None, task_type: str = "auto", use_cache: bool = True) -> Dict[str, Any]:
+-        cache_key = f"{task_type}::{system or ''}::{prompt}"
++    async def ask(self, prompt: str, system: Optional[str] = None, task_type: str = "auto", use_cache: bool = True, cloud_only: bool = False, json_mode: bool = False) -> Dict[str, Any]:
++        cache_key = f"{task_type}::{cloud_only}::{json_mode}::{system or ''}::{prompt}"
+         now = time.time()
+         
+         if use_cache and cache_key in self.cache:
+@@ -418,14 +431,23 @@
+             tier_mismatch = 0 if p.tier == target_tier or target_tier == "all" else 1
+             return (is_unavail, tier_mismatch, p.weight)
+ 
+-        candidates = sorted(self.providers, key=sort_key)
++        pool = self.providers
++        if cloud_only:
++            if len(prompt) > 4000:
++                raise ValueError("Cloud-only prompt exceeds safe provider limit")
++            pool = [p for p in pool if isinstance(p, (OpenAICompatibleCloudProvider, GeminiProvider, HuggingFaceProvider))]
++        candidates = sorted(pool, key=sort_key)
+ 
+         last_err = None
+         for provider in candidates:
+             try:
+-                text = await asyncio.wait_for(provider.generate(prompt, system=system), timeout=provider.timeout_sec + 0.5)
++                if cloud_only:
++                    text = await asyncio.wait_for(provider.generate(prompt, system=system, max_tokens=4096, timeout_sec=20.0, json_mode=json_mode), timeout=21.0)
++                else:
++                    text = await asyncio.wait_for(provider.generate(prompt, system=system), timeout=provider.timeout_sec + 0.5)
+                 if text and len(text.strip()) > 0:
+-                    self.cache[cache_key] = {"text": text, "provider": provider.name, "tier": target_tier, "ts": now}
++                    if use_cache:
++                        self.cache[cache_key] = {"text": text, "provider": provider.name, "tier": target_tier, "ts": now}
+                     return {
+                         "text": text,
+                         "provider": provider.name,
+@@ -437,6 +459,8 @@
+                 last_err = str(e)
+                 continue
+ 
++        if cloud_only:
++            return {"text": "", "provider": None, "tier": "cloud", "status": "unavailable"}
+         fallback = LocalAutonomousReasoningFallback()
+         fallback_text = await fallback.generate(prompt, system=system)
+         return {"text": fallback_text, "provider": "emergency_engine", "tier": "local", "error": last_err, "status": "success"}
+--- /opt/octopus-aios-server.py
++++ /opt/octopus-aios-server.py
+@@ -39,6 +39,8 @@
+ MICRO_NODES = ["10.0.0.2:9400", "10.0.0.87:9400"]
+ 
+ class GoalRequest(BaseModel):
++    cloud_only: bool = False
++    json_mode: bool = False
+     goal: str = Field(..., description="Goal text to be executed by AIOS agents")
+     task_id: Optional[str] = Field(None, description="Optional custom task ID")
+     agent_type: Optional[str] = Field("general", description="Agent type (planner, critic, debate, reflection)")
+@@ -102,7 +104,7 @@
+ @app.post("/api/v1/aios/ask")
+ async def ask_llm(req: GoalRequest):
+     """Direct high-availability query to LLMBalancer."""
+-    res = await llm_balancer.ask(req.goal, system=req.system_prompt)
++    res = await llm_balancer.ask(req.goal, system=req.system_prompt, cloud_only=req.cloud_only, use_cache=not req.cloud_only, json_mode=req.json_mode)
+     return {"ok": True, "goal": req.goal, **res}
+ 
+ async def _dispatch_to_micro_nodes(task_id: str, goal: str):

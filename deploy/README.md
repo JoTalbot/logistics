@@ -1,5 +1,7 @@
 # Telegram collector deployment
 
+> Current inference backend: existing AIOS LLMBalancer, cloud-only, JSON mode. Ollama inference disabled for logistics; local Qwen unloaded. See [LLMBALANCER.md](LLMBALANCER.md). Older local-model sections below are historical.
+
 Installed at `/opt/logistics` on the OCI host. Runtime files are under `deploy/`.
 
 ## Configuration

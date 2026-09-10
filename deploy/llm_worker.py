@@ -11,17 +11,11 @@ from psycopg.rows import dict_row
 from logistics.local_llm import VERSION
 from logistics.local_llm_batch import pack, batch_request, validate_batch
 
-MODEL = 'qwen2.5:1.5b'
-ENDPOINT = 'http://127.0.0.1:11434'
+from logistics.llm_transport import MODEL, ROUTE_DIGEST, verify_backend
 
 def run():
-    # Verify the model already exists locally; never pull or call cloud models.
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(ENDPOINT + '/api/tags', timeout=10) as f:
-        tags = json.load(f)['models']
-    digest = next(m['digest'] for m in tags if m['name'] == MODEL)
-    if not digest.startswith('65ec06548149'):
-        raise ValueError('Model digest changed: review required')
+    verify_backend()
+    digest=ROUTE_DIGEST
     tenant = os.environ['TENANT_ID']
     with psycopg.connect(os.environ['DATABASE_URL'], autocommit=True, row_factory=dict_row) as conn:
         if not conn.execute('SELECT pg_try_advisory_lock(760421901) AS locked').fetchone()['locked']:
@@ -32,7 +26,7 @@ def run():
         directory=Path('/batches')
         directory.mkdir(exist_ok=True,mode=0o700)
         max_items=min(100,max(1,int(os.environ.get('LLM_BATCH_MAX_ITEMS','5'))))
-        print(f'Local batch normalizer ready; max_items={max_items}; review-only',flush=True)
+        print(f'LLMBalancer cloud-only normalizer ready; max_items={max_items}; review-only',flush=True)
         while True:
             # Files contain private source text. Retain at most 24h after batch ends.
             expired=conn.execute("SELECT input_file FROM telegram_llm_batches WHERE tenant_id=%s AND finished_at < now()-interval '24 hours'",(tenant,)).fetchall()
@@ -52,7 +46,7 @@ def run():
                     AND model_digest=%s AND content_hash=%s AND status='completed' LIMIT 1''',(tenant,VERSION,digest,content_hash)).fetchone()
                 if cached:
                     conn.execute("UPDATE telegram_llm_jobs SET status='completed',normalized=%s::jsonb,error_type=NULL,duration_seconds=0,updated_at=now() WHERE id=%s",(json.dumps(cached['normalized']),row['id']))
-                elif not text.strip() or len(text)>4000:
+                elif not text.strip() or len(text)>4000 or not pack([row],max_items=1):
                     result={'review_required':True,'autopublish_allowed':False,'review_reasons':['empty_or_oversized_message'],'parser_version':VERSION}
                     conn.execute("UPDATE telegram_llm_jobs SET status='skipped',normalized=%s::jsonb,updated_at=now() WHERE id=%s",(json.dumps(result),row['id']))
                 else:candidates.append(row)

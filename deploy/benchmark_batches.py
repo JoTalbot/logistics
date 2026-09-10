@@ -29,10 +29,8 @@ def main():
                     seen.add(h);selected.append({'id':len(selected)+1,'raw_text':row['raw_text'],'source':source,'source_message_id':str(row['id']),'sha256':h});break
                 if len(selected)==10:break
         if len(selected)!=10 or len(pack(selected,max_items=10))!=10:raise ValueError('Cannot build matched 10-ad input in context')
-        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open('http://127.0.0.1:11434/api/tags',timeout=15) as f:tags=json.load(f)['models']
-        digest=next(x['digest'] for x in tags if x['name']=='qwen2.5:1.5b')
-        if not digest.startswith('65ec06548149'):raise ValueError('Wrong installed model')
+        from logistics.llm_transport import ROUTE_DIGEST,verify_backend
+        verify_backend();digest=ROUTE_DIGEST
         report={'started_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'parser_version':VERSION,'model_digest':digest,'context':CONTEXT,
           'dataset_count':10,'dataset_sources':{s:sum(x['source']==s for x in selected) for s in by_source},
           'manifest':[{k:r[k] for k in ('id','source_message_id','sha256')} for r in selected],

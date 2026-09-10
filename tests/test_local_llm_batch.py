@@ -13,7 +13,7 @@ def test_pack_100_short_no_101():
 def test_long_input_reduces_batch_never_truncates():
     rows=[{'id':i,'raw_text':'А'*3000} for i in range(100)]
     selected=pack(rows)
-    assert 1<len(selected)<100
+    assert 0<len(selected)<100
     assert all(len(r['raw_text'])==3000 for r in selected)
 
 def test_results_match_by_id_not_position():
@@ -38,11 +38,13 @@ def test_other_ad_evidence_not_accepted():
 def test_exactly_one_request_for_file(tmp_path):
     p=tmp_path/'batch.json';p.write_text(json.dumps({'announcements':[{'id':1,'text':'Київ'},{'id':2,'text':'Львів'}]}))
     response={'results':[{'id':1,'ad':ad()},{'id':2,'ad':ad()}]}
-    body={'done':True,'done_reason':'stop','message':{'content':json.dumps({'results':{'1':ad(),'2':ad()}})}}
+    body={'status':'success','provider':'groq-gpt-oss-20b','tier':'fast','text':json.dumps({'results':{'1':ad(),'2':ad()}})}
     opener=MagicMock();opener.open.return_value.__enter__.return_value.read.return_value=json.dumps(body).encode()
     with patch('logistics.local_llm_batch.urllib.request.build_opener',return_value=opener):
-        assert batch_request(p)==response
+        assert batch_request(p)['results']==response['results']
     assert opener.open.call_count==1
     request=opener.open.call_args.args[0]
     sent=json.loads(request.data)
-    assert len(json.loads(sent['messages'][1]['content'])['announcements'])==2
+    assert len(json.loads(sent['goal'])['announcements'])==2
+    assert sent['cloud_only'] is True
+    assert request.full_url=='http://127.0.0.1:9600/api/v1/aios/ask'

@@ -1,10 +1,11 @@
-"""Bounded file-based batch requests to the installed local Ollama model."""
+"""Bounded batch requests through cloud-only AIOS LLMBalancer."""
 import json
 import math
 import urllib.request
 from collections import Counter
 from pathlib import Path
-from .local_llm import ExtractedAd, NoRedirect, SYSTEM, normalize
+from .local_llm import ExtractedAd, SYSTEM, normalize
+from .llm_transport import request, MAX_GOAL_CHARS
 
 CONTEXT = 16384
 MAX_ITEMS = 100
@@ -19,7 +20,8 @@ def pack(rows, max_items=MAX_ITEMS, context=CONTEXT):
         if len(selected)>=min(max_items,MAX_ITEMS): break
         item={'id':row['id'],'text':row['raw_text']}
         cost=len(json.dumps(item,ensure_ascii=False).encode())+OUTPUT_PER_ITEM
-        if budget+cost>context:
+        payload={'batch_id':'x'*36,'announcements':[{'id':r['id'],'text':r['raw_text']} for r in selected+[row]]}
+        if budget+cost>context or len(json.dumps(payload,ensure_ascii=False))>MAX_GOAL_CHARS:
             if selected: break
             continue
         selected.append(row);budget+=cost
@@ -34,36 +36,26 @@ def batch_request(input_file: Path, *, timeout=600):
     schema={'type':'object','$defs':{'Ad':ExtractedAd.model_json_schema()},
         'properties':{'results':{'type':'object','properties':{k:{'$ref':'#/$defs/Ad'} for k in keys},
         'required':keys,'additionalProperties':False}},'required':['results'],'additionalProperties':False}
-    payload={'model':'qwen2.5:1.5b','stream':False,'format':schema,'keep_alive':'5m',
-        'options':{'temperature':0,'num_ctx':CONTEXT,'num_predict':max(1024,len(items)*OUTPUT_PER_ITEM),'num_thread':1},
-        'messages':[{'role':'system','content':SYSTEM+' Input is a JSON file with announcements. Analyze EACH announcement independently. Return exactly one result for every input id. Copy its integer id unchanged. Never combine different ids. multiple_ads refers only to offers INSIDE ONE announcement, not to batch size; default false for one offer. Output {"results":{"123":{...ad fields...},"124":{...ad fields...}}}. Every input id is a REQUIRED object key; do not stop after the first announcement.'},
-                    {'role':'user','content':json.dumps(data,ensure_ascii=False)}]}
-    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-    request=urllib.request.Request('http://127.0.0.1:11434/api/chat',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
-    with opener.open(request,timeout=timeout) as response:
-        body=json.loads(response.read(2_000_000))
-    if not body.get('done') or body.get('done_reason')!='stop':
-        raise ValueError('Incomplete batch generation')
-    if body.get('prompt_eval_count',0)+body.get('eval_count',0)>=CONTEXT-32:
-        raise ValueError('Batch may exceed model context')
+    system=SYSTEM+' Input is a JSON file with announcements. Analyze each independently. Every ID must appear once as a key in results. multiple_ads refers to one announcement only, not the batch. Return ONLY JSON matching this schema: '+json.dumps(schema,ensure_ascii=False)
+    text,backend=request(json.dumps(data,ensure_ascii=False),system,timeout=timeout)
     def unique_object(pairs):
         obj={}
         for key,value in pairs:
             if key in obj:raise ValueError('Duplicate response key')
             obj[key]=value
         return obj
-    result=json.loads(body['message']['content'],object_pairs_hook=unique_object)
+    result=json.loads(text,object_pairs_hook=unique_object)
     if not isinstance(result,dict) or set(result)!={'results'} or not isinstance(result['results'],dict):
         raise ValueError('Invalid keyed batch envelope')
     converted=[]
     for key,ad in result['results'].items():
         if not key.isdecimal() or str(int(key))!=key:raise ValueError('Invalid response ID')
         converted.append({'id':int(key),'ad':ad})
-    return {'results':converted}
+    return {'results':converted,'_backend':backend}
 
 def validate_batch(rows, response):
     """Validate each record against ONLY its own input, preserving good siblings."""
-    if not isinstance(response,dict) or set(response)!={'results'} or not isinstance(response['results'],list):
+    if not isinstance(response,dict) or set(response)-{'results','_backend'} or 'results' not in response or not isinstance(response['results'],list):
         raise ValueError('Invalid batch envelope')
     expected={r['id']:r['raw_text'] for r in rows}
     ids=[x.get('id') for x in response['results'] if isinstance(x,dict) and type(x.get('id')) is int]
@@ -80,7 +72,12 @@ def validate_batch(rows, response):
             if set(item)!={'id','ad'}:raise ValueError('Unexpected result fields')
             ad=ExtractedAd.model_validate(item['ad'])
             normalized=normalize(expected[key],ad)
-            normalized['extraction_mode']='batch-file-v1'
+            normalized['extraction_mode']='batch-balancer-v1'
+            meta=response.get('_backend',{})
+            if meta:
+                normalized['llm_backend']=meta['backend']
+                normalized['llm_provider']=meta['provider']
+                normalized['llm_route_fingerprint']=meta['route_digest']
             valid[key]=normalized
             errors.pop(key,None)
         except Exception:

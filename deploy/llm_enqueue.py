@@ -6,7 +6,7 @@ import urllib.request
 import psycopg
 from psycopg.rows import dict_row
 from logistics.local_llm import VERSION
-MODEL='qwen2.5:1.5b'
+from logistics.llm_transport import MODEL,ROUTE_DIGEST
 
 def enqueue(conn,tenant,digest):
     with conn.transaction():
@@ -26,10 +26,7 @@ def enqueue(conn,tenant,digest):
     return inserted
 
 def run():
-    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open('http://127.0.0.1:11434/api/tags',timeout=15) as f:tags=json.load(f)['models']
-    digest=next(x['digest'] for x in tags if x['name']==MODEL)
-    if not digest.startswith('65ec06548149'):raise ValueError('Unverified local model')
+    digest=ROUTE_DIGEST
     with psycopg.connect(os.environ['DATABASE_URL'],autocommit=True,row_factory=dict_row) as conn:
         if not conn.execute('SELECT pg_try_advisory_lock(760421902) AS ok').fetchone()['ok']:raise RuntimeError('Enqueuer already running')
         print('Independent enqueue ready; interval=10s',flush=True)
