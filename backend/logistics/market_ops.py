@@ -91,7 +91,7 @@ def next_counteroffer(current: Decimal, policy: NegotiationPolicy, round_no: int
     floor = max(policy.min_price, policy.target_price * (Decimal("1") - policy.max_discount_rate))
     if current <= floor:
         return current, True
-    if current >= policy.target_price:
-        return current, False
-    proposal = min(policy.target_price, current + (policy.target_price - current) / Decimal("2"))
+    if current <= policy.target_price:
+        return current, True
+    proposal = max(floor, current - (current - policy.target_price) / Decimal("2"))
     return proposal.quantize(Decimal("0.01")), False
