@@ -18,16 +18,16 @@ def make_load(cargo_type="general", weight_kg=10000, price="1500"):
 
 def test_demand_score_rewards_matching_preferences():
     load = make_load()
-    profile = DemandProfile(customer_profile_id=str(uuid4()), preferred_cargo=("general",), min_weight_kg=5000, max_weight_kg=20000, min_price=Decimal("1000"), max_price=Decimal("2000"))
+    profile = DemandProfile(customer_id=str(uuid4()), preferred_cargo=frozenset({"general"}), min_weight_kg=5000, max_weight_kg=20000, min_price=Decimal("1000"), max_price=Decimal("2000"))
     signal = score_customer_demand(load, profile)
-    assert signal.score == 1.0
-    assert set(signal.reasons) >= {"cargo_match", "weight_match", "price_match"}
+    assert signal.score == 0.85
+    assert set(signal.reasons) >= {"cargo_match", "weight_match", "price_match", "geography_match"}
 
 
 def test_demand_rank_is_descending():
     load = make_load()
-    good = DemandProfile(customer_profile_id="good", preferred_cargo=("general",), min_price=Decimal("1000"))
-    weak = DemandProfile(customer_profile_id="weak", preferred_cargo=("refrigerated",), min_price=Decimal("3000"))
+    good = DemandProfile(customer_id="good", preferred_cargo=frozenset({"general"}), min_price=Decimal("1000"))
+    weak = DemandProfile(customer_id="weak", preferred_cargo=frozenset({"refrigerated"}), min_price=Decimal("3000"))
     ranked = rank_demand(load, [weak, good])
-    assert ranked[0].customer_profile_id == "good"
+    assert ranked[0].customer_id == "good"
     assert ranked[0].score >= ranked[1].score
