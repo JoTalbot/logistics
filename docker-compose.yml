@@ -40,6 +40,7 @@ services:
       - ./migrations/0014_prospect_hardening.sql:/docker-entrypoint-initdb.d/0014_prospect_hardening.sql:ro
       - ./migrations/0015_recurring_demand.sql:/docker-entrypoint-initdb.d/0015_recurring_demand.sql:ro
       - ./migrations/0016_contact_intents.sql:/docker-entrypoint-initdb.d/0016_contact_intents.sql:ro
+      - ./migrations/0017_contact_intent_audit.sql:/docker-entrypoint-initdb.d/0017_contact_intent_audit.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
       interval: 5s
