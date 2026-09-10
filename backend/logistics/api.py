@@ -16,7 +16,7 @@ from .contact_review import decide_contact_intent
 from .duplicate_loads import find_duplicate_load_groups
 from .recurring_demand_health import scheduler_health
 
-app = FastAPI(title="AI Logistics OS", version="0.7.2")
+app = FastAPI(title="AI Logistics OS", version="0.7.3")
 
 @app.get("/health")
 def health() -> dict[str, str]: return {"status": "ok", "service": "logistics-api"}
@@ -55,6 +55,45 @@ def _dsn() -> str:
     if not dsn: raise HTTPException(status_code=503, detail="DATABASE_URL is not configured")
     return dsn.replace("postgresql+psycopg://", "postgresql://", 1)
 
+def _priority_metrics(conn: object, *, tenant_id: UUID, high_priority_threshold: float, stale_after_hours: int) -> dict[str, object]:
+    if not 0 <= high_priority_threshold <= 1: raise ValueError("high_priority_threshold must be between 0 and 1")
+    if stale_after_hours < 1: raise ValueError("stale_after_hours must be at least 1")
+    rows = conn.execute("""SELECT priority_status, count(*),
+                                  COALESCE(EXTRACT(EPOCH FROM (now()-min(priority_updated_at))), 0),
+                                  COALESCE(EXTRACT(EPOCH FROM (now()-avg(priority_updated_at))), 0)
+                             FROM opportunities
+                            WHERE tenant_id=%s AND priority_score IS NOT NULL AND priority_updated_at IS NOT NULL
+                            GROUP BY priority_status
+                            ORDER BY priority_status""", (tenant_id,)).fetchall()
+    high = conn.execute("""SELECT count(*)
+                              FROM opportunities
+                             WHERE tenant_id=%s AND priority_score IS NOT NULL AND priority_score >= %s
+                               AND priority_status IN ('candidate','reviewed','hold')""", (tenant_id, high_priority_threshold)).fetchone()[0]
+    stale = conn.execute("""SELECT count(*)
+                              FROM opportunities
+                             WHERE tenant_id=%s AND priority_score IS NOT NULL AND priority_updated_at IS NOT NULL
+                               AND priority_status IN ('candidate','reviewed','hold')
+                               AND priority_updated_at < now() - (%s * interval '1 hour')""", (tenant_id, stale_after_hours)).fetchone()[0]
+    by_status = {}
+    oldest = 0
+    average = 0
+    total = 0
+    for status, count, oldest_seconds, average_seconds in rows:
+        count = int(count)
+        by_status[status] = count
+        total += count
+        oldest = max(oldest, int(oldest_seconds))
+        average = max(average, int(average_seconds))
+    return {
+        "total": total,
+        "by_status": by_status,
+        "high_priority_open": int(high),
+        "stale_open": int(stale),
+        "oldest_age_seconds": oldest,
+        "average_age_seconds": average,
+        "sla": {"stale_after_hours": stale_after_hours, "high_priority_threshold": high_priority_threshold},
+    }
+
 @app.get("/api/v1/review/queue")
 def review_queue(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> list[dict]:
     _operator_auth(x_operator_token)
@@ -73,10 +112,12 @@ def review_summary(tenant_id: UUID, duplicate_window_hours: int = 48, x_operator
             contact_pending = conn.execute("SELECT count(*) FROM contact_intents WHERE tenant_id=%s AND status='pending'", (tenant_id,)).fetchone()[0]
             customer_opportunities = conn.execute("SELECT count(*) FROM customer_opportunities WHERE tenant_id=%s AND status='candidate'", (tenant_id,)).fetchone()[0]
             duplicate_groups = len(find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=duplicate_window_hours, limit=10000))
+            priorities = _priority_metrics(conn, tenant_id=tenant_id, high_priority_threshold=0.8, stale_after_hours=12)
             scheduler = scheduler_health(conn)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return {"tenant_id": str(tenant_id), "review_queue": {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "contact_pending": int(contact_pending), "customer_opportunities_candidate": int(customer_opportunities), "pending_total": int(publication_pending + negotiation_pending + contact_pending)}, "duplicate_loads": {"groups": duplicate_groups, "window_hours": duplicate_window_hours, "max_groups_evaluated": 10000}, "scheduler": scheduler}
+    operational_status = "critical" if scheduler["operational_status"] in {"critical", "failed", "stale"} else ("degraded" if priorities["stale_open"] else "healthy")
+    return {"tenant_id": str(tenant_id), "operational_status": operational_status, "review_queue": {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "contact_pending": int(contact_pending), "customer_opportunities_candidate": int(customer_opportunities), "pending_total": int(publication_pending + negotiation_pending + contact_pending)}, "priority_queue": priorities, "duplicate_loads": {"groups": duplicate_groups, "window_hours": duplicate_window_hours, "max_groups_evaluated": 10000}, "scheduler": scheduler}
 
 @app.get("/api/v1/review/metrics")
 def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, int]:
@@ -87,13 +128,14 @@ def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(defaul
         audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s", (tenant_id,)).fetchone()[0]
     return {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "pending_total": int(publication_pending + negotiation_pending), "review_decisions_total": int(audit_total)}
 
-@app.get("/api/v1/review/recommendations")
-def review_recommendations(tenant_id: UUID, limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
+@app.get("/api/v1/review/priorities/metrics")
+def review_priority_metrics(tenant_id: UUID, high_priority_threshold: float = 0.8, stale_after_hours: int = 12, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
     _operator_auth(x_operator_token)
-    if not 1 <= limit <= 100: raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
-    with psycopg.connect(_dsn()) as conn:
-        rows = conn.execute("""SELECT id, load_id, status, score, estimated_cost, estimated_margin, risk_adjusted_margin, recommended_price, market_median_price, recommendation_reasons, recommendation_updated_at, created_at FROM opportunities WHERE tenant_id=%s AND recommendation_updated_at IS NOT NULL ORDER BY recommendation_updated_at DESC LIMIT %s""", (tenant_id, limit)).fetchall()
-    return [{"id": str(r[0]), "load_id": str(r[1]), "status": r[2], "score": float(r[3]), "estimated_cost": float(r[4]), "estimated_margin": float(r[5]), "risk_adjusted_margin": float(r[6]), "recommended_price": float(r[7]) if r[7] is not None else None, "market_median_price": float(r[8]) if r[8] is not None else None, "recommendation_reasons": r[9], "recommendation_updated_at": r[10].isoformat(), "created_at": r[11].isoformat()} for r in rows]
+    try:
+        with psycopg.connect(_dsn()) as conn:
+            return {"tenant_id": str(tenant_id), **_priority_metrics(conn, tenant_id=tenant_id, high_priority_threshold=high_priority_threshold, stale_after_hours=stale_after_hours)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.get("/api/v1/review/priorities")
 def review_priorities(tenant_id: UUID, status: str = "candidate", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
