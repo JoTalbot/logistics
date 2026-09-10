@@ -39,25 +39,25 @@ def test_upsert_persists_qualified_status_and_returns_id():
     result = upsert_prospect(conn, tenant_id=uuid4(), prospect=prospect(), qualification=qualification)
 
     assert result == prospect_id
-    args = conn.execute.call_args.args
-    assert "customer_prospects" in args[0]
-    assert "qualified" in args[0]
-    assert args[1][11] is False
-    assert args[1][12] == 0.85
-    assert args[1][13] == "A"
+    query, params = conn.execute.call_args.args
+    assert "customer_prospects" in query
+    assert "qualified" in query
+    assert params[10] is False
+    assert params[11] == 0.85
+    assert params[12] == "A"
+    assert params[14] == "qualified"
 
 
 def test_upsert_suppression_forces_suppressed_status():
-    prospect_id = uuid4()
     conn = MagicMock()
-    conn.execute.return_value.fetchone.return_value = (prospect_id,)
+    conn.execute.return_value.fetchone.return_value = (uuid4(),)
 
     upsert_prospect(conn, tenant_id=uuid4(), prospect=prospect(), suppressed=True)
 
     query, params = conn.execute.call_args.args
     assert "suppressed" in query
-    assert params[11] is True
-    assert params[15] == "suppressed"
+    assert params[10] is True
+    assert params[14] == "suppressed"
 
 
 def test_list_prospects_enforces_limit():
