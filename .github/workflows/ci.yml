@@ -43,4 +43,5 @@ jobs:
       - name: Run unit and integration tests
         env:
           DATABASE_URL: postgresql://logistics:logistics@127.0.0.1:5432/logistics
+          LARDI_API_KEY: ${{ secrets.LARDI_API_KEY }}
         run: pytest
