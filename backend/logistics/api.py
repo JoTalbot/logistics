@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import asdict
 from uuid import UUID
 
 import psycopg
@@ -15,6 +16,7 @@ from .contact_outbox import list_contact_intents
 from .contact_review import decide_contact_intent
 from .duplicate_loads import find_duplicate_load_groups
 from .recurring_demand_health import scheduler_health
+from .business_kpi import snapshot_kpis
 
 app = FastAPI(title="AI Logistics OS", version="0.7.3")
 
@@ -138,6 +140,17 @@ def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(defaul
         negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')", (tenant_id,)).fetchone()[0]
         audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s", (tenant_id,)).fetchone()[0]
     return {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "pending_total": int(publication_pending + negotiation_pending), "review_decisions_total": int(audit_total)}
+
+@app.get("/api/v1/review/business-kpis")
+def review_business_kpis(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
+    _operator_auth(x_operator_token)
+    try:
+        with psycopg.connect(_dsn(), connect_timeout=3) as conn:
+            kpis = snapshot_kpis(conn.execute, str(tenant_id))
+            return {"tenant_id": str(tenant_id), "kpis": asdict(kpis)}
+    except (HTTPException, psycopg.Error) as exc:
+        detail = exc.detail if isinstance(exc, HTTPException) else "database is not available"
+        raise HTTPException(status_code=503, detail=detail) from exc
 
 @app.get("/api/v1/review/audit/report")
 def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
