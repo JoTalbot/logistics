@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
 
-from logistics.market_observations import MarketObservation, normalize_lardi_response, stable_external_ref
+from logistics.market_observations import (
+    MarketObservation,
+    extract_verified_fields,
+    normalize_lardi_response,
+    stable_external_ref,
+)
 from logistics.price_intelligence import summarize_prices
 
 
@@ -21,6 +26,13 @@ def test_normalization_hashes_items_without_provider_id():
     assert first.external_ref == second.external_ref
     assert len(first.external_ref) == 64
     assert first.external_ref == stable_external_ref(item, source="lardi-trans")
+
+
+def test_verified_field_extraction_never_invents_fields():
+    item = {"origin": "Kyiv", "destination": "Lviv", "weight": 10000, "secret": "ignore"}
+    assert extract_verified_fields(item, verified_fields={"origin", "destination", "price"}) == {
+        "origin": "Kyiv", "destination": "Lviv"
+    }
 
 
 def test_price_summary_is_deterministic():
