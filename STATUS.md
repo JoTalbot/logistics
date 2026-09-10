@@ -8,7 +8,7 @@ AGENT: logistics-commercial-batch-v3
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Outbox delivery worker, market observations, carrier matching, deterministic pricing/negotiation, demand scoring and authorized Lardi-Trans read-only API boundary. No autonomous external commitment is enabled.
+SCOPE: Outbox delivery worker, market observations, carrier matching, deterministic pricing/negotiation, demand scoring, price intelligence and authorized Lardi-Trans read-only API boundary. No autonomous external commitment is enabled.
 
 ## Completed
 
@@ -33,6 +33,7 @@ SCOPE: Outbox delivery worker, market observations, carrier matching, determinis
 - Demand graph schema and deterministic customer-demand scoring/ranking tests.
 - Official Lardi-Trans REST API client and read-only discovery adapter. Runtime secret is `LARDI_API_KEY`, with legacy `LARDI_TRANS_API_TOKEN` fallback.
 - Lardi read-only manual smoke workflow and provider-neutral market-observation normalization/persistence service.
+- Deterministic market price intelligence over normalized observations.
 - Provider integration policy documents read-only discovery, provenance, idempotency and publication gating.
 
 ## Current implementation
@@ -41,14 +42,14 @@ SCOPE: Outbox delivery worker, market observations, carrier matching, determinis
 
 Market discovery now follows:
 
-`Lardi API → provider boundary → MarketObservation → idempotent PostgreSQL persistence → downstream pricing/demand analysis`
+`Lardi API → provider boundary → MarketObservation → idempotent PostgreSQL persistence → price intelligence/demand analysis`
 
 External provider network operations remain behind explicit adapters. No browser automation, anti-bot bypass or unsupported scraping is part of the core.
 
 ## Verification
 
-- Telegram ingestion hosted CI run `34502076880` passed package installation, all three PostgreSQL migrations and unit/integration tests.
-- Commercial changes and new tests are committed; the current connector reports no completed status checks yet for the latest commits.
+- Telegram ingestion hosted CI run `34502076880` passed package installation, PostgreSQL migrations and unit/integration tests.
+- Commercial changes and new tests are committed; latest connector view has not yet exposed a completed status check for the newest commits.
 - Lardi smoke is intentionally `workflow_dispatch` only because it performs an external provider call.
 - Lardi smoke is read-only, does not publish offers, negotiate or mutate provider data, and never prints the API key.
 - Lardi-Trans official API documentation was reviewed: REST/JSON over HTTPS, token authorization, cargo/transport search, and Advanced API Access requirement for search.
@@ -56,11 +57,11 @@ External provider network operations remain behind explicit adapters. No browser
 
 ## Next batch
 
-1. Run hosted unit/integration CI and resolve any migration/test regressions.
+1. Confirm latest hosted CI and resolve any migration/test regressions.
 2. Execute the manual Lardi read-only smoke workflow with `LARDI_API_KEY` and record whether Advanced API Access is enabled.
 3. Add PostgreSQL integration tests for market-observation idempotency and freshness.
-4. Add canonical route/country/cargo extraction only for fields actually present in provider responses.
-5. Add historical price observations and route economics without making external commitments.
+4. Extract canonical route/country/cargo/weight/price only from fields actually present in verified provider responses.
+5. Add route economics and historical price trend analysis.
 6. Add human review API/UI for negotiation and publication intents.
 7. Activate external publication only after provider-specific permission and compliance verification.
 
@@ -74,10 +75,10 @@ Provider publication is gated and transport-neutral. No claim is made that any m
 
 ## Handoff
 
-DONE: Commercial automation V3 batch committed: hardened pricing/negotiation validation, demand scoring tests, Lardi read-only smoke workflow, provider-neutral observation normalization/persistence and updated provider policy.
+DONE: Commercial automation V3 batch committed: hardened pricing/negotiation validation, demand scoring tests, Lardi read-only smoke workflow, provider-neutral observation normalization/persistence and deterministic price intelligence.
 VERIFIED: Remote GitHub files plus official PostgreSQL and Lardi documentation research.
 NOT YET VERIFIED: Latest hosted CI result and live Lardi provider permission/API response.
 REQUIRED HUMAN ACTION: Run `Lardi read-only smoke` from GitHub Actions. If it returns an Advanced API Access/permission error, enable the required Lardi API package or provide the appropriate provider authorization before proceeding.
-FILES: `migrations/0008_market_ops.sql`, `migrations/0009_demand_graph.sql`, `backend/logistics/market_ops.py`, `backend/logistics/lardi.py`, `backend/logistics/market_observations.py`, `backend/logistics/outbox_delivery.py`, `tests/test_market_ops.py`, `tests/test_lardi.py`, `tests/test_demand.py`, `scripts/lardi_smoke.py`, `.github/workflows/lardi-smoke.yml`, `docs/PROVIDER_INTEGRATIONS.md`.
-COMMITS: latest batch ends at `6697c3b97f1db82ab2877a43ba2664ea8319a8c8`.
+FILES: `migrations/0008_market_ops.sql`, `migrations/0009_demand_graph.sql`, `backend/logistics/market_ops.py`, `backend/logistics/lardi.py`, `backend/logistics/market_observations.py`, `backend/logistics/price_intelligence.py`, `backend/logistics/outbox_delivery.py`, `tests/test_market_ops.py`, `tests/test_lardi.py`, `tests/test_demand.py`, `tests/test_market_observations.py`, `scripts/lardi_smoke.py`, `.github/workflows/lardi-smoke.yml`, `docs/PROVIDER_INTEGRATIONS.md`.
+COMMITS: latest verified file update `b52fd4b92f6a74211965eca91505bfd4d0912943`; STATUS update follows this batch.
 OPEN_ISSUES: Runtime CI and live provider permission validation remain open. DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
