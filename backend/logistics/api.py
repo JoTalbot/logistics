@@ -134,9 +134,9 @@ def review_summary(tenant_id: UUID, duplicate_window_hours: int = 48, x_operator
 def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, int]:
     _operator_auth(x_operator_token)
     with psycopg.connect(_dsn()) as conn:
-        publication_pending = conn.execute("SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')").fetchone()[0]
-        negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')").fetchone()[0]
-        audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s").fetchone()[0]
+        publication_pending = conn.execute("SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')", (tenant_id,)).fetchone()[0]
+        negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')", (tenant_id,)).fetchone()[0]
+        audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s", (tenant_id,)).fetchone()[0]
     return {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "pending_total": int(publication_pending + negotiation_pending), "review_decisions_total": int(audit_total)}
 
 @app.get("/api/v1/review/priorities/metrics")
