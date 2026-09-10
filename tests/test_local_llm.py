@@ -23,7 +23,7 @@ def test_currency_dollar_word_and_ambiguous_symbol():
     assert normalize('500 $',ad(price='500 $'))['currency'] is None
 
 def test_unknown_currency_not_default_uah():
-    assert normalize('500 RUB',ad(price='500 RUB'))['currency'] is None
+    assert normalize('500 XYZ',ad(price='500 XYZ'))['currency'] is None
 
 def test_no_date_guessing_or_mixed_offers():
     r=normalize('завтра 22 t',ad(date='завтра',weight='22 t',multiple_ads=True))

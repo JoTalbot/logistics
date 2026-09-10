@@ -9,7 +9,7 @@ from typing import Literal
 from urllib.parse import urlparse
 from pydantic import BaseModel, ConfigDict, Field
 
-VERSION = 'local-qwen-extract-v1'
+VERSION = 'local-qwen-extract-v2'
 class ExtractedAd(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     kind: Literal['load', 'vehicle', 'other', 'unknown']
@@ -52,62 +52,39 @@ def squash(s):
     return re.sub(r'\s+', ' ', s).strip().casefold()
 
 def normalize(text: str, ad: ExtractedAd) -> dict:
+    from .quantities import normalize_quantities
     reasons = ['human_review_required']
     evidence = {}
     haystack = squash(text)
-    for key in ('origin', 'destination', 'cargo', 'weight', 'volume', 'price', 'vehicle', 'date'):
-        value = getattr(ad, key)
-        if value is not None and (not value.strip() or squash(value) not in haystack):
-            reasons.append('unsupported_' + key)
-            value = None
-        evidence[key] = value
-    result = {'kind': ad.kind, 'multiple_ads': ad.multiple_ads, 'origin': evidence['origin'],
-              'destination': evidence['destination'], 'cargo_type': evidence['cargo'],
-              'vehicle_type': evidence['vehicle'], 'loading_date_text': evidence['date'],
-              'weight_kg': None, 'volume_m3': None, 'price': None, 'currency': None,
-              'loading_date': None, 'price_basis': 'unspecified', 'evidence': evidence,
-              'review_required': True, 'autopublish_allowed': False, 'parser_version': VERSION}
-    if ad.multiple_ads:
-        reasons.append('multiple_ads_do_not_merge')
-    if ad.kind != 'load':
-        reasons.append('not_confirmed_load')
-    number = r'(\d+(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d+)?)'
-    def decimal(token):
-        return Decimal(re.sub(r'\s+', '', token).replace(',', '.'))
-    if evidence['weight']:
-        m = re.fullmatch(r'\s*' + number + r'\s*(кг|kg|т|t|тонн(?:а|ы)?|tons?)\.?\s*', evidence['weight'], re.I)
-        if m:
-            kg = decimal(m[1]) * (1 if m[2].lower() in {'кг', 'kg'} else 1000)
-            if kg > 0:
-                result['weight_kg'] = int(kg)
-                if kg > 60000: reasons.append('weight_over_60t')
-            else: reasons.append('invalid_weight')
-        else: reasons.append('ambiguous_weight')
+    for key in ('origin','destination','cargo','weight','volume','price','vehicle','date'):
+        value = getattr(ad,key)
+        if value is not None and squash(value) in {'null','none','n/a','unknown','не указано','невідомо',''}:
+            value=None
+        if value is not None and squash(value) not in haystack:
+            reasons.append('unsupported_'+key);value=None
+        evidence[key]=value
+    result={'kind':ad.kind,'multiple_ads':ad.multiple_ads,'origin':evidence['origin'],
+        'destination':evidence['destination'],'cargo_type':evidence['cargo'],
+        'vehicle_type':evidence['vehicle'],'loading_date_text':evidence['date'],
+        'volume_m3':None,'loading_date':None,'evidence':evidence,
+        'review_required':True,'autopublish_allowed':False,'parser_version':VERSION}
+    if ad.multiple_ads:reasons.append('multiple_ads_do_not_merge')
+    if ad.kind!='load':reasons.append('not_confirmed_load')
+    quantities,qreasons=normalize_quantities(text,evidence['weight'],evidence['price'])
+    # Grounded source scanning can recover units omitted by the model.
+    evidence['weight']=quantities.pop('weight_evidence')
+    evidence['price']=quantities.pop('price_evidence')
+    result.update(quantities);reasons.extend(qreasons)
     if evidence['volume']:
-        m = re.fullmatch(r'\s*' + number + r'\s*(?:м3|м³|m3|m³|куб(?:ов|а)?\.?)\s*', evidence['volume'], re.I)
-        if m and decimal(m[1]) > 0: result['volume_m3'] = str(decimal(m[1]))
-        else: reasons.append('ambiguous_volume')
-    if evidence['price']:
-        raw = evidence['price']
-        currencies = set()
-        if re.search(r'грн|грив|\bUAH\b|₴', raw, re.I): currencies.add('UAH')
-        if re.search(r'\bUSD\b|долл(?:ар)?|долар', raw, re.I): currencies.add('USD')
-        if re.search(r'\bEUR\b|€|евро|євро', raw, re.I): currencies.add('EUR')
-        if len(currencies) == 1: result['currency'] = currencies.pop()
-        else: reasons.append('currency_missing_or_ambiguous')
-        amounts = re.findall(number, raw)
-        if len(amounts) == 1 and decimal(amounts[0]) > 0:
-            result['price'] = str(decimal(amounts[0]))
-        else: reasons.append('ambiguous_price')
-        if re.search(r'(?:/|за\s*|per\s*)(?:км|km)\b', raw, re.I): result['price_basis'] = 'per_km'
-        elif re.search(r'(?:/|за\s*|per\s*)(?:т|t|тонн[уы]?|tons?)\b', raw, re.I): result['price_basis'] = 'per_tonne'
-        if result['price_basis'] != 'unspecified': reasons.append('unit_rate_not_trip_total')
+        m=re.fullmatch(r'\s*(\d+(?:[.,]\d+)?)\s*(?:м3|м³|m3|m³|куб(?:ов|а)?\.?)\s*',evidence['volume'],re.I)
+        if m and Decimal(m[1].replace(',','.'))>0:result['volume_m3']=str(Decimal(m[1].replace(',','.')))
+        else:reasons.append('ambiguous_volume')
     if evidence['date']:
-        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-            try: result['loading_date'] = datetime.strptime(evidence['date'].strip(), fmt).date().isoformat(); break
-            except ValueError: pass
-        if not result['loading_date']: reasons.append('date_not_unambiguously_normalized')
-    for key in ('origin', 'destination', 'cargo_type', 'weight_kg', 'price', 'currency'):
-        if not result[key]: reasons.append('missing_' + key)
-    result['review_reasons'] = sorted(set(reasons))
+        for fmt in ('%d.%m.%Y','%Y-%m-%d'):
+            try:result['loading_date']=datetime.strptime(evidence['date'].strip(),fmt).date().isoformat();break
+            except ValueError:pass
+        if not result['loading_date']:reasons.append('date_not_unambiguously_normalized')
+    for key in ('origin','destination','cargo_type','weight_kg','price','currency'):
+        if not result.get(key):reasons.append('missing_'+key)
+    result['review_reasons']=sorted(set(reasons))
     return result

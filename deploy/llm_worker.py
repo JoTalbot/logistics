@@ -26,27 +26,14 @@ def run():
     with psycopg.connect(os.environ['DATABASE_URL'], autocommit=True, row_factory=dict_row) as conn:
         if not conn.execute('SELECT pg_try_advisory_lock(760421901) AS locked').fetchone()['locked']:
             raise RuntimeError('Another normalizer is active')
-        with conn.transaction():
-            inserted = conn.execute('INSERT INTO telegram_llm_config(tenant_id) VALUES (%s) ON CONFLICT DO NOTHING RETURNING tenant_id', (tenant,)).fetchone()
-            if inserted:
-                conn.execute('''INSERT INTO telegram_llm_jobs(tenant_id,source_message_id,parser_version,model,model_digest)
-                    SELECT tenant_id,id,%s,%s,%s FROM (
-                      SELECT tenant_id,id,row_number() OVER (PARTITION BY source ORDER BY message_id DESC) AS rn
-                      FROM telegram_source_messages WHERE tenant_id=%s) r WHERE rn<=100
-                    ON CONFLICT DO NOTHING''', (VERSION,MODEL,digest,tenant))
-            conn.execute("UPDATE telegram_llm_jobs SET status='pending',attempts=GREATEST(0,attempts-1),error_type='Interrupted',updated_at=now() WHERE tenant_id=%s AND status='processing'", (tenant,))
+        conn.execute("UPDATE telegram_llm_jobs SET status='pending',attempts=GREATEST(0,attempts-1),error_type='Interrupted',updated_at=now() WHERE tenant_id=%s AND status='processing'", (tenant,))
         conn.execute("UPDATE telegram_llm_batches SET status='interrupted',finished_at=now() WHERE tenant_id=%s AND status='processing'", (tenant,))
         os.umask(0o077)
         directory=Path('/batches')
         directory.mkdir(exist_ok=True,mode=0o700)
-        max_items=min(100,max(1,int(os.environ.get('LLM_BATCH_MAX_ITEMS','100'))))
+        max_items=min(100,max(1,int(os.environ.get('LLM_BATCH_MAX_ITEMS','5'))))
         print(f'Local batch normalizer ready; max_items={max_items}; review-only',flush=True)
         while True:
-            conn.execute('''INSERT INTO telegram_llm_jobs(tenant_id,source_message_id,parser_version,model,model_digest)
-                SELECT m.tenant_id,m.id,%s,%s,%s FROM telegram_source_messages m
-                JOIN telegram_llm_config c ON c.tenant_id=m.tenant_id
-                WHERE m.tenant_id=%s AND m.collected_at>=c.activated_at ON CONFLICT DO NOTHING''',
-                (VERSION,MODEL,digest,tenant))
             # Files contain private source text. Retain at most 24h after batch ends.
             expired=conn.execute("SELECT input_file FROM telegram_llm_batches WHERE tenant_id=%s AND finished_at < now()-interval '24 hours'",(tenant,)).fetchall()
             for old in expired:

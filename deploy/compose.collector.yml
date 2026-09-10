@@ -59,5 +59,27 @@ services:
       options:
         max-size: 10m
         max-file: '3'
+  enqueuer:
+    image: logistics-collector-collector
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    env_file: /etc/logistics/llm.env
+    command: [python, /runtime/llm_enqueue.py]
+    environment:
+      PYTHONUNBUFFERED: '1'
+    volumes:
+      - /opt/logistics/deploy/llm_enqueue.py:/runtime/llm_enqueue.py:ro
+    mem_limit: 128m
+    cpus: 0.2
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
 volumes:
   logistics_pg:

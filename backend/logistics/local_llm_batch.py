@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 from .local_llm import ExtractedAd, NoRedirect, SYSTEM, normalize
 
-CONTEXT = 32768
+CONTEXT = 16384
 MAX_ITEMS = 100
 OUTPUT_PER_ITEM = 256
 PROMPT_RESERVE = 3000
@@ -25,7 +25,7 @@ def pack(rows, max_items=MAX_ITEMS, context=CONTEXT):
         selected.append(row);budget+=cost
     return selected
 
-def batch_request(input_file: Path):
+def batch_request(input_file: Path, *, timeout=600):
     data=json.loads(input_file.read_text())
     items=data['announcements']
     if not items or len(items)>MAX_ITEMS or len({i['id'] for i in items})!=len(items):
@@ -40,7 +40,7 @@ def batch_request(input_file: Path):
                     {'role':'user','content':json.dumps(data,ensure_ascii=False)}]}
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
     request=urllib.request.Request('http://127.0.0.1:11434/api/chat',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
-    with opener.open(request,timeout=1800) as response:
+    with opener.open(request,timeout=timeout) as response:
         body=json.loads(response.read(2_000_000))
     if not body.get('done') or body.get('done_reason')!='stop':
         raise ValueError('Incomplete batch generation')

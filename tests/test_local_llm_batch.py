@@ -8,7 +8,7 @@ def ad(**kw):
 
 def test_pack_100_short_no_101():
     rows=[{'id':i,'raw_text':'Київ'} for i in range(101)]
-    assert len(pack(rows))==100
+    assert len(pack(rows,context=32768))==100
 
 def test_long_input_reduces_batch_never_truncates():
     rows=[{'id':i,'raw_text':'А'*3000} for i in range(100)]

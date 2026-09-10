@@ -42,3 +42,7 @@ A separate local-only `normalizer` service now enriches stored messages using in
 ### Batch normalization
 
 Normalizer now packs up to 100 pending ads into one protected JSON file and makes one local inference call per file, bounded by context. Validated outputs are saved individually. See [BATCH_PROCESSING.md](BATCH_PROCESSING.md). A live 3-ad/1-request/3-result batch passed; the first full-limit batch contains 31 ads and is still processing at this handoff.
+
+### Queue and numeric normalization V2
+
+Independent enqueuer runs every10s and no longer waits for inference. Version2 source-grounded weight/money normalization and matched batch3/5/10 benchmark: [QUEUE_AND_NUMBERS_V2.md](QUEUE_AND_NUMBERS_V2.md). Current worker context16384, timeout600s; selected operational batch size stored in protected runtime config after benchmark.
