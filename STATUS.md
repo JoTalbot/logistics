@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — operator queue + recurring demand
-STATUS: recurring_demand_next
-AGENT: logistics-commercial-batch-v6
+CURRENT_STEP: Customer discovery V1 — recurring demand engine
+STATUS: recurring_demand_implemented
+AGENT: logistics-commercial-batch-v7
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -42,7 +42,8 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Deterministic customer-opportunity scoring combining demand fit, commercial value and signal freshness.
 - Persisted tenant-scoped CustomerOpportunity records and authenticated operator queue endpoint.
 - Authenticated prospect suppression/unsuppression endpoint with required reason.
-- Unit coverage for customer-opportunity persistence and validation.
+- Deterministic recurring-demand detection from historical canonical loads, with route/cargo pattern keys, observation count, median interval, regularity, recurrence and freshness signals.
+- Unit coverage for recurring-demand thresholds, regular intervals and freshness decay.
 
 ## Current implementation
 
@@ -54,13 +55,17 @@ Market discovery:
 
 Customer discovery:
 
-`Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → authenticated operator queue → authorized contact → first load → recurring customer`
+`Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → recurring-demand evidence → authenticated operator queue → authorized contact → first load → recurring customer`
 
 Customer opportunity score:
 
 `55% demand fit + 30% commercial fit + 15% signal freshness`
 
 Freshness currently decays linearly to zero over 72 hours. Scoring is deterministic and explainable.
+
+Recurring demand:
+
+`route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity score + recurrence score → freshness`
 
 The discovery core deliberately does not fetch websites, scrape pages, harvest contact lists, send messages or perform opaque third-party enrichment.
 
@@ -73,7 +78,7 @@ External provider network operations remain behind explicit adapters. No browser
 ## Verification
 
 - Hosted CI Run #101 `34520924164` passed on the prior persisted-recommendation/status head.
-- Latest direct commits are present on `main`; GitHub connector currently reports no workflow runs/status checks for the latest commit, so latest CI is not claimed as green.
+- Latest direct commits are present on `main`; GitHub connector currently reports no workflow runs/status checks for the latest direct commit, so latest CI is not claimed as green.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
 
@@ -83,8 +88,8 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Detect recurring demand patterns from historical loads with deterministic windows and explainable evidence.
-2. Add tests for recurring-demand thresholds, duplicate loads and tenant isolation.
+1. Add authenticated recurring-demand operator endpoint and filters by pattern/freshness/score.
+2. Persist recurring-demand patterns and historical evidence.
 3. Add authorized contact-channel adapter contracts without autonomous outreach activation.
 4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
 5. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
@@ -100,8 +105,8 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring and authenticated operator queue.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, authenticated operator queue and recurring-demand detection core.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head.
-PENDING: CI verification for the latest customer-opportunity commits.
+PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; recurring-demand detection; authorized contact adapters; external publication remains gated.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; persisted recurring-demand patterns/operator endpoint; authorized contact adapters; external publication remains gated.
