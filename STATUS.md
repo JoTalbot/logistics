@@ -3,7 +3,7 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: Telegram load ingestion V1 hardening
-STATUS: implemented_pending_runtime_ci
+STATUS: runtime_green
 AGENT: telegram-load-ingestion-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
@@ -40,10 +40,13 @@ Incomplete/low-confidence ads remain non-canonical and are not published externa
 
 ## Verification
 
-- Remote repository state confirmed through GitHub after each completed write.
-- CI workflow exists and is configured for PostgreSQL 17, all three SQL migrations and pytest.
-- The new push should trigger hosted CI automatically. Hosted CI result must be checked after the push before declaring runtime green.
-- Local runtime execution is unavailable in the current environment.
+- Hosted GitHub Actions run `34502076880` completed successfully.
+- Job `102955049856` completed successfully.
+- Package installation passed.
+- PostgreSQL 17 migration execution passed for all three migrations.
+- Unit and integration test step passed.
+- Remote repository state confirmed through GitHub.
+- Local runtime execution remains unavailable in the current environment.
 
 ## Telegram sources
 
@@ -54,10 +57,10 @@ Incomplete/low-confidence ads remain non-canonical and are not published externa
 
 ## Next batch
 
-1. Verify the hosted CI run and fix any runtime failure it exposes.
-2. Complete provider-specific publication adapters with provenance, role representation, markup and policy gates only after ingestion is runtime-green.
-3. Add operational replay/benchmark reporting and outbox delivery worker hardening.
-4. Continue toward demand discovery, carrier matching, pricing, negotiation and human-on-exception workflows.
+1. Provider-specific publication adapters with provenance, role representation, markup and policy gates.
+2. Operational replay/benchmark reporting and outbox delivery worker hardening.
+3. Demand discovery and customer-opportunity graph.
+4. Carrier matching, pricing, negotiation and human-on-exception workflows.
 
 ## Security
 
@@ -70,6 +73,5 @@ Telegram parsing remains deterministic/local. No LLM enrichment or AI/ML trainin
 ## Handoff
 
 DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion, canonical DB persistence, transactional outbox events, replay fixtures, worker orchestration, CI definition, fresh-DB Docker initialization and ingestion observability.
-VERIFIED: Remote file state and repository writes.
-NOT YET VERIFIED: Hosted CI execution result for this batch.
-NEXT_STEP: Check hosted CI → fix runtime failures if any → publication adapters.
+VERIFIED: Hosted CI green on run 34502076880; migrations and tests passed.
+NEXT_STEP: Publication adapters → outbox delivery hardening → demand discovery → matching/pricing/negotiation.
