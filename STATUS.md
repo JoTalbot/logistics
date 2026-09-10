@@ -68,3 +68,7 @@ Latest-100 mode: fixed resumable snapshot per source, persistent completion acro
 ## Read-only quality audit — 2026-09-10
 
 Latest 100 stored messages per source (400 total), 13 pass canonical rules; this is not measured accuracy. No parser exceptions on replay. Synthetic tests found dash-route, spaced-price, currency, weight-unit, cargo, vehicle/date limitations. 47 normalized-text duplicate groups, 106 excess copies; no duplicate source/message keys. Report: docs/agent-log/oci-collector-deployment/quality-audit-2026-09-10.md. Runtime unchanged. Next: currency/price correctness, regression tests and locally human-labelled quality evaluation before reparsing production data.
+
+## Local LLM normalization — 2026-09-10
+
+Operator requested local LLM processing. Added separate PostgreSQL queue + Ollama qwen2.5:1.5b worker (installed model, digest pinned). Latest 100 stored messages/source queued once, then newly stored messages. Loopback-only Ollama and DB, restricted DB role, strict schema, source-evidence checks, deterministic unit/currency/date normalization; ALL outputs require human review and remain separate from loads. 29 unit tests passed, 4 integration tests skipped. Synthetic live extraction verified route/weight/price/currency but model falsely flagged multiple_ads; no accuracy claim. First live job completed successfully. CPU inference may create backlog; collector continues independently. Details: deploy/LOCAL_LLM.md. Next: local labelled evaluation and review UI; no auto-publication.

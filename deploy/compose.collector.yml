@@ -4,6 +4,8 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     env_file: /etc/logistics/postgres.env
+    ports:
+      - "127.0.0.1:15439:5432"
     volumes:
       - logistics_pg:/var/lib/postgresql/data
       - /opt/logistics/migrations:/docker-entrypoint-initdb.d:ro
@@ -29,6 +31,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  normalizer:
+    image: logistics-collector-collector
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    env_file: /etc/logistics/llm.env
+    command: [python, /runtime/llm_worker.py]
+    environment:
+      PYTHONUNBUFFERED: '1'
+    volumes:
+      - /opt/logistics/deploy/llm_worker.py:/runtime/llm_worker.py:ro
+    mem_limit: 384m
+    cpus: 0.5
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
     logging:
       driver: json-file
       options:

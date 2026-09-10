@@ -15,7 +15,7 @@ Collect configured Telegram load advertisements and turn them into deterministic
 - Do not log session credentials or raw private data unnecessarily.
 
 ## Parsing policy
-V1 uses deterministic local regex parsing only. Do not send Telegram content to an LLM or external enrichment service. Keep source chat/message id and raw text for audit/replay where retention is permitted.
+The baseline V1 uses deterministic local regex parsing. On 2026-09-10 the operator explicitly opted into a separate local-only LLM extraction/normalization stage; see deploy/LOCAL_LLM.md. No cloud LLMs, external enrichment or training are permitted by this deployment. Source/API rights and terms still apply. LLM outputs remain review-only and do not replace baseline canonical records. Keep source chat/message id and raw text for audit/replay where retention is permitted.
 
 ## Pipeline
 `Telegram message -> deterministic parser -> atomic source+parsed persistence -> checkpoint -> validation/confidence gate -> canonical Load`

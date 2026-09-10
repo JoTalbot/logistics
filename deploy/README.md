@@ -34,3 +34,7 @@ Image built for ARM64; PostgreSQL healthy, migrations created 10 public tables. 
 ## Latest-100 mode verification
 
 All four sources completed their initial 100-message snapshot. Subsequent incremental pass collected 14 and 3 new messages from two sources and zero from the other two. Tests: 20 passed, 4 integration tests skipped. Zero weight, volume and price tokens are treated as missing values rather than blocking ingestion.
+
+## Local LLM normalization
+
+A separate local-only `normalizer` service now enriches stored messages using installed Ollama qwen2.5:1.5b. Results are review-only in telegram_llm_jobs, not automatic canonical loads. See [LOCAL_LLM.md](LOCAL_LLM.md) for resource limits, queue status, rights/terms, validation and recovery. PostgreSQL now binds 127.0.0.1:15439 for the host-network normalizer; it is not publicly exposed.
