@@ -3,7 +3,7 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: Market intelligence V4 — historical prices, route economics and human review
-STATUS: pending_hosted_ci_and_lardi_smoke
+STATUS: ci_green_pending_lardi_smoke
 AGENT: logistics-commercial-batch-v4
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
@@ -62,8 +62,9 @@ External provider network operations remain behind explicit adapters. No browser
 
 ## Verification
 
-- Hosted CI runs `34518924173` (#72) and `34518944546` (#73) passed package installation, PostgreSQL migrations and unit/integration tests before V4 changes.
-- V4 changes are now committed to `main`; a new hosted CI run must verify migration 0010, route economics, review API imports and the full test suite.
+- Hosted CI Run #88 `34519826715` passed after the complete V4 batch: package installation, PostgreSQL migrations including `0010_market_intelligence.sql`, unit tests and integration tests.
+- Job `103014265836` completed successfully; migration and test steps both passed.
+- V4 route-economics, freshness/history, verified-field and review tests are included in the green run.
 - Lardi smoke is intentionally `workflow_dispatch` only because it performs an external provider call.
 - Lardi smoke is read-only, does not publish offers, negotiate or mutate provider data, and never prints the API key.
 - Lardi-Trans official API documentation was reviewed: REST/JSON over HTTPS, token authorization, cargo/transport search, and Advanced API Access requirement for search.
@@ -71,12 +72,12 @@ External provider network operations remain behind explicit adapters. No browser
 
 ## Next batch
 
-1. Verify the hosted CI run produced by V4.
-2. Execute the manual Lardi read-only smoke workflow with `LARDI_API_KEY` and record the actual Advanced API Access/permission result.
-3. After verified provider responses, add provider-specific canonical route/country/cargo/weight/price mappings without guessing field semantics.
-4. Connect historical price trends and route economics to opportunity scoring and explainable recommendations.
-5. Add review queue metrics/dashboard presentation and audit reporting.
-6. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
+1. Execute the manual Lardi read-only smoke workflow with `LARDI_API_KEY` and record the actual Advanced API Access/permission result.
+2. After verified provider responses, add provider-specific canonical route/country/cargo/weight/price mappings without guessing field semantics.
+3. Connect historical price trends and route economics to opportunity scoring and explainable recommendations.
+4. Add review queue metrics/dashboard presentation and audit reporting.
+5. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
+6. Expand to the next permitted market source only after the same adapter/provenance/compliance gate.
 
 ## Security
 
@@ -88,10 +89,10 @@ Provider publication is gated and transport-neutral. No claim is made that any m
 
 ## Handoff
 
-DONE: Market Intelligence V4 implementation — historical observations, freshness, verified-field extraction, route economics, price trends and authenticated human review.
-VERIFIED: Remote GitHub writes and prior hosted PostgreSQL/unit/integration CI.
-NOT YET VERIFIED: New V4 hosted CI and live Lardi provider permission/API response.
+DONE: Market Intelligence V4 implementation and hosted CI verification — historical observations, freshness, verified-field extraction, route economics, price trends and authenticated human review.
+VERIFIED: Remote GitHub state and hosted CI Run #88.
+NOT YET VERIFIED: Live Lardi provider permission/API response.
 REQUIRED HUMAN ACTION: Run `Lardi read-only smoke` from GitHub Actions. If it returns an Advanced API Access/permission error, enable the required Lardi API package or provide the appropriate provider authorization before proceeding.
 FILES: `migrations/0010_market_intelligence.sql`, `backend/logistics/market_observations.py`, `backend/logistics/route_economics.py`, `backend/logistics/review.py`, `backend/logistics/api.py`, `tests/test_market_observations.py`, `tests/test_market_observations_integration.py`, `tests/test_route_economics.py`, `tests/test_review.py`, `docker-compose.yml`, `docs/PROVIDER_INTEGRATIONS.md`, `docs/agent-log/commercial-batch-v4/2026-09-10.md`.
-COMMITS: V4 implementation chain ends at `62cb730be6d302c13b692cd21c74e6bc85b50fd7`; STATUS update follows this batch.
-OPEN_ISSUES: Hosted CI and live Lardi provider permission validation remain open. DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
+COMMITS: latest verified `d9c1de51610c421bf211e4ad2049ab2ff3501b32`; V4 implementation files were committed before this STATUS verification commit.
+OPEN_ISSUES: Live Lardi provider permission validation remains open. DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
