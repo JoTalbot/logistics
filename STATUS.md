@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — durable prospects + customer opportunity scoring
-STATUS: implementation_customer_opportunity_scoring
-AGENT: logistics-commercial-batch-v5
+CURRENT_STEP: Customer discovery V1 — operator queue + recurring demand
+STATUS: recurring_demand_next
+AGENT: logistics-commercial-batch-v6
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -36,11 +36,13 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Deterministic opportunity recommendation service combining route economics with compatible recent market evidence, with explainable reasons and currency-mismatch safety.
 - Persisted recommendation fields and tenant-scoped recommendation store.
 - Authenticated operator recommendation endpoint and audit reporting with decision trends and queue age.
-- Docker Compose fresh-database mount for migrations `0011_opportunity_recommendations.sql` and `0012_customer_discovery.sql`.
 - Provenance-first customer discovery core with explicit permitted-source validation and no-fetch/no-scrape boundary.
 - Durable tenant-scoped customer prospects with provenance, freshness, qualification and suppression state.
+- Prospect observation history schema, identity key, stale-update protection and sticky suppression controls.
 - Deterministic customer-opportunity scoring combining demand fit, commercial value and signal freshness.
-- Customer-opportunity unit coverage.
+- Persisted tenant-scoped CustomerOpportunity records and authenticated operator queue endpoint.
+- Authenticated prospect suppression/unsuppression endpoint with required reason.
+- Unit coverage for customer-opportunity persistence and validation.
 
 ## Current implementation
 
@@ -52,7 +54,7 @@ Market discovery:
 
 Customer discovery:
 
-`Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → authorized contact → first load → recurring customer`
+`Permitted source adapter → provenance-first Prospect → durable persistence → qualification → CustomerOpportunity scoring → authenticated operator queue → authorized contact → first load → recurring customer`
 
 Customer opportunity score:
 
@@ -71,7 +73,7 @@ External provider network operations remain behind explicit adapters. No browser
 ## Verification
 
 - Hosted CI Run #101 `34520924164` passed on the prior persisted-recommendation/status head.
-- Current customer-discovery commits are on `main`; CI status for the latest head has not yet been reported by GitHub connector.
+- Latest direct commits are present on `main`; GitHub connector currently reports no workflow runs/status checks for the latest commit, so latest CI is not claimed as green.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
 
@@ -81,13 +83,12 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Verify current CI, including PostgreSQL integration coverage.
-2. Add persisted CustomerOpportunity store and authenticated operator queue.
-3. Detect recurring demand patterns from historical loads without inferring sensitive attributes.
-4. Add authorized contact-channel adapter contracts without autonomous outreach activation.
-5. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
-6. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
-7. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
+1. Detect recurring demand patterns from historical loads with deterministic windows and explainable evidence.
+2. Add tests for recurring-demand thresholds, duplicate loads and tenant isolation.
+3. Add authorized contact-channel adapter contracts without autonomous outreach activation.
+4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
+5. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
+6. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
 
 ## Security
 
@@ -99,8 +100,8 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence and deterministic customer-opportunity scoring.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring and authenticated operator queue.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head.
 PENDING: CI verification for the latest customer-opportunity commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; persisted opportunity queue; recurring-demand detection; authorized contact adapters; external publication remains gated.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; recurring-demand detection; authorized contact adapters; external publication remains gated.
