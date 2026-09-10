@@ -62,6 +62,37 @@ def review_queue(tenant_id: UUID, x_operator_token: str | None = Header(default=
         rows = conn.execute("""SELECT id, 'publication_intent' AS resource_type, provider, status, created_at FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry') UNION ALL SELECT id, 'negotiation_session' AS resource_type, NULL, state, created_at FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review') ORDER BY created_at ASC LIMIT 100""", (tenant_id, tenant_id)).fetchall()
     return [{"id": str(r[0]), "resource_type": r[1], "provider": r[2], "status": r[3], "created_at": r[4].isoformat()} for r in rows]
 
+@app.get("/api/v1/review/summary")
+def review_summary(tenant_id: UUID, duplicate_window_hours: int = 48, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
+    """Compact tenant-scoped operator snapshot; all mutable external actions remain disabled."""
+    _operator_auth(x_operator_token)
+    try:
+        with psycopg.connect(_dsn()) as conn:
+            publication_pending = conn.execute("SELECT count(*) FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry')", (tenant_id,)).fetchone()[0]
+            negotiation_pending = conn.execute("SELECT count(*) FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')", (tenant_id,)).fetchone()[0]
+            contact_pending = conn.execute("SELECT count(*) FROM contact_intents WHERE tenant_id=%s AND status='pending'", (tenant_id,)).fetchone()[0]
+            customer_opportunities = conn.execute("SELECT count(*) FROM customer_opportunities WHERE tenant_id=%s AND status='candidate'", (tenant_id,)).fetchone()[0]
+            duplicate_groups = len(find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=duplicate_window_hours, limit=10000))
+            scheduler = scheduler_health(conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "tenant_id": str(tenant_id),
+        "review_queue": {
+            "publication_pending": int(publication_pending),
+            "negotiation_pending": int(negotiation_pending),
+            "contact_pending": int(contact_pending),
+            "customer_opportunities_candidate": int(customer_opportunities),
+            "pending_total": int(publication_pending + negotiation_pending + contact_pending),
+        },
+        "duplicate_loads": {
+            "groups": duplicate_groups,
+            "window_hours": duplicate_window_hours,
+            "max_groups_evaluated": 10000,
+        },
+        "scheduler": scheduler,
+    }
+
 @app.get("/api/v1/review/metrics")
 def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, int]:
     _operator_auth(x_operator_token)
