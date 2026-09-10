@@ -27,7 +27,18 @@ class PriceEstimate:
 
 
 def estimate_price(load: Load, inputs: PricingInput) -> PriceEstimate:
-    if inputs.distance_km < 0 or inputs.risk_rate < 0 or inputs.risk_rate > 1:
+    del load  # Pricing inputs are deliberately explicit and auditable.
+    if (
+        inputs.distance_km < 0
+        or inputs.fuel_cost_per_km < 0
+        or inputs.tolls < 0
+        or inputs.driver_cost < 0
+        or inputs.overhead < 0
+        or inputs.risk_rate < 0
+        or inputs.risk_rate > 1
+        or inputs.target_margin_rate < 0
+        or inputs.target_margin_rate >= 1
+    ):
         raise ValueError("invalid pricing inputs")
     variable = inputs.distance_km * inputs.fuel_cost_per_km
     cost = variable + inputs.tolls + inputs.driver_cost + inputs.overhead
@@ -38,6 +49,8 @@ def estimate_price(load: Load, inputs: PricingInput) -> PriceEstimate:
 
 
 def score_opportunity(load: Load, estimate: PriceEstimate, risk_penalty: Decimal = Decimal("0")) -> Opportunity:
+    if risk_penalty < 0 or risk_penalty > 1:
+        raise ValueError("invalid risk penalty")
     margin = load.offered_price - estimate.cost
     risk_adjusted = load.offered_price - estimate.cost - estimate.risk_reserve
     ratio = risk_adjusted / load.offered_price if load.offered_price else Decimal("0")
@@ -65,7 +78,7 @@ class MatchCandidate:
     reasons: tuple[str, ...]
 
 
-def match_carriers(load: Load, carriers: Iterable[Vehicle], *, risk_limit: float = 0.35) -> list[MatchCandidate]:
+def match_carriers(load: Load, carriers: Iterable[Vehicle]) -> list[MatchCandidate]:
     result: list[MatchCandidate] = []
     for carrier in carriers:
         if carrier.capacity_kg < load.weight_kg:
@@ -90,9 +103,13 @@ class NegotiationPolicy:
 
 
 def next_counteroffer(current: Decimal, policy: NegotiationPolicy, round_no: int, risk_level: str = "normal") -> tuple[Decimal, bool]:
-    if round_no >= policy.max_rounds:
-        return current, True
+    if policy.min_price < 0 or policy.target_price < 0 or policy.max_rounds < 1 or not (Decimal("0") <= policy.max_discount_rate <= Decimal("1")):
+        raise ValueError("invalid negotiation policy")
+    if round_no < 0:
+        raise ValueError("round_no must be non-negative")
     if risk_level == "critical" and policy.critical_risk_requires_human:
+        return current, True
+    if round_no >= policy.max_rounds:
         return current, True
     floor = max(policy.min_price, policy.target_price * (Decimal("1") - policy.max_discount_rate))
     if current <= floor:
