@@ -31,13 +31,15 @@ class FakeConnection:
         return FakeResult(None)
 
 
-def _load(created_at):
+def _load(tenant_id, created_at):
     from logistics.domain import CanonicalLocation, Load, LoadStop
     return Load(
         id=uuid4(),
+        tenant_id=tenant_id,
         external_ref=str(uuid4()),
         cargo_type="Food",
         weight_kg=1000,
+        offered_price=Decimal("1000"),
         currency="EUR",
         stops=(
             LoadStop(sequence=0, kind="pickup", location=CanonicalLocation(raw_address="UA", normalized_address="UA", country_code="UA")),
@@ -49,12 +51,13 @@ def _load(created_at):
 
 def test_persist_recurring_demand_writes_pattern_and_evidence():
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    loads = [_load(start + timedelta(days=7 * i)) for i in range(3)]
+    tenant = uuid4()
+    loads = [_load(tenant, start + timedelta(days=7 * i)) for i in range(3)]
     conn = FakeConnection()
 
     persisted = persist_recurring_demand(
         conn,
-        tenant_id=uuid4(),
+        tenant_id=tenant,
         loads=loads,
         now=start + timedelta(days=7 * 2),
     )
