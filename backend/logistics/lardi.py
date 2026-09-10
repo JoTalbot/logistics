@@ -20,8 +20,9 @@ class LardiConfig:
 
     @classmethod
     def from_env(cls) -> "LardiConfig":
+        token = os.getenv("LARDI_API_KEY") or os.getenv("LARDI_TRANS_API_TOKEN", "")
         return cls(
-            token=os.getenv("LARDI_TRANS_API_TOKEN", ""),
+            token=token,
             language=os.getenv("LARDI_TRANS_LANGUAGE", "uk"),
         )
 
@@ -32,7 +33,7 @@ class LardiTransClient:
     def __init__(self, config: LardiConfig | None = None):
         self.config = config or LardiConfig.from_env()
         if not self.config.token:
-            raise ProviderError("LARDI_TRANS_API_TOKEN is not configured")
+            raise ProviderError("LARDI_API_KEY is not configured")
 
     def _request(self, method: str, path: str, payload: dict | None = None) -> object:
         url = f"{self.config.base_url.rstrip('/')}/{path.lstrip('/')}?language={self.config.language}"
