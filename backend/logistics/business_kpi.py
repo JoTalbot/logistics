@@ -24,8 +24,7 @@ def _scalar(execute: Callable[[str, tuple[Any, ...]], Any], sql: str, params: tu
     row = execute(sql, params).fetchone()
     if not row:
         return 0
-    value = row[0]
-    return int(value or 0)
+    return int(row[0] or 0)
 
 
 def snapshot_kpis(execute: Callable[[str, tuple[Any, ...]], Any], tenant_id: str) -> BusinessKPI:
@@ -35,24 +34,16 @@ def snapshot_kpis(execute: Callable[[str, tuple[Any, ...]], Any], tenant_id: str
     coupling the calculation to a particular SQLAlchemy session implementation.
     """
 
-    ingestion = _scalar(
-        execute,
-        "SELECT count(*) FROM market_observations WHERE tenant_id = %s",
-        (tenant_id,),
-    )
-    opportunities = _scalar(
-        execute,
-        "SELECT count(*) FROM customer_opportunities WHERE tenant_id = %s",
-        (tenant_id,),
-    )
+    ingestion = _scalar(execute, "SELECT count(*) FROM market_observations WHERE tenant_id = %s", (tenant_id,))
+    opportunities = _scalar(execute, "SELECT count(*) FROM customer_opportunities WHERE tenant_id = %s", (tenant_id,))
     high_priority = _scalar(
         execute,
-        "SELECT count(*) FROM commercial_priority WHERE tenant_id = %s AND priority_score >= %s",
+        "SELECT count(*) FROM opportunities WHERE tenant_id = %s AND priority_score >= %s",
         (tenant_id, 0.75),
     )
     open_priority = _scalar(
         execute,
-        "SELECT count(*) FROM commercial_priority WHERE tenant_id = %s AND priority_status = %s",
+        "SELECT count(*) FROM opportunities WHERE tenant_id = %s AND priority_status = %s",
         (tenant_id, "candidate"),
     )
     successful = _scalar(
@@ -65,14 +56,10 @@ def snapshot_kpis(execute: Callable[[str, tuple[Any, ...]], Any], tenant_id: str
         "SELECT count(*) FROM outbox_delivery_attempts WHERE tenant_id = %s AND outcome = %s",
         (tenant_id, "failed"),
     )
-    recurring = _scalar(
-        execute,
-        "SELECT count(*) FROM recurring_demand_profiles WHERE tenant_id = %s",
-        (tenant_id,),
-    )
+    recurring = _scalar(execute, "SELECT count(*) FROM recurring_demand_patterns WHERE tenant_id = %s", (tenant_id,))
     fresh_recurring = _scalar(
         execute,
-        "SELECT count(*) FROM recurring_demand_profiles WHERE tenant_id = %s AND freshness_score >= %s",
+        "SELECT count(*) FROM recurring_demand_patterns WHERE tenant_id = %s AND freshness_score >= %s",
         (tenant_id, 0.2),
     )
     provider_errors = _scalar(
