@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 import time
 
 from logistics.lardi import LardiConfig, LardiTransClient, ProviderError
 
 
+def classify_error(message: str) -> str:
+    lowered = message.casefold()
+    if "http 403" in lowered and ("cloudflare" in lowered or "browser_signature" in lowered or "1010" in lowered):
+        return "provider_edge_block"
+    if "http 403" in lowered:
+        return "provider_permission_denied"
+    if "http 401" in lowered:
+        return "invalid_or_unauthorized_credentials"
+    if "http 429" in lowered:
+        return "provider_rate_limited"
+    return "provider_request_failed"
+
+
 def main() -> int:
     config = LardiConfig.from_env()
     if not config.token:
-        print("Lardi smoke: LARDI_API_KEY is not configured")
+        print(json.dumps({"provider": "lardi-trans", "operation": "search_cargo", "status": "configuration_missing", "action": "configure_LARDI_API_KEY"}, ensure_ascii=False))
         return 2
 
     client = LardiTransClient(config)
@@ -19,8 +31,16 @@ def main() -> int:
     try:
         response = client.search_cargo({}, {})
     except ProviderError as exc:
-        # Never print configuration values or authorization headers.
-        print(f"Lardi smoke: provider request failed: {exc}")
+        message = str(exc)
+        print(json.dumps({
+            "provider": "lardi-trans",
+            "operation": "search_cargo",
+            "status": "failed",
+            "classification": classify_error(message),
+            "detail": message,
+            "retryable": False if "1010" in message or "browser_signature_banned" in message else None,
+            "action": "contact_provider_or_enable_required_api_access",
+        }, ensure_ascii=False))
         return 1
 
     elapsed_ms = round((time.monotonic() - started) * 1000)
