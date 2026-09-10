@@ -35,6 +35,7 @@ services:
       - ./migrations/0009_demand_negotiation.sql:/docker-entrypoint-initdb.d/0009b_demand_negotiation.sql:ro
       - ./migrations/0010_market_intelligence.sql:/docker-entrypoint-initdb.d/0010_market_intelligence.sql:ro
       - ./migrations/0011_opportunity_recommendations.sql:/docker-entrypoint-initdb.d/0011_opportunity_recommendations.sql:ro
+      - ./migrations/0012_customer_discovery.sql:/docker-entrypoint-initdb.d/0012_customer_discovery.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
       interval: 5s
