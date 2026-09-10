@@ -2,7 +2,7 @@
 
 ## Lardi-Trans
 
-The repository now contains an official REST API client and read-only market discovery adapter in `backend/logistics/lardi.py`.
+The repository contains an official REST API client and read-only market discovery adapter in `backend/logistics/lardi.py`.
 
 Current provider documentation confirms:
 
@@ -12,7 +12,13 @@ Current provider documentation confirms:
 - the search endpoints require the provider's Advanced API Access package;
 - provider responses can change while the API remains under active development.
 
-The adapter therefore requires an explicit `LARDI_TRANS_API_TOKEN` runtime secret and does not scrape the website or automate browser controls.
+Runtime configuration uses the `LARDI_API_KEY` secret. The client retains `LARDI_TRANS_API_TOKEN` as a backward-compatible fallback for existing deployments. Credentials are never written to logs, payloads, tests or the repository.
+
+The adapter does not scrape the website or automate browser controls. `.github/workflows/lardi-smoke.yml` is a manual, read-only smoke check and must not be used as a publication path.
+
+## Market observations
+
+Provider responses are converted at the boundary by `backend/logistics/market_observations.py`. The adapter preserves provider-specific fields inside the observation payload instead of inventing canonical business values. Stable provider identifiers are used for idempotent persistence; responses without an identifier receive a deterministic content hash.
 
 ## Publication
 
@@ -30,3 +36,4 @@ No unsupported DELLA transport is implemented. The integration boundary remains 
 4. Respect 429 responses and provider-specific rate limits.
 5. Persist source provenance and provider identifiers.
 6. Treat provider APIs as replaceable adapters, not business logic.
+7. Keep discovery read-only until publication authorization is explicitly verified.
