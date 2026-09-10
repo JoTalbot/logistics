@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -13,6 +12,9 @@ def find_duplicate_load_groups(
     Matching is tenant-scoped and based on normalized route, cargo, weight and currency,
     with a bounded creation-time window. Price is intentionally excluded because the same
     shipment can be reposted with a changed offer.
+
+    Pair matches are collapsed into connected components so A=B and B=C becomes one
+    review group [A, B, C], rather than two disconnected pairs.
     """
     if window_hours < 1 or window_hours > 720:
         raise ValueError("window_hours must be between 1 and 720")
@@ -41,7 +43,30 @@ def find_duplicate_load_groups(
         """,
         (tenant_id, window_hours, limit),
     ).fetchall()
-    groups: list[list[UUID]] = []
+
+    parent: dict[UUID, UUID] = {}
+
+    def find(item: UUID) -> UUID:
+        parent.setdefault(item, item)
+        root = item
+        while parent[root] != root:
+            root = parent[root]
+        while parent[item] != item:
+            nxt = parent[item]
+            parent[item] = root
+            item = nxt
+        return root
+
+    def union(left: UUID, right: UUID) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
     for left_id, right_id in rows:
-        groups.append([left_id, right_id])
-    return groups
+        union(left_id, right_id)
+
+    groups: dict[UUID, list[UUID]] = {}
+    for item in parent:
+        groups.setdefault(find(item), []).append(item)
+    ordered = sorted(groups.values(), key=lambda group: tuple(sorted(map(str, group))))
+    return [sorted(group, key=str) for group in ordered]
