@@ -2,13 +2,13 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Market intelligence V4 — provider diagnostics and review operations
-STATUS: ci_pending_after_v4_hardening
+CURRENT_STEP: Market intelligence V4 — explainable recommendations and review operations
+STATUS: ci_pending_recommendation_batch
 AGENT: logistics-commercial-batch-v4
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Historical market observations, freshness, verified provider-field extraction, route economics, price trends, provider diagnostics and authenticated human review. No autonomous external commitment is enabled.
+SCOPE: Historical market observations, freshness, verified provider-field extraction, route economics, price trends, explainable opportunity recommendations and authenticated human review. No autonomous external commitment is enabled.
 
 ## Completed
 
@@ -32,7 +32,9 @@ SCOPE: Historical market observations, freshness, verified provider-field extrac
 - Deterministic route economics, historical price trends and conservative recommended-price floor.
 - Durable human review audit, approve/reject/hold transitions and authenticated review API.
 - Review queue metrics endpoint for pending publication/negotiation work and review-decision totals.
-- Lardi smoke diagnostics now distinguish provider-edge blocks from credential, permission and rate-limit failures.
+- Lardi smoke diagnostics distinguish provider-edge blocks from credential, permission and rate-limit failures.
+- Deterministic opportunity recommendation service combining route economics with compatible recent market evidence, with explainable reasons and currency-mismatch safety.
+- Unit coverage for market recommendation scoring and currency compatibility.
 
 ## Current implementation
 
@@ -54,10 +56,10 @@ External provider network operations remain behind explicit adapters. No browser
 
 ## Verification
 
-- Hosted V4 CI Run #88 `34519826715` passed: package installation, PostgreSQL migrations, unit tests and integration tests.
-- Manual Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; Actions confirmed the API secret was present and masked. The result is classified as a provider-edge block requiring provider-side action, not as a credential failure.
+- Hosted CI Run #93 `34520318937` passed after review-metrics hardening.
+- Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; Actions confirmed the API secret was present and masked. The result is classified as a provider-edge block requiring provider-side action, not as a credential failure.
+- New recommendation-batch CI is expected from the push of the recommendation implementation and tests; it must pass before this batch is marked runtime-green.
 - No retry loop or bypass mechanism was added.
-- A fresh hosted CI run is pending for the post-smoke diagnostics and review-metrics hardening commits.
 
 ## Provider status
 
@@ -65,10 +67,10 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API access path.
-2. After verified provider responses, add provider-specific canonical route/country/cargo/weight/price mappings.
-3. Connect historical price trends and route economics to opportunity scoring and explainable recommendations.
-4. Add review dashboard presentation and audit reporting around the metrics endpoint.
+1. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
+2. Add provider-specific canonical mappings from verified response samples.
+3. Add a proper operator dashboard/presentation over review queue, metrics and audit history.
+4. Persist recommendation outputs in the opportunity workflow once route/economic inputs are available at that stage.
 5. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
 6. Expand to the next permitted market source only after the same adapter/provenance/compliance gate.
 
@@ -82,8 +84,8 @@ Provider publication is gated and transport-neutral. No claim is made that any m
 
 ## Handoff
 
-DONE: V4 market-intelligence foundations plus provider-edge diagnostics and review queue metrics.
-VERIFIED: Remote GitHub state and Lardi smoke Run `34519177888` provider-edge result.
-PENDING: Hosted CI for commits after Run #88.
-REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No action is required on repository secrets; `LARDI_API_KEY` is already being supplied to the workflow.
-OPEN_ISSUES: Live Lardi provider permission/API response; DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
+DONE: Market-intelligence foundations, provider-edge diagnostics, review metrics and explainable recommendation service.
+VERIFIED: Hosted CI Run #93 `34520318937` and prior V4 integration suite.
+PENDING: Hosted CI for recommendation-batch commits.
+REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; operator dashboard; DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
