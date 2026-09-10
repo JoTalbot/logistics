@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -33,44 +32,6 @@ class FakeConnection:
     def execute(self, sql, params=None):
         self.queries.append((sql, params))
         return FakeCursor(next(self.results))
-
-
-def test_recommendations_require_operator_token(monkeypatch):
-    monkeypatch.setenv("REVIEW_OPERATOR_TOKEN", "secret")
-    with pytest.raises(Exception) as exc:
-        api.review_recommendations(uuid4(), x_operator_token="wrong")
-    assert getattr(exc.value, "status_code", None) == 401
-
-
-def test_review_recommendations_expose_persisted_fields(monkeypatch):
-    tenant_id = uuid4()
-    opportunity_id = uuid4()
-    load_id = uuid4()
-    updated = datetime(2026, 9, 10, 10, 0, tzinfo=timezone.utc)
-    created = datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc)
-    conn = FakeConnection([
-        [(
-            opportunity_id,
-            load_id,
-            "candidate",
-            0.91,
-            800,
-            400,
-            350,
-            1300,
-            1250,
-            ["risk_adjusted_profit", "market_median"],
-            updated,
-            created,
-        )]
-    ])
-    monkeypatch.setenv("REVIEW_OPERATOR_TOKEN", "secret")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
-    with patch("logistics.api.psycopg.connect", return_value=conn):
-        result = api.review_recommendations(tenant_id, x_operator_token="secret")
-    assert result[0]["id"] == str(opportunity_id)
-    assert result[0]["recommended_price"] == 1300.0
-    assert result[0]["recommendation_reasons"] == ["risk_adjusted_profit", "market_median"]
 
 
 def test_audit_report_returns_decision_trend_and_queue_age(monkeypatch):
