@@ -12,9 +12,10 @@ SCOPE: Production hardening, operational readiness, measurable business executio
 
 ## V20 verified technical baseline
 
-- Hosted CI Run #249 `34543221498` passed all stages, including the hardened API Docker image build.
-- Hosted CI Run #251 `34543589591` passed all stages, including migrations, tests, release smoke and hardened API image build.
-- Hosted CI Run #252 `34543604962` passed all stages, including migrations, tests, release smoke and hardened API image build.
+- Hosted CI Run #252 `34543604962` passed the pre-V20 validation stages, including migrations, full tests, release smoke and hardened API image build.
+- Fixed CI test collection by making `scripts` importable for the V20 baseline regression tests.
+- Added `scripts/__init__.py` in commit `2a843b895ddc44dac378e865e5f3cb934857f819`.
+- A new full CI run is required to verify the corrected V20 baseline, Compose validation, release smoke and Docker build together.
 - Added a deterministic synthetic commercial baseline at `fixtures/commercial/v20_baseline.json`; it contains no real customer, provider, contact or financial commitment data.
 - Added `scripts/v20_baseline.py` to execute the replay baseline without external side effects.
 - Added regression tests for the five-case baseline: 2 profitable, 2 loss and 1 unknown case, with a 0.4 profitable rate.
@@ -71,6 +72,7 @@ V20 follows the established strategy: first make the existing commercial chain s
 8. Provider readiness matrix: `docs/PROVIDER_READINESS.md` records Lardi as blocked/read-only and DELLA as unverified, with explicit evidence and required verification fields.
 9. Data governance: `docs/DATA_GOVERNANCE.md` documents provenance, tenant isolation, PII minimization, retention, secrets and auditability.
 10. CI release validation: `.github/workflows/ci.yml` builds the hardened API image and validates the V20 replay and Compose contract.
+11. CI import fix: `scripts/__init__.py` makes the V20 baseline helper importable during pytest collection.
 
 ### Cannot be completed from repository/CI alone
 
@@ -81,8 +83,10 @@ V20 follows the established strategy: first make the existing commercial chain s
 
 ## Verification
 
-- Latest fully verified CI baseline before this status-only commit: Run #252 `34543604962`, success on commit `11467f2e903247461db7fa65cf105efea2d3f1c3`; all test, audit, migration, release-smoke and hardened-image stages passed.
-- CI now additionally runs `python scripts/v20_baseline.py` and `docker compose config --quiet` using CI-only non-production credentials.
+- Pre-fix CI Run #252 `34543604962` was successful through the stages that existed before the new V20 replay/Compose checks.
+- Failed Run #252-following attempt `34543928108` was caused by `ModuleNotFoundError: No module named 'scripts'` during pytest collection; migrations, dependency audit and setup had already passed.
+- Commit `2a843b895ddc44dac378e865e5f3cb934857f819` adds the minimal import-package fix.
+- The corrected commit must pass a fresh CI run before the new V20 gates are marked verified.
 - Real PostgreSQL integration tests are configured through `DATABASE_URL`.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
@@ -93,7 +97,7 @@ Lardi discovery remains read-only. Canonical provider mapping remains blocked un
 
 ## Release boundary
 
-**V20 production release is NOT declared.** The repository/CI technical gate is green through Run #252, but production release additionally requires target-infrastructure backup/restore rehearsal, deployment rehearsal, provider/legal verification and explicit authorization for every external side effect.
+**V20 production release is NOT declared.** Repository technical hardening is implemented, but the corrected V20 CI gates still require a fresh successful run, and production release additionally requires target-infrastructure backup/restore rehearsal, deployment rehearsal, provider/legal verification and explicit authorization for every external side effect.
 
 ## Security / compliance
 
@@ -101,8 +105,8 @@ Credentials remain runtime secrets. Review APIs require `REVIEW_OPERATOR_TOKEN`.
 
 ## Handoff
 
-DONE: V17 reliability/replay foundation, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening and V20 technical KPI/replay/Compose validation.
-IN_PROGRESS: V20 production/business readiness.
-PENDING: target-infrastructure backup/restore rehearsal, target deployment rehearsal, provider-side Lardi access/mapping, duplicate identity evidence, contact adapters and external publication permissions.
+DONE: V17 reliability/replay foundation, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening and V20 technical KPI/replay/Compose implementation.
+IN_PROGRESS: V20 final CI verification and production/business readiness.
+PENDING: fresh corrected CI run, target-infrastructure backup/restore rehearsal, target deployment rehearsal, provider-side Lardi access/mapping, duplicate identity evidence, contact adapters and external publication permissions.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current blocked state.
-OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
+OPEN_ISSUES: corrected CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
