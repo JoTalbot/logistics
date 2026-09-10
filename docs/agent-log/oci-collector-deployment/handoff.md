@@ -5,3 +5,7 @@ Added manual secret-transfer workflow and independent Docker Compose runtime. Re
 ## Live verification
 
 Operator completed Telegram login and started collector. Both containers running; PostgreSQL healthy; restart policy unless-stopped, zero restarts. First live check: 100 persisted messages from each of four sources (400 total), 10 canonical loads. Historical backfill begins at oldest available messages; current-message catch-up not yet verified. No raw messages or credentials were printed during verification.
+
+## Latest-100 mode
+
+User requested one-time latest 100 per source, then new messages only. Added atomic persistent snapshot and completion state; replay on interruption uses idempotent store. All four snapshots completed, subsequent new messages verified. Existing historical data retained. Fixed parser zero weight/volume/price validation failures found during live verification. Tests 20 passed, 4 skipped. Files: deploy/collector.py, backend/logistics/telegram.py, tests/test_collector_bootstrap.py and deployment documentation.

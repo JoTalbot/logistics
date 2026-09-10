@@ -132,6 +132,8 @@ def parse_load_ad(message: TelegramSourceMessage) -> ParsedLoadAd:
     weight_raw = _first_match(_WEIGHT_RE, text)
     volume_raw = _first_match(_VOLUME_RE, text)
     price, currency = _parse_price(text)
+    if price is not None and price <= 0:
+        price = None
     cargo_type = _parse_cargo_type(text)
 
     fields_found = sum(
@@ -148,8 +150,8 @@ def parse_load_ad(message: TelegramSourceMessage) -> ParsedLoadAd:
         origin=origin,
         destination=destination,
         cargo_type=cargo_type,
-        weight_kg=round(float(_parse_decimal(weight_raw) or 0) * 1000) if weight_raw else None,
-        volume_m3=float(_parse_decimal(volume_raw)) if volume_raw else None,
+        weight_kg=(round(float(_parse_decimal(weight_raw) or 0) * 1000) or None) if weight_raw else None,
+        volume_m3=(float(_parse_decimal(volume_raw)) or None) if volume_raw else None,
         price=price,
         currency=currency,
         phone_numbers=[re.sub(r"\s+", " ", p).strip() for p in _PHONE_RE.findall(text)],

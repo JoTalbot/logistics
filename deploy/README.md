@@ -25,8 +25,12 @@ docker compose -f deploy/compose.collector.yml up -d collector
 docker compose -f deploy/compose.collector.yml logs --tail=50 collector
 ```
 
-Restart policy: unless-stopped. Four default source chats from `logistics.telegram.DEFAULT_CHATS`; 100 messages per source per pass, 60-second interval. Initial collection starts at oldest available history; subsequent passes use durable checkpoints. Flood waits are respected. No outbound posting. Use only sources the account is authorized to access and respect retention/content terms.
+Restart policy: unless-stopped. Four default source chats from `logistics.telegram.DEFAULT_CHATS`; 100 messages per source per pass, 60-second interval. Initial collection captures the latest 100 messages per source once, persists the fixed snapshot in /var/lib/logistics/telegram/latest100-v1.json and ingests it oldest-to-newest. Subsequent passes use durable checkpoints and fetch only newer messages, in batches of 100 without skipping bursts. Bootstrap completion persists across restarts; do not delete the state file. Previously collected historical records are retained. Flood waits are respected. No outbound posting. Use only sources the account is authorized to access and respect retention/content terms.
 
 ## Current verification
 
 Image built for ARM64; PostgreSQL healthy, migrations created 10 public tables. Repository unit tests: 17 passed, 4 database integration tests skipped in standalone run. Live Telegram authorization and ingestion verified after operator login: 400 messages from all four sources, 10 canonical loads, zero container restarts at the first check. Initial historical backfill is in progress; current-message catch-up not yet verified.
+
+## Latest-100 mode verification
+
+All four sources completed their initial 100-message snapshot. Subsequent incremental pass collected 14 and 3 new messages from two sources and zero from the other two. Tests: 20 passed, 4 integration tests skipped. Zero weight, volume and price tokens are treated as missing values rather than blocking ingestion.
