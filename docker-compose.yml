@@ -5,6 +5,7 @@ services:
       dockerfile: docker/api.Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://logistics:logistics@postgres:5432/logistics
+      REVIEW_OPERATOR_TOKEN: ${REVIEW_OPERATOR_TOKEN:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -24,7 +25,15 @@ services:
       - ./migrations/0001_initial.sql:/docker-entrypoint-initdb.d/0001_initial.sql:ro
       - ./migrations/0002_telegram_ingestion.sql:/docker-entrypoint-initdb.d/0002_telegram_ingestion.sql:ro
       - ./migrations/0003_telegram_canonical_loads.sql:/docker-entrypoint-initdb.d/0003_telegram_canonical_loads.sql:ro
-      - ./migrations/0004_outbox_delivery.sql:/docker-entrypoint-initdb.d/0004_outbox_delivery.sql:ro
+      - ./migrations/0004_local_llm.sql:/docker-entrypoint-initdb.d/0004a_local_llm.sql:ro
+      - ./migrations/0004_outbox_delivery.sql:/docker-entrypoint-initdb.d/0004b_outbox_delivery.sql:ro
+      - ./migrations/0005_llm_batches.sql:/docker-entrypoint-initdb.d/0005_llm_batches.sql:ro
+      - ./migrations/0006_enqueue_heartbeat.sql:/docker-entrypoint-initdb.d/0006_enqueue_heartbeat.sql:ro
+      - ./migrations/0007_outbox_delivery.sql:/docker-entrypoint-initdb.d/0007_outbox_delivery.sql:ro
+      - ./migrations/0008_market_ops.sql:/docker-entrypoint-initdb.d/0008_market_ops.sql:ro
+      - ./migrations/0009_demand_graph.sql:/docker-entrypoint-initdb.d/0009a_demand_graph.sql:ro
+      - ./migrations/0009_demand_negotiation.sql:/docker-entrypoint-initdb.d/0009b_demand_negotiation.sql:ro
+      - ./migrations/0010_market_intelligence.sql:/docker-entrypoint-initdb.d/0010_market_intelligence.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
       interval: 5s
