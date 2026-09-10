@@ -26,7 +26,7 @@ def test_pipeline_prioritizes_economic_and_recurring_candidates():
     tenant = uuid4()
     now = datetime(2026, 1, 20, tzinfo=timezone.utc)
     loads = [make_load(tenant, now - timedelta(days=14)), make_load(tenant, now - timedelta(days=7)), make_load(tenant, now)]
-    carriers = [Vehicle(carrier_party_id=uuid4(), capacity_kg=10000)]
+    carriers = [Vehicle(tenant_id=tenant, carrier_party_id=uuid4(), capacity_kg=10000)]
     result = build_commercial_candidates(
         loads,
         carriers,
@@ -43,7 +43,7 @@ def test_pipeline_marks_unmatched_carrier():
     tenant = uuid4()
     now = datetime(2026, 1, 20, tzinfo=timezone.utc)
     load = make_load(tenant, now)
-    carrier = Vehicle(carrier_party_id=uuid4(), capacity_kg=100)
+    carrier = Vehicle(tenant_id=tenant, carrier_party_id=uuid4(), capacity_kg=100)
     result = build_commercial_candidates(
         [load],
         [carrier],
