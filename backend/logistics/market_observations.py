@@ -4,6 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 
@@ -19,12 +20,17 @@ def _stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
-def normalize_lardi_response(response: Any, *, observed_at: datetime | None = None) -> list[MarketObservation]:
-    """Convert common Lardi collection shapes into provider-neutral observations.
+def stable_external_ref(item: dict[str, Any], *, source: str) -> str:
+    for key in ("id", "proposalId", "proposal_id", "uuid", "external_ref", "number"):
+        value = item.get(key)
+        if value not in (None, ""):
+            return str(value)
+    digest = hashlib.sha256(f"{source}:".encode() + _stable_json(item).encode()).hexdigest()
+    return digest
 
-    Provider-specific fields remain inside payload so normalization never invents
-    business values that the upstream response did not provide.
-    """
+
+def normalize_lardi_response(response: Any, *, observed_at: datetime | None = None) -> list[MarketObservation]:
+    """Convert common Lardi collection shapes into provider-neutral observations."""
     observed = observed_at or datetime.now(timezone.utc)
     if isinstance(response, dict):
         items = response.get("items")
@@ -39,15 +45,10 @@ def normalize_lardi_response(response: Any, *, observed_at: datetime | None = No
     else:
         items = []
 
-    result: list[MarketObservation] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        external_ref = next((str(item[k]) for k in ("id", "proposalId", "proposal_id", "uuid", "external_ref") if item.get(k) is not None), None)
-        if external_ref is None:
-            external_ref = hashlib.sha256(_stable_json(item).encode()).hexdigest()
-        result.append(MarketObservation("lardi-trans", external_ref, observed, item))
-    return result
+    return [
+        MarketObservation("lardi-trans", stable_external_ref(item, source="lardi-trans"), observed, item)
+        for item in items if isinstance(item, dict)
+    ]
 
 
 def upsert_market_observations(conn: Any, tenant_id: str, observations: list[MarketObservation]) -> int:
@@ -64,3 +65,19 @@ def upsert_market_observations(conn: Any, tenant_id: str, observations: list[Mar
         )
         count += 1
     return count
+
+
+def extract_price(item: dict[str, Any]) -> tuple[Decimal | None, str | None]:
+    candidates = (item.get("price"), item.get("offered_price"), item.get("rate"), item.get("cost"))
+    value = next((x for x in candidates if x not in (None, "")), None)
+    if isinstance(value, dict):
+        currency = value.get("currency") or value.get("currencyCode")
+        value = value.get("amount") or value.get("value")
+    else:
+        currency = item.get("currency") or item.get("currency_code")
+    if value in (None, ""):
+        return None, str(currency) if currency else None
+    try:
+        return Decimal(str(value)), str(currency) if currency else None
+    except (InvalidOperation, ValueError):
+        return None, str(currency) if currency else None
