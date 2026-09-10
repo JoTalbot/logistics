@@ -38,6 +38,7 @@ services:
       - ./migrations/0012_customer_discovery.sql:/docker-entrypoint-initdb.d/0012_customer_discovery.sql:ro
       - ./migrations/0013_customer_opportunity.sql:/docker-entrypoint-initdb.d/0013_customer_opportunity.sql:ro
       - ./migrations/0014_prospect_hardening.sql:/docker-entrypoint-initdb.d/0014_prospect_hardening.sql:ro
+      - ./migrations/0015_recurring_demand.sql:/docker-entrypoint-initdb.d/0015_recurring_demand.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U logistics -d logistics"]
       interval: 5s
