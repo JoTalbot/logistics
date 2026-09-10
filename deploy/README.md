@@ -29,4 +29,4 @@ Restart policy: unless-stopped. Four default source chats from `logistics.telegr
 
 ## Current verification
 
-Image built for ARM64; PostgreSQL healthy, migrations created 10 public tables. Repository unit tests: 17 passed, 4 database integration tests skipped in standalone run. Live Telegram authorization and ingestion are pending operator login. No claim of successful live collection yet.
+Image built for ARM64; PostgreSQL healthy, migrations created 10 public tables. Repository unit tests: 17 passed, 4 database integration tests skipped in standalone run. Live Telegram authorization and ingestion verified after operator login: 400 messages from all four sources, 10 canonical loads, zero container restarts at the first check. Initial historical backfill is in progress; current-message catch-up not yet verified.

@@ -61,4 +61,4 @@ NEXT_STEP: Verify CI → outbox delivery hardening → authorized provider trans
 
 ## OCI collector deployment — 2026-09-10
 
-Runtime prepared in /opt/logistics. PostgreSQL healthy; image built; unit tests 17 passed, 4 integration tests skipped. Manual GitHub workflow transfers Telegram configuration with a restricted SSH key. Collector is NOT running: awaiting interactive Telegram login. Commands: deploy/README.md. Existing publication work remains unchanged.
+Runtime prepared in /opt/logistics. PostgreSQL healthy; image built; unit tests 17 passed, 4 integration tests skipped. Manual GitHub workflow transfers Telegram configuration with a restricted SSH key. Collector is running after operator login. Live verification: 400 source messages across all four configured chats, 10 canonical loads, zero container restarts. Initial historical backfill is in progress; not yet caught up to current messages. Commands: deploy/README.md. Existing publication work remains unchanged.
