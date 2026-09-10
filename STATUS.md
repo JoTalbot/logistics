@@ -8,19 +8,7 @@ AGENT: telegram-load-ingestion-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Сбор сообщений из заданных Telegram-источников, идемпотентное сохранение, checkpoint/dedup и детерминированный разбор объявлений о грузах. Публикация и наценка намеренно не входят в этот шаг.
-WORK_AREA: backend/logistics/telegram.py; backend/logistics/telegram_store.py; migrations/0002_telegram_ingestion.sql; tests/test_telegram_parser.py; docs/agent-skills/telegram-load-ingestion-v1.md; docs/agent-log/telegram-load-ingestion-v1/2026-09-10.md; pyproject.toml
-OWNER: none
-
-## Product rollout
-
-**Этап 1: Украина.** Начать с украинского рынка, DELLA + Lardi-Trans и минимально необходимого набора интеграций.
-
-**Этап 2: расширение.** Подключать дополнительные источники и сервисы постепенно по мере доказанной экономической ценности.
-
-**Этап 3: Европа и далее.** Добавлять Trans.eu, Teleroute/Wtransnet, Cargo.LT и другие подтверждённо полезные источники после проверки API, стоимости, юридических условий и интеграционной готовности.
-
-Ядро продукта не должно быть привязано к одной стране, бирже, карте, AI-провайдеру, телефонии, GPS-поставщику или solver.
+SCOPE: Сбор сообщений из заданных Telegram-источников, идемпотентное сохранение, checkpoint/dedup, детерминированный разбор и безопасная канонизация объявлений о грузах. Публикация и наценка намеренно не входят в этот шаг.
 
 ## Completed
 
@@ -33,14 +21,16 @@ OWNER: none
 - PostgreSQL baseline schema для tenants, parties, loads, stops, opportunities, outbox и audit.
 - Minimal FastAPI API и Docker Compose с PostgreSQL 17.
 - Deterministic tests and backend implementation skill.
-- Telegram ingestion V1: configured source chats, Telethon collection helper, deterministic parser, provenance envelope and parser tests.
-- Telegram persistence V1: source checkpoints, source-message deduplication and parsed-ad storage with PostgreSQL UPSERT semantics.
+- Telegram ingestion: configured source chats, Telethon collection helper, deterministic parser, provenance envelope and parser tests.
+- Telegram persistence: source checkpoints, source-message deduplication and parsed-ad storage with PostgreSQL UPSERT semantics.
+- Telegram canonicalization: validation/confidence gate and ParsedLoadAd → canonical Load conversion.
+- Telegram worker: checkpoint is advanced only inside the same DB transaction that persists source message and parsed result.
 
 ## Current implementation
 
-`Telegram message → idempotent source storage → deterministic parser → ParsedLoadAd → persisted parsed ad`
+`Telegram message → deterministic parser → atomic source+parsed persistence → checkpoint → validation → canonical Load`
 
-The intermediate Telegram record is not yet a canonical business Load and is not published externally.
+Incomplete/low-confidence ads remain non-canonical and are not published externally. No automatic markup or reposting is implemented in this stage.
 
 ## Telegram sources
 
@@ -49,14 +39,13 @@ The intermediate Telegram record is not yet a canonical business Load and is not
 - https://t.me/TURKIYA_UZBEKISTON_GRUBA_N1
 - https://t.me/gruzoperevozki_ua
 
-## Deferred hardening / next
+## Next
 
-1. Run CI/runtime parser and database integration tests and fix implementation issues.
-2. Add canonical Load conversion + validation and confidence thresholds.
-3. Add a worker that atomically ingests messages, persists parser results and advances checkpoints only after successful processing.
-4. Add observability and replay fixtures.
-5. Only after ingestion is reliable, design provider-specific publication adapters and markup/policy gates.
-6. Keep Telegram parsing deterministic unless a legally compliant data/licensing path for AI/ML use is established.
+1. Runtime CI and PostgreSQL integration execution.
+2. Add observability counters/traces and deterministic replay fixtures.
+3. Add canonical Load persistence and event publication after validation.
+4. Add provider-specific publication adapters only after ingestion is reliable, with explicit provenance, role representation, markup and policy gates.
+5. Keep Telegram parsing deterministic unless a legally compliant data/licensing path for AI/ML use is established.
 
 ## Security
 
@@ -64,6 +53,6 @@ The intermediate Telegram record is not yet a canonical business Load and is not
 
 ## Handoff
 
-DONE: Telegram persistence/checkpoint layer added and parser price extraction corrected.
-VERIFIED: Changes are committed to the remote repository.
+DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion and worker orchestration.
+VERIFIED: All changes in this batch were written to the remote repository.
 NOT YET VERIFIED: Runtime CI/database integration execution in the current environment.
