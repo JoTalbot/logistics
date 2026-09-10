@@ -8,8 +8,8 @@ AGENT: telegram-load-ingestion-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Сбор сообщений из заданных Telegram-источников и детерминированный разбор объявлений о грузах. Публикация и наценка намеренно не входят в этот шаг.
-WORK_AREA: backend/logistics/telegram.py; tests/test_telegram_parser.py; docs/agent-skills/telegram-load-ingestion-v1.md; docs/agent-log/telegram-load-ingestion-v1/2026-09-10.md; pyproject.toml
+SCOPE: Сбор сообщений из заданных Telegram-источников, идемпотентное сохранение, checkpoint/dedup и детерминированный разбор объявлений о грузах. Публикация и наценка намеренно не входят в этот шаг.
+WORK_AREA: backend/logistics/telegram.py; backend/logistics/telegram_store.py; migrations/0002_telegram_ingestion.sql; tests/test_telegram_parser.py; docs/agent-skills/telegram-load-ingestion-v1.md; docs/agent-log/telegram-load-ingestion-v1/2026-09-10.md; pyproject.toml
 OWNER: none
 
 ## Product rollout
@@ -34,10 +34,11 @@ OWNER: none
 - Minimal FastAPI API и Docker Compose с PostgreSQL 17.
 - Deterministic tests and backend implementation skill.
 - Telegram ingestion V1: configured source chats, Telethon collection helper, deterministic parser, provenance envelope and parser tests.
+- Telegram persistence V1: source checkpoints, source-message deduplication and parsed-ad storage with PostgreSQL UPSERT semantics.
 
 ## Current implementation
 
-`Telegram message → deterministic parser → ParsedLoadAd`
+`Telegram message → idempotent source storage → deterministic parser → ParsedLoadAd → persisted parsed ad`
 
 The intermediate Telegram record is not yet a canonical business Load and is not published externally.
 
@@ -50,10 +51,10 @@ The intermediate Telegram record is not yet a canonical business Load and is not
 
 ## Deferred hardening / next
 
-1. Run CI/runtime parser tests and fix implementation issues.
-2. Add persistent source-message checkpoint/dedup storage.
-3. Add canonical Load conversion + validation and confidence thresholds.
-4. Add production worker/scheduler and observability.
+1. Run CI/runtime parser and database integration tests and fix implementation issues.
+2. Add canonical Load conversion + validation and confidence thresholds.
+3. Add a worker that atomically ingests messages, persists parser results and advances checkpoints only after successful processing.
+4. Add observability and replay fixtures.
 5. Only after ingestion is reliable, design provider-specific publication adapters and markup/policy gates.
 6. Keep Telegram parsing deterministic unless a legally compliant data/licensing path for AI/ML use is established.
 
@@ -63,6 +64,6 @@ The intermediate Telegram record is not yet a canonical business Load and is not
 
 ## Handoff
 
-DONE: Telegram collection/parsing code and tests added.
-VERIFIED: Source code and configuration changes committed to the remote repository in this batch.
-NOT YET VERIFIED: Runtime CI execution in the current environment.
+DONE: Telegram persistence/checkpoint layer added and parser price extraction corrected.
+VERIFIED: Changes are committed to the remote repository.
+NOT YET VERIFIED: Runtime CI/database integration execution in the current environment.
