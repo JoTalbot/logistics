@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 from uuid import uuid4
 
+import psycopg
 from fastapi import HTTPException
 
 from logistics import api
@@ -47,11 +48,11 @@ def main() -> None:
 
     assert api.health()["status"] == "ok"
 
-    with patch("logistics.api.psycopg.connect", side_effect=RuntimeError("database down")):
+    with patch("logistics.api.psycopg.connect", side_effect=psycopg.OperationalError("database down")):
         try:
             api.readiness()
-        except RuntimeError:
-            pass
+        except HTTPException as exc:
+            assert exc.status_code == 503
         else:
             raise AssertionError("unexpected readiness success with broken database")
 
