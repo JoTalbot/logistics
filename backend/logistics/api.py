@@ -139,6 +139,51 @@ def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(defaul
         audit_total = conn.execute("SELECT count(*) FROM review_audit WHERE tenant_id=%s", (tenant_id,)).fetchone()[0]
     return {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "pending_total": int(publication_pending + negotiation_pending), "review_decisions_total": int(audit_total)}
 
+@app.get("/api/v1/review/audit/report")
+def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
+    _operator_auth(x_operator_token)
+    if not 1 <= days <= 365:
+        raise HTTPException(status_code=422, detail="days must be between 1 and 365")
+    with psycopg.connect(_dsn()) as conn:
+        decisions = conn.execute("""SELECT decision, count(*)
+                                      FROM review_audit
+                                     WHERE tenant_id=%s
+                                       AND created_at >= now() - (%s * interval '1 day')
+                                     GROUP BY decision
+                                     ORDER BY decision""", (tenant_id, days)).fetchall()
+        trend = conn.execute("""SELECT date_trunc('day', created_at), decision, count(*)
+                                  FROM review_audit
+                                 WHERE tenant_id=%s
+                                   AND created_at >= now() - (%s * interval '1 day')
+                                 GROUP BY date_trunc('day', created_at), decision
+                                 ORDER BY date_trunc('day', created_at), decision""", (tenant_id, days)).fetchall()
+        queue_age = conn.execute("""SELECT count(*),
+                                          COALESCE(EXTRACT(EPOCH FROM (now() - min(created_at))), 0),
+                                          COALESCE(avg(EXTRACT(EPOCH FROM (now() - created_at))), 0)
+                                     FROM (
+                                       SELECT created_at
+                                         FROM publication_intents
+                                        WHERE tenant_id=%s AND status IN ('prepared','retry')
+                                       UNION ALL
+                                       SELECT created_at
+                                         FROM negotiation_sessions
+                                        WHERE tenant_id=%s AND (requires_human=true OR state='review')
+                                     ) pending""", (tenant_id, tenant_id)).fetchone()
+    return {
+        "tenant_id": str(tenant_id),
+        "days": days,
+        "decisions": {row[0]: int(row[1]) for row in decisions},
+        "daily_trend": [
+            {"day": row[0].date().isoformat(), "decision": row[1], "count": int(row[2])}
+            for row in trend
+        ],
+        "queue_age": {
+            "pending_total": int(queue_age[0]),
+            "oldest_seconds": int(queue_age[1]),
+            "average_age_seconds": int(queue_age[2]),
+        },
+    }
+
 @app.get("/api/v1/review/priorities/metrics")
 def review_priority_metrics(tenant_id: UUID, high_priority_threshold: float = 0.8, stale_after_hours: int = 12, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
     _operator_auth(x_operator_token)
