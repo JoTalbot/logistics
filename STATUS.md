@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — contact review queue + recurring demand
-STATUS: contact_review_queue_implemented
-AGENT: logistics-commercial-batch-v9
+CURRENT_STEP: Customer discovery V1 — recurring demand recomputation + duplicate detection
+STATUS: recurring_demand_scheduled
+AGENT: logistics-commercial-batch-v10
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -49,7 +49,11 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Durable contact-intent outbox that persists reviewable contact intents but never sends them.
 - Audited contact-intent review transitions: approve, reject and hold, with tenant scoping and operator reason.
 - Authenticated contact-intent review queue and decision API.
-- Unit coverage for recurring-demand and contact-review validation.
+- Canonical Telegram load rehydration for recurring-demand analysis directly from persisted `loads` and `load_stops`.
+- Multi-tenant recurring-demand recomputation with bounded 90-day history and six-hour scheduler.
+- Docker Compose scheduler service with restart policy and PostgreSQL health dependency.
+- Tenant-scoped likely duplicate-load detection using normalized route/cargo/weight/currency signatures and bounded creation-time windows.
+- Unit coverage for recurring-demand rehydration, scheduler validation and duplicate-load safeguards.
 
 ## Current implementation
 
@@ -71,7 +75,7 @@ Freshness currently decays linearly to zero over 72 hours. Scoring is determinis
 
 Recurring demand:
 
-`route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity score + recurrence score → freshness → persisted pattern/evidence → operator review`
+`persisted Telegram loads → tenant-scoped rehydration → route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity + recurrence + freshness → persisted pattern/evidence → operator review`
 
 Contact safety boundary:
 
@@ -81,10 +85,12 @@ Approval never implies sending. There is deliberately no send endpoint or autono
 
 The discovery core deliberately does not fetch websites, scrape pages, harvest contact lists, send messages or perform opaque third-party enrichment.
 
+External provider network operations remain behind explicit adapters. No browser automation, anti-bot bypass or unsupported scraping is part of the core.
+
 ## Verification
 
 - Hosted CI Run #101 `34520924164` passed on the prior persisted-recommendation/status head.
-- Latest direct commits are present on `main`; GitHub connector may report no workflow runs/status checks for direct commits, so latest CI is not claimed as green without an observed run.
+- Latest direct commits are present on `main`; GitHub connector currently returns no workflow runs/status checks for these direct commits, so latest CI is not claimed as green.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
 
@@ -94,10 +100,10 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Aggregate recurring demand directly from persisted Telegram canonical loads and add scheduled recomputation.
-2. Add stronger duplicate-load detection and tenant-isolation integration tests.
-3. Add authorized provider-specific contact adapter contracts only where permissions are verified, while keeping autonomous sending disabled.
-4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
+1. Add stronger database-level duplicate identity/indexing where safe and expand real PostgreSQL tenant-isolation integration coverage.
+2. Add operator visibility for duplicate-load groups and recurring-demand recomputation health.
+3. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
+4. Add provider-specific contact adapters only where permissions are verified, while keeping autonomous sending disabled.
 5. Re-run Lardi read-only smoke only after provider support confirms the edge block or supplies an authorized API path.
 6. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
 
@@ -107,12 +113,12 @@ Credentials and provider sessions remain runtime secrets and must not be committ
 
 ## Compliance
 
-Provider publication is gated and transport-neutral. Customer discovery uses only explicitly permitted source workflows and preserves provenance. Contact is a separate authorized stage with suppression/opt-out controls. Each integration must verify current terms, API permissions, privacy/retention requirements and applicable law before activation.
+Provider publication is gated and transport-neutral. Customer discovery uses only explicitly permitted source workflows and preserves provenance. Contact is a separate authorized stage with suppression/opt-out controls. No claim is made that any marketplace or source permits automation. Each integration must verify current terms, API permissions, privacy/retention requirements and applicable law before activation.
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence, authorized contact contracts and audited contact review queue.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, recurring-demand persistence and scheduled recomputation, authorized contact contracts and audited contact review queue.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head.
 PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; recurring-demand recomputation from persisted loads; duplicate-load/tenant integration coverage; provider-specific contact adapters; external publication remains gated.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; stronger PostgreSQL duplicate/tenant integration coverage; provider-specific contact adapters; external publication remains gated.
