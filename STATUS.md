@@ -2,9 +2,9 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Customer discovery V1 — recurring demand engine
-STATUS: recurring_demand_implemented
-AGENT: logistics-commercial-batch-v7
+CURRENT_STEP: Customer discovery V1 — recurring demand persistence + operator queue
+STATUS: recurring_demand_persisted
+AGENT: logistics-commercial-batch-v8
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
@@ -43,7 +43,9 @@ SCOPE: Historical market observations, explainable opportunity economics, authen
 - Persisted tenant-scoped CustomerOpportunity records and authenticated operator queue endpoint.
 - Authenticated prospect suppression/unsuppression endpoint with required reason.
 - Deterministic recurring-demand detection from historical canonical loads, with route/cargo pattern keys, observation count, median interval, regularity, recurrence and freshness signals.
-- Unit coverage for recurring-demand thresholds, regular intervals and freshness decay.
+- Persisted recurring-demand patterns and load evidence with tenant-scoped uniqueness and idempotent evidence writes.
+- Authenticated operator endpoint for recurring-demand review.
+- Unit coverage for recurring-demand detection and persistence validation.
 
 ## Current implementation
 
@@ -65,7 +67,7 @@ Freshness currently decays linearly to zero over 72 hours. Scoring is determinis
 
 Recurring demand:
 
-`route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity score + recurrence score → freshness`
+`route/cargo/currency pattern → ≥3 observations → median interval → median absolute deviation → regularity score + recurrence score → freshness → persisted pattern/evidence → operator review`
 
 The discovery core deliberately does not fetch websites, scrape pages, harvest contact lists, send messages or perform opaque third-party enrichment.
 
@@ -88,8 +90,8 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Add authenticated recurring-demand operator endpoint and filters by pattern/freshness/score.
-2. Persist recurring-demand patterns and historical evidence.
+1. Add recurring-demand aggregation from persisted Telegram loads and scheduled recomputation.
+2. Add stronger duplicate-load detection and tenant isolation integration tests.
 3. Add authorized contact-channel adapter contracts without autonomous outreach activation.
 4. Add provider-specific canonical mappings from verified Lardi response samples after provider access is restored.
 5. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
@@ -105,8 +107,8 @@ Provider publication is gated and transport-neutral. Customer discovery uses onl
 
 ## Handoff
 
-DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, authenticated operator queue and recurring-demand detection core.
+DONE: Market-intelligence foundations, recommendation persistence, operator reporting, durable prospect persistence, deterministic customer-opportunity scoring, authenticated operator queues and recurring-demand persistence.
 VERIFIED: Hosted CI Run #101 `34520924164` for the prior head.
 PENDING: CI verification for the latest direct commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; persisted recurring-demand patterns/operator endpoint; authorized contact adapters; external publication remains gated.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; recurring-demand recomputation from persisted loads; duplicate-load/tenant integration coverage; authorized contact adapters; external publication remains gated.
