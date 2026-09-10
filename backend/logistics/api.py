@@ -76,22 +76,7 @@ def review_summary(tenant_id: UUID, duplicate_window_hours: int = 48, x_operator
             scheduler = scheduler_health(conn)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return {
-        "tenant_id": str(tenant_id),
-        "review_queue": {
-            "publication_pending": int(publication_pending),
-            "negotiation_pending": int(negotiation_pending),
-            "contact_pending": int(contact_pending),
-            "customer_opportunities_candidate": int(customer_opportunities),
-            "pending_total": int(publication_pending + negotiation_pending + contact_pending),
-        },
-        "duplicate_loads": {
-            "groups": duplicate_groups,
-            "window_hours": duplicate_window_hours,
-            "max_groups_evaluated": 10000,
-        },
-        "scheduler": scheduler,
-    }
+    return {"tenant_id": str(tenant_id), "review_queue": {"publication_pending": int(publication_pending), "negotiation_pending": int(negotiation_pending), "contact_pending": int(contact_pending), "customer_opportunities_candidate": int(customer_opportunities), "pending_total": int(publication_pending + negotiation_pending + contact_pending)}, "duplicate_loads": {"groups": duplicate_groups, "window_hours": duplicate_window_hours, "max_groups_evaluated": 10000}, "scheduler": scheduler}
 
 @app.get("/api/v1/review/metrics")
 def review_metrics(tenant_id: UUID, x_operator_token: str | None = Header(default=None)) -> dict[str, int]:
@@ -109,6 +94,20 @@ def review_recommendations(tenant_id: UUID, limit: int = 50, x_operator_token: s
     with psycopg.connect(_dsn()) as conn:
         rows = conn.execute("""SELECT id, load_id, status, score, estimated_cost, estimated_margin, risk_adjusted_margin, recommended_price, market_median_price, recommendation_reasons, recommendation_updated_at, created_at FROM opportunities WHERE tenant_id=%s AND recommendation_updated_at IS NOT NULL ORDER BY recommendation_updated_at DESC LIMIT %s""", (tenant_id, limit)).fetchall()
     return [{"id": str(r[0]), "load_id": str(r[1]), "status": r[2], "score": float(r[3]), "estimated_cost": float(r[4]), "estimated_margin": float(r[5]), "risk_adjusted_margin": float(r[6]), "recommended_price": float(r[7]) if r[7] is not None else None, "market_median_price": float(r[8]) if r[8] is not None else None, "recommendation_reasons": r[9], "recommendation_updated_at": r[10].isoformat(), "created_at": r[11].isoformat()} for r in rows]
+
+@app.get("/api/v1/review/priorities")
+def review_priorities(tenant_id: UUID, status: str = "candidate", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
+    _operator_auth(x_operator_token)
+    allowed = {"candidate", "reviewed", "accepted", "rejected", "hold"}
+    if status not in allowed: raise HTTPException(status_code=422, detail="invalid priority status")
+    if not 1 <= limit <= 100: raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    with psycopg.connect(_dsn()) as conn:
+        rows = conn.execute("""SELECT id, load_id, priority_score, priority_reasons, priority_status, priority_updated_at
+                                FROM opportunities
+                               WHERE tenant_id=%s AND priority_status=%s AND priority_score IS NOT NULL
+                               ORDER BY priority_score DESC, priority_updated_at DESC
+                               LIMIT %s""", (tenant_id, status, limit)).fetchall()
+    return [{"id": str(r[0]), "load_id": str(r[1]), "priority_score": float(r[2]), "priority_reasons": r[3], "priority_status": r[4], "priority_updated_at": r[5].isoformat()} for r in rows]
 
 @app.get("/api/v1/review/prospects")
 def review_prospects(tenant_id: UUID, limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
