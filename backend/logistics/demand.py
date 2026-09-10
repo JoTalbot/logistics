@@ -38,7 +38,7 @@ def score_customer_demand(load: Load, profile: DemandProfile) -> DemandSignal:
         score += 0.25
         reasons.append("price_match")
     countries = {s.location.country_code for s in load.stops if s.location.country_code}
-    if not profile.preferred_countries or countries.intersection(profile.preferred_countries):
+    if profile.preferred_countries and countries.intersection({x.upper() for x in profile.preferred_countries}):
         score += 0.15
         reasons.append("geography_match")
     return DemandSignal(profile.customer_id, min(1.0, score), tuple(reasons))
