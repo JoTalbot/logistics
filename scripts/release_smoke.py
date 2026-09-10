@@ -36,10 +36,10 @@ class _Conn:
     def execute(self, *_args, **_kwargs):
         self.calls += 1
         if self.calls == 1:
-            return _Cursor([[("approve", 1)]])
+            return _Cursor([("approve", 1)])
         if self.calls == 2:
-            return _Cursor([[(datetime.now(timezone.utc), "approve", 1)]])
-        return _Cursor([[(0, 0.0, 0.0)]])
+            return _Cursor([(datetime.now(timezone.utc), "approve", 1)])
+        return _Cursor([(0, 0.0, 0.0)])
 
 
 def main() -> None:
