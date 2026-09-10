@@ -21,6 +21,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS loads_telegram_source_message_id_uidx
 ALTER TABLE outbox_events
   ADD COLUMN IF NOT EXISTS idempotency_key text;
 
-CREATE UNIQUE INDEX IF NOT EXISTS outbox_events_idempotency_key_uidx
-  ON outbox_events(idempotency_key)
-  WHERE idempotency_key IS NOT NULL;
+DROP INDEX IF EXISTS outbox_events_idempotency_key_uidx;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'outbox_events_idempotency_key_key'
+  ) THEN
+    ALTER TABLE outbox_events
+      ADD CONSTRAINT outbox_events_idempotency_key_key UNIQUE (idempotency_key);
+  END IF;
+END $$;

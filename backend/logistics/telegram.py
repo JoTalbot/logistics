@@ -61,8 +61,13 @@ class TelegramChatConfig:
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d\s().-]{8,}\d)(?!\d)")
 _WEIGHT_RE = re.compile(r"(?<!\d)(\d{1,3}(?:[.,]\d{1,3})?)\s*(?:т|тонн?\b|tons?\b)", re.I)
 _VOLUME_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:м3|м³|куб(?:\.|ов)?\b)", re.I)
-_PRICE_WITH_CURRENCY_RE = re.compile(r"(?<!\d)(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)\b", re.I)
-_PRICE_LABEL_RE = re.compile(r"(?:ставка|цена|оплата|rate|price)\s*[:=-]?\s*(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)?\b", re.I)
+_PRICE_WITH_CURRENCY_RE = re.compile(r"(?<!\d)(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)", re.I)
+_PRICE_LABEL_RE = re.compile(r"(?:ставка|цена|оплата|rate|price)\s*[:=-]?\s*(\d{2,7}(?:[.,]\d{1,2})?)\s*(€|EUR|грн|UAH|USD|\$|долл(?:\.|ар(?:ов|а)?)?)?", re.I)
+_CARGO_LABEL_RE = re.compile(r"(?:груз|вантаж|cargo|товар|тип\s+груза|тип\s+вантажу)\s*[:=-]?\s*([^\n,;]+)", re.I)
+_CARGO_AFTER_WEIGHT_RE = re.compile(
+    r"(?:т|тонн?\b|tons?\b)\s+([^\n,;]+?)(?=\s+(?:ставка|цена|оплата|rate|price)\b|$)",
+    re.I,
+)
 
 
 def _clean(value: str | None) -> str | None:
@@ -114,14 +119,24 @@ def _parse_price(text: str) -> tuple[Decimal | None, str | None]:
     return _parse_decimal(match.group(1)), _currency(match.group(2))
 
 
+def _parse_cargo_type(text: str) -> str | None:
+    labeled = _first_match(_CARGO_LABEL_RE, text)
+    if labeled:
+        return _clean(labeled)
+    return _clean(_first_match(_CARGO_AFTER_WEIGHT_RE, text))
+
+
 def parse_load_ad(message: TelegramSourceMessage) -> ParsedLoadAd:
     text = message.text or ""
     origin, destination = _parse_route(text)
     weight_raw = _first_match(_WEIGHT_RE, text)
     volume_raw = _first_match(_VOLUME_RE, text)
     price, currency = _parse_price(text)
+    cargo_type = _parse_cargo_type(text)
 
-    fields_found = sum(value is not None for value in (origin, destination, weight_raw, volume_raw, price))
+    fields_found = sum(
+        value is not None for value in (origin, destination, cargo_type, weight_raw, volume_raw, price)
+    )
     confidence = min(1.0, 0.2 * fields_found + (0.2 if message.text else 0.0))
 
     return ParsedLoadAd(
@@ -132,6 +147,7 @@ def parse_load_ad(message: TelegramSourceMessage) -> ParsedLoadAd:
         raw_text=text,
         origin=origin,
         destination=destination,
+        cargo_type=cargo_type,
         weight_kg=round(float(_parse_decimal(weight_raw) or 0) * 1000) if weight_raw else None,
         volume_m3=float(_parse_decimal(volume_raw)) if volume_raw else None,
         price=price,
