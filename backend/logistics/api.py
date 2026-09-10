@@ -10,8 +10,9 @@ from pydantic import BaseModel, Field
 from .review import ReviewDecision, ReviewError, apply_review_decision
 from .prospect_store import list_prospects, set_prospect_suppression
 from .customer_opportunity_store import list_customer_opportunities
+from .recurring_demand_store import list_patterns
 
-app = FastAPI(title="AI Logistics OS", version="0.6.0")
+app = FastAPI(title="AI Logistics OS", version="0.7.0")
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -114,6 +115,17 @@ def review_customer_opportunities(tenant_id: UUID, status: str = "candidate", li
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+@app.get("/api/v1/review/recurring-demand")
+def review_recurring_demand(tenant_id: UUID, status: str = "active", limit: int = 50, x_operator_token: str | None = Header(default=None)) -> list[dict]:
+    _operator_auth(x_operator_token)
+    if not 1 <= limit <= 100:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100")
+    try:
+        with psycopg.connect(_dsn()) as conn:
+            return list_patterns(conn, tenant_id=tenant_id, status=status, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 @app.get("/api/v1/review/audit/report")
 def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str | None = Header(default=None)) -> dict:
     _operator_auth(x_operator_token)
@@ -123,7 +135,7 @@ def review_audit_report(tenant_id: UUID, days: int = 30, x_operator_token: str |
         decision_rows = conn.execute("SELECT decision, count(*) FROM review_audit WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day') GROUP BY decision ORDER BY decision", (tenant_id, days)).fetchall()
         trend_rows = conn.execute("SELECT date_trunc('day', created_at), decision, count(*) FROM review_audit WHERE tenant_id=%s AND created_at >= now() - (%s * interval '1 day') GROUP BY 1,2 ORDER BY 1,2", (tenant_id, days)).fetchall()
         queue_age = conn.execute("SELECT count(*), COALESCE(EXTRACT(EPOCH FROM (now()-min(created_at))),0), COALESCE(EXTRACT(EPOCH FROM (now()-avg(created_at))),0) FROM (SELECT created_at FROM publication_intents WHERE tenant_id=%s AND status IN ('prepared','retry') UNION ALL SELECT created_at FROM negotiation_sessions WHERE tenant_id=%s AND (requires_human=true OR state='review')) pending", (tenant_id, tenant_id)).fetchone()
-    return {"window_days": days, "decisions": {r[0]: int(r[1]) for r in decision_rows}, "daily_trend": [{"day": r[0].date().isoformat(), "decision": r[1], "count": int(r[2])} for r in trend_rows], "queue_age": {"pending_total": int(queue_age[0]), "oldest_seconds": int(queue_age[1]), "average_age_seconds": int(queue_age[2])}}
+    return {"window_days": days, "decisions": {r[0]: int(r[1]) for r in decision_rows}, "daily_trend": [{"day": r[0].date().isoformat(), "decision": r[1], "count": int(r[2]) for r in trend_rows], "queue_age": {"pending_total": int(queue_age[0]), "oldest_seconds": int(queue_age[1]), "average_age_seconds": int(queue_age[2])}}
 
 @app.post("/api/v1/review/decision")
 def review_decision(request: ReviewRequest, x_operator_token: str | None = Header(default=None)) -> dict[str, str]:
