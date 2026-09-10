@@ -50,23 +50,32 @@ The commercial pipeline remains deterministic and explainable. It does not publi
 
 V20 follows the established strategy: first make the existing commercial chain safe and measurable in production-like operation, then enable only those external actions whose provider, legal and operational contracts are verified.
 
-Priority batch:
+Completed V20 batch work:
 
-1. Production configuration contract: separate development defaults from required production configuration, validate secrets and fail closed on unsafe/missing settings.
-2. Operational runbook: startup, migration, backup/restore, recovery, degraded mode, scheduler health, outbox replay and incident response.
-3. Business KPI layer: ingestion volume, opportunity conversion, margin estimates, queue age/SLA, recurring-demand quality, delivery/replay outcomes and provider health.
-4. Commercial replay/evaluation: deterministic historical/synthetic replay to measure ranking quality, margin calibration and regression before enabling new external effects.
-5. Provider readiness matrix: explicit per-provider status for API permission, contract/ToS, field mapping, rate limits, error semantics and permitted actions.
-6. Controlled integration boundary: keep publication/contact disabled by default; expose only auditable, human-approved actions where contracts are verified.
-7. Data governance: provenance, retention boundaries, PII minimization, tenant isolation and audit evidence.
-8. Deployment hardening: container security, non-root execution where compatible, network restrictions, resource limits, health checks and graceful shutdown.
-9. Release candidate gate: production-like smoke, migration rehearsal, restore rehearsal, security/dependency audit, KPI baseline and rollback plan.
+1. Production configuration contract: `.env.example` documents required database/operator configuration and keeps provider secrets runtime-only.
+2. Deployment hardening: API runs as non-root, Compose uses read-only API/scheduler filesystems, drops Linux capabilities, enables `no-new-privileges`, limits resources, binds API locally by default and does not expose PostgreSQL publicly.
+3. Operational runbook: `docs/PRODUCTION_RUNBOOK.md` covers preflight, startup, migrations, backup/restore, scheduler health, outbox recovery, degraded mode, incidents, rollback and release gate.
+4. Business KPI foundation: `backend/logistics/business_kpi.py` provides deterministic tenant-scoped operational/commercial KPI aggregation with test coverage.
+5. Commercial replay/evaluation foundation: `backend/logistics/commercial_replay.py` provides side-effect-free historical/synthetic evaluation with test coverage.
+6. Provider readiness matrix: `docs/PROVIDER_READINESS.md` records Lardi as blocked/read-only and DELLA as unverified, with explicit evidence and required verification fields.
+7. Data governance: `docs/DATA_GOVERNANCE.md` documents provenance, tenant isolation, PII minimization, retention, secrets and auditability.
+8. CI release validation: `.github/workflows/ci.yml` now builds the hardened API Docker image after tests and release smoke checks.
+
+Remaining V20 work:
+
+1. Expose the KPI snapshot through the authenticated review API after final schema/API review.
+2. Add production-like KPI baseline and replay fixtures using representative non-sensitive data.
+3. Perform an actual backup/restore rehearsal in the target infrastructure.
+4. Verify the hardened Compose stack end-to-end in the target deployment environment.
+5. Complete provider-side Lardi access/mapping verification and any required contractual review.
+6. Recheck the release candidate after the new CI run completes.
 
 V20 exit criterion: the system can run the existing commercial pipeline continuously in a production-like environment with measurable economics, observable failures/recovery and documented rollback, while every external side effect remains explicitly authorized and auditable.
 
 ## Verification
 
 - V19 hosted CI Run #231 `34539152470` passed on commit `0cf8eecd1c5d4f9196b8a57b4f90b1610511b80c`: dependency consistency, `pip-audit`, PostgreSQL migrations, unit/integration tests and local release smoke all succeeded.
+- V20 CI is automatically triggered by each new main-branch commit and now includes hardened API image build validation.
 - Real PostgreSQL integration tests are configured through `DATABASE_URL`.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; this remains a provider-edge block requiring provider-side action.
 - No retry loop, browser automation or anti-bot bypass was added.
@@ -77,7 +86,7 @@ Lardi discovery remains read-only. Canonical provider mapping remains blocked un
 
 ## Release boundary
 
-V19 technical gate is green. Production release is not declared merely because CI is green. External/provider/legal conditions, production configuration, operational rehearsal and explicit authorization remain separate release conditions.
+V19 technical gate is green. V20 production release is not declared merely because CI is green. External/provider/legal conditions, production configuration, operational rehearsal and explicit authorization remain separate release conditions.
 
 ## Security / compliance
 
@@ -87,6 +96,6 @@ Credentials remain runtime secrets. Review APIs require `REVIEW_OPERATOR_TOKEN`.
 
 DONE: V17 reliability/replay foundation, V18 integration/deployment hardening and V19 security/compliance/release-gate hardening with green hosted CI.
 IN_PROGRESS: V20 production/business readiness.
-PENDING: provider-side Lardi access/mapping, duplicate identity evidence, contact adapters and external publication permissions.
+PENDING: provider-side Lardi access/mapping, duplicate identity evidence, contact adapters, external publication permissions, target-infrastructure restore rehearsal and final KPI API exposure.
 REQUIRED HUMAN ACTION: Lardi provider/support action before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters and external publication permissions.
+OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
