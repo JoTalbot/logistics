@@ -2,13 +2,13 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Market intelligence V4 — explainable recommendations and review operations
-STATUS: ci_pending_recommendation_batch
+CURRENT_STEP: Market intelligence V4 — persisted explainable recommendations
+STATUS: ci_pending_recommendation_persistence
 AGENT: logistics-commercial-batch-v4
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Historical market observations, freshness, verified provider-field extraction, route economics, price trends, explainable opportunity recommendations and authenticated human review. No autonomous external commitment is enabled.
+SCOPE: Historical market observations, freshness, verified provider-field extraction, route economics, price trends, explainable opportunity recommendations, persisted recommendation outputs and authenticated human review. No autonomous external commitment is enabled.
 
 ## Completed
 
@@ -34,7 +34,9 @@ SCOPE: Historical market observations, freshness, verified provider-field extrac
 - Review queue metrics endpoint for pending publication/negotiation work and review-decision totals.
 - Lardi smoke diagnostics distinguish provider-edge blocks from credential, permission and rate-limit failures.
 - Deterministic opportunity recommendation service combining route economics with compatible recent market evidence, with explainable reasons and currency-mismatch safety.
-- Unit coverage for market recommendation scoring and currency compatibility.
+- Migration `0011_opportunity_recommendations.sql` adds persisted recommendation fields to canonical opportunities.
+- `recommendation_store.py` persists the latest tenant-scoped recommendation without external side effects.
+- Unit coverage for recommendation persistence.
 
 ## Current implementation
 
@@ -42,7 +44,7 @@ SCOPE: Historical market observations, freshness, verified provider-field extrac
 
 Market discovery:
 
-`Lardi API → provider boundary → MarketObservation → current state + immutable history → price intelligence → route economics → explainable recommendation`
+`Lardi API → provider boundary → MarketObservation → current state + immutable history → price intelligence → route economics → explainable recommendation → persisted Opportunity`
 
 Human exception path:
 
@@ -56,9 +58,9 @@ External provider network operations remain behind explicit adapters. No browser
 
 ## Verification
 
-- Hosted CI Run #93 `34520318937` passed after review-metrics hardening.
+- Hosted CI Run #96 `34520556779` passed for the recommendation service and tests.
+- Recommendation persistence migration/store/tests are now on `main`; a new hosted CI run is pending.
 - Lardi smoke Run `34519177888` reached Lardi infrastructure but returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; Actions confirmed the API secret was present and masked. The result is classified as a provider-edge block requiring provider-side action, not as a credential failure.
-- New recommendation-batch CI is expected from the push of the recommendation implementation and tests; it must pass before this batch is marked runtime-green.
 - No retry loop or bypass mechanism was added.
 
 ## Provider status
@@ -67,12 +69,13 @@ Lardi discovery remains read-only. Canonical route/country/cargo/weight/price ma
 
 ## Next batch
 
-1. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
-2. Add provider-specific canonical mappings from verified response samples.
-3. Add a proper operator dashboard/presentation over review queue, metrics and audit history.
-4. Persist recommendation outputs in the opportunity workflow once route/economic inputs are available at that stage.
-5. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
-6. Expand to the next permitted market source only after the same adapter/provenance/compliance gate.
+1. Verify recommendation persistence through hosted PostgreSQL integration CI.
+2. Expose persisted recommendation fields in the authenticated operator review/dashboard API.
+3. Add audit reporting with decision trends and queue age.
+4. Re-run Lardi read-only smoke only after provider support confirms the edge block is resolved or supplies an authorized API path.
+5. Add provider-specific canonical mappings from verified response samples.
+6. Activate external publication only after provider-specific permission, commercial terms, privacy/retention and legal compliance are explicitly verified.
+7. Expand to the next permitted market source only after the same adapter/provenance/compliance gate.
 
 ## Security
 
@@ -84,8 +87,8 @@ Provider publication is gated and transport-neutral. No claim is made that any m
 
 ## Handoff
 
-DONE: Market-intelligence foundations, provider-edge diagnostics, review metrics and explainable recommendation service.
-VERIFIED: Hosted CI Run #93 `34520318937` and prior V4 integration suite.
-PENDING: Hosted CI for recommendation-batch commits.
+DONE: Market-intelligence foundations, provider-edge diagnostics, review metrics, explainable recommendation service and persistence layer.
+VERIFIED: Hosted CI Run #96 `34520556779` for recommendation logic; prior V4 integration suite.
+PENDING: Hosted CI for recommendation persistence commits.
 REQUIRED HUMAN ACTION: Lardi provider/support action is required before another live smoke. No repository-secret change is required.
-OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; operator dashboard; DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
+OPEN_ISSUES: Live Lardi provider permission/API response; provider-specific field mapping; dashboard exposure of recommendation/audit data; Docker Compose needs the new `0011` migration mounted for fresh local databases; DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
