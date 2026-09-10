@@ -2,17 +2,17 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Outbox delivery hardening V1
+CURRENT_STEP: Market intelligence + commercial automation foundations V2
 STATUS: implemented_pending_runtime_ci
-AGENT: outbox-delivery-v1
+AGENT: logistics-commercial-batch-v2
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Durable outbox delivery state, bounded retries, leases, failure metadata and deterministic in-memory delivery semantics. External provider publication remains disabled.
+SCOPE: Outbox delivery worker, market observations, carrier matching, deterministic pricing/negotiation primitives and authorized Lardi-Trans API boundary. No autonomous external commitment is enabled.
 
 ## Completed
 
-- Product vision, V1→V10 autonomy model, product specification, human workflow и distributed agent protocol.
+- Product vision, V1→V10 autonomy model, product specification, human workflow and distributed agent protocol.
 - Technical architecture, roadmap and ecosystem/integration strategy.
 - Routing/Geo/Optimization architecture and canonical geo pipeline.
 - V1 backend skeleton, canonical domain, deterministic normalize→score→opportunity workflow.
@@ -26,53 +26,54 @@ SCOPE: Durable outbox delivery state, bounded retries, leases, failure metadata 
 - Publication payload preserves source provenance and explicitly represents the role as `forwarder`.
 - Durable outbox delivery state migration with attempts, availability time, leases and last-error metadata.
 - Deterministic in-memory outbox lease/retry model and unit tests.
+- PostgreSQL outbox claim/ack/failure worker with `FOR UPDATE SKIP LOCKED`, bounded retries and terminal quarantine timing.
+- Market operations primitives: deterministic cost/price estimation, opportunity scoring, capacity matching and bounded negotiation policy.
+- Market operations schema: observations, carrier profiles, opportunity matches, negotiation sessions and publication intents.
+- Official Lardi-Trans REST API client and discovery adapter. Runtime activation requires `LARDI_TRANS_API_TOKEN`.
+- Provider integration policy documenting why DELLA remains transport-neutral until an authorized current interface is verified.
 
 ## Current implementation
 
-`canonical Load → PublicationRequest → PolicyEngine → PublicationAdapter → PublicationPayload`
+`Telegram → canonical Load → normalize → score → Opportunity → pricing/matching → bounded negotiation → PublicationRequest → PolicyEngine → PublicationAdapter → Outbox`
 
-Delivery hardening now models:
-
-`outbox event → claim lease → attempt → publish OR failure → bounded retry → publish`
-
-The renderer does not perform network publication. Provider-specific transport must be implemented separately through permitted official APIs or explicitly authorized mechanisms.
+External provider network operations remain behind explicit adapters. No browser automation, anti-bot bypass or unsupported scraping is part of the core.
 
 ## Verification
 
 - Telegram ingestion hosted CI run `34502076880` passed package installation, all three PostgreSQL migrations and unit/integration tests.
-- Publication adapter tests are committed and were awaiting the next hosted CI run.
-- Outbox retry/lease tests are committed but have not been executed in the current GitHub connector environment.
-- PostgreSQL queue locking design follows the documented `FOR UPDATE SKIP LOCKED` pattern for concurrent queue consumers. citeturn0search2
-- Idempotent insertion is designed around PostgreSQL unique constraints/`ON CONFLICT`. citeturn0search0
-- Local runtime execution remains unavailable in the current environment.
+- Publication and outbox tests are committed; runtime execution in the current GitHub connector environment is unavailable.
+- PostgreSQL queue design follows the official `FOR UPDATE SKIP LOCKED` pattern for concurrent queue consumers.
+- Lardi-Trans official API documentation was reviewed: REST/JSON over HTTPS, token authorization, cargo/transport search, and Advanced API Access requirement for search.
+- No claim is made that DELLA currently exposes an authorized automation interface.
 
 ## Next batch
 
-1. Add the PostgreSQL claim/ack/failure worker implementation using the new delivery fields and `SKIP LOCKED`.
-2. Add replay reporting and dead-letter/quarantine semantics for repeatedly failing events.
-3. Verify publication adapter CI and outbox integration CI.
-4. Add authorized provider transport adapters only where official/contractually permitted interfaces exist.
-5. Build demand discovery and customer-opportunity graph.
-6. Build carrier matching, pricing, negotiation and human-on-exception workflows.
+1. Add hosted CI verification for migration 0008 and the commercial-operation unit tests.
+2. Add PostgreSQL persistence services for market observations, carrier profiles and opportunity matches.
+3. Add Lardi response normalization into canonical market observations with provenance/freshness.
+4. Add demand/customer opportunity graph and historical price observations.
+5. Add route-cost provider integration through the existing routing abstraction.
+6. Add human review API/UI for negotiation and publication intents.
+7. Activate external publication only after provider-specific permission and compliance verification.
 
 ## Security
 
-Credentials and provider sessions remain runtime secrets and must not be committed.
+Credentials and provider sessions remain runtime secrets and must not be committed. Lardi credentials are read only from `LARDI_TRANS_API_TOKEN`.
 
 ## Compliance
 
-Provider publication is gated and transport-neutral. No claim is made that any marketplace permits automation. Each integration must verify current terms, API permissions, privacy/retention requirements and applicable law before activation.
+Provider publication is gated and transport-neutral. No claim is made that any marketplace permits automation. Each integration must verify current terms, API permissions, privacy/retention requirements and applicable law before activation. AI negotiation remains bounded and escalates critical risk to a human.
 
 ## Handoff
 
-DONE: Outbox delivery V1 state model, retry/backoff helper, in-memory leases and tests committed. Migration `0007_outbox_delivery.sql` committed.
-VERIFIED: Repository structure, current outbox schema, PostgreSQL official concurrency/UPSERT documentation, and remote commits.
-NOT YET VERIFIED: Hosted CI and live PostgreSQL execution for migration/worker behavior.
-RESEARCHED: PostgreSQL `SELECT ... FOR UPDATE SKIP LOCKED`; PostgreSQL `INSERT ... ON CONFLICT` official documentation.
-FILES: `migrations/0007_outbox_delivery.sql`, `backend/logistics/outbox.py`, `tests/test_outbox.py`, `STATUS.md`.
-COMMITS: `c030e613`, `5aff5106`, `98e4046`.
-OPEN_ISSUES: PostgreSQL claim/ack worker and replay/dead-letter reporting still need implementation and CI verification.
-NEXT_STEP: Implement PostgreSQL outbox claim/ack/failure worker, then run hosted CI.
+DONE: Commercial automation foundations V2 committed: PostgreSQL outbox delivery worker, market operations primitives/schema, Lardi official API adapter and provider policy.
+VERIFIED: Remote GitHub state plus official PostgreSQL and Lardi documentation research.
+NOT YET VERIFIED: Hosted CI, live PostgreSQL execution and live provider calls.
+RESEARCHED: PostgreSQL locking/idempotency; Lardi-Trans Public API and Advanced API Access requirements.
+FILES: `migrations/0008_market_ops.sql`, `backend/logistics/market_ops.py`, `backend/logistics/lardi.py`, `backend/logistics/outbox_delivery.py`, `tests/test_market_ops.py`, `docs/PROVIDER_INTEGRATIONS.md`.
+COMMITS: `3fadb9fdc1cbe86f692aa34e941e01308f033e27`.
+OPEN_ISSUES: Runtime CI and provider permission validation remain open. DELLA transport remains intentionally unimplemented until an authorized current interface is verified.
+NEXT_STEP: CI → persistence adapters → demand graph → routing economics → human review → authorized publication.
 
 ## OCI collector deployment — 2026-09-10
 
