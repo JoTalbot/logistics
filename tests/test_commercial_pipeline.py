@@ -16,8 +16,8 @@ def make_load(tenant_id, created_at, price="1000"):
         currency="EUR",
         created_at=created_at,
         stops=[
-            LoadStop(sequence=0, kind="pickup", location=CanonicalLocation(raw_address="UA", country_code="UA")),
-            LoadStop(sequence=1, kind="delivery", location=CanonicalLocation(raw_address="PL", country_code="PL")),
+            LoadStop(sequence=0, kind="pickup", location=CanonicalLocation(raw_address="UA", normalized_address="UA", country_code="UA")),
+            LoadStop(sequence=1, kind="delivery", location=CanonicalLocation(raw_address="PL", normalized_address="PL", country_code="PL")),
         ],
     )
 
