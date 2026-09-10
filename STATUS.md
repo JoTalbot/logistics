@@ -3,12 +3,12 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: Telegram load ingestion V1 hardening
-STATUS: implementing
+STATUS: implemented_pending_runtime_ci
 AGENT: telegram-load-ingestion-v1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Сбор Telegram-объявлений, детерминированный разбор, атомарная PostgreSQL persistence/checkpoint, validation/confidence gate, canonical Load conversion, CI quality gate и базовая observability. Публикация и наценка пока не входят в этот шаг.
+SCOPE: Сбор Telegram-объявлений, детерминированный разбор, атомарная PostgreSQL persistence/checkpoint, validation/confidence gate, canonical Load persistence, transactional outbox, replay fixtures и optional OpenTelemetry. Публикация и наценка пока не входят в этот шаг.
 
 ## Completed
 
@@ -26,21 +26,24 @@ SCOPE: Сбор Telegram-объявлений, детерминированны�
 - Telegram canonicalization: validation/confidence gate and ParsedLoadAd → canonical Load conversion.
 - Telegram worker: checkpoint is advanced only inside the same DB transaction that persists source message and parsed result.
 - GitHub Actions CI definition with PostgreSQL 17 service and clean SQL migration execution.
-- Docker Compose fresh-database initialization includes Telegram migration 0002.
-- Telegram ingestion observability facade with counters and structured processing/error logs.
+- Docker Compose fresh-database initialization includes Telegram migrations 0002 and 0003.
+- Canonical Telegram loads with two stops are persisted transactionally for accepted ads.
+- Durable LOAD_FOUND / LOAD_UPDATED outbox events are emitted transactionally and protected by idempotency keys.
+- Deterministic Telegram replay fixtures cover accepted and rejected messages.
+- Ingestion observability includes counters, structured logs and optional OpenTelemetry traces/metrics export.
 
 ## Current implementation
 
-`Telegram message → deterministic parser → atomic source+parsed persistence → checkpoint → validation → canonical Load`
+`Telegram message → deterministic parser → atomic source+parsed persistence → validation → canonical Load + load_stops → transactional outbox → checkpoint`
 
 Incomplete/low-confidence ads remain non-canonical and are not published externally. No automatic markup or reposting is implemented in this stage.
 
 ## Verification
 
 - Remote repository state confirmed through GitHub after each completed write.
-- CI workflow exists and is configured for PostgreSQL 17, both SQL migrations and pytest.
-- Hosted CI execution is still not confirmed by GitHub for the latest commits, so runtime CI remains an explicit gate.
-- Observability unit tests were added; local runtime execution is unavailable in the current environment.
+- CI workflow exists and is configured for PostgreSQL 17, all three SQL migrations and pytest.
+- The new push should trigger hosted CI automatically. Hosted CI result must be checked after the push before declaring runtime green.
+- Local runtime execution is unavailable in the current environment.
 
 ## Telegram sources
 
@@ -51,11 +54,10 @@ Incomplete/low-confidence ads remain non-canonical and are not published externa
 
 ## Next batch
 
-1. Get the hosted CI run green and fix any runtime failures.
-2. Add persistent canonical `loads` + `load_stops` creation for accepted Telegram ads.
-3. Emit durable `LOAD_FOUND` / `LOAD_UPDATED` outbox events transactionally with canonical state.
-4. Add deterministic replay fixtures and wire metrics/traces to an optional OpenTelemetry exporter.
-5. Only after ingestion is reliable, build provider-specific publication adapters with provenance, role representation, markup and policy gates.
+1. Verify the hosted CI run and fix any runtime failure it exposes.
+2. Complete provider-specific publication adapters with provenance, role representation, markup and policy gates only after ingestion is runtime-green.
+3. Add operational replay/benchmark reporting and outbox delivery worker hardening.
+4. Continue toward demand discovery, carrier matching, pricing, negotiation and human-on-exception workflows.
 
 ## Security
 
@@ -67,7 +69,7 @@ Telegram parsing remains deterministic/local. No LLM enrichment or AI/ML trainin
 
 ## Handoff
 
-DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion, worker orchestration, CI definition, fresh-DB Docker initialization and ingestion observability.
-VERIFIED: Remote commits and file state confirmed.
-NOT YET VERIFIED: Hosted CI execution result.
-NEXT_STEP: Hosted CI → canonical Load persistence + transactional outbox events → replay/observability.
+DONE: Telegram parser, persistence, atomic checkpointing, canonical validation/conversion, canonical DB persistence, transactional outbox events, replay fixtures, worker orchestration, CI definition, fresh-DB Docker initialization and ingestion observability.
+VERIFIED: Remote file state and repository writes.
+NOT YET VERIFIED: Hosted CI execution result for this batch.
+NEXT_STEP: Check hosted CI → fix runtime failures if any → publication adapters.

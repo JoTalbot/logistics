@@ -6,7 +6,6 @@ from uuid import UUID
 
 from .observability import IngestionObserver
 from .telegram import collect_messages, parse_load_ad
-from .telegram_pipeline import validate_parsed_ad
 from .telegram_store import TelegramIngestionStore
 
 
@@ -34,17 +33,18 @@ class TelegramIngestionWorker:
         ):
             try:
                 parsed = parse_load_ad(message)
-                self.store.ingest_message(self.tenant_id, message, parsed)
-                accepted = validate_parsed_ad(parsed).accepted
+                result = self.store.ingest_message(self.tenant_id, message, parsed)
                 self.observer.message_processed(
-                    source=message.source_chat,
+                    source=message.chat,
                     message_id=message.message_id,
-                    accepted=accepted,
+                    accepted=result.accepted,
+                    duplicate=result.duplicate,
+                    event_type=result.event_type,
                 )
                 processed += 1
             except Exception as exc:
                 self.observer.message_failed(
-                    source=message.source_chat,
+                    source=message.chat,
                     message_id=message.message_id,
                     error=exc,
                 )

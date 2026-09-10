@@ -1,0 +1,26 @@
+[
+  {
+    "chat": "https://t.me/example",
+    "message_id": 1001,
+    "message_url": "https://t.me/example/1001",
+    "published_at": "2026-09-10T10:00:00Z",
+    "text": "Київ → Львів\n20 т зерно\nставка: 1200 EUR",
+    "has_media": false
+  },
+  {
+    "chat": "https://t.me/example",
+    "message_id": 1002,
+    "message_url": "https://t.me/example/1002",
+    "published_at": "2026-09-10T10:01:00Z",
+    "text": "Одеса → Краків\n22 т метал\nціна 1800 EUR",
+    "has_media": true
+  },
+  {
+    "chat": "https://t.me/example",
+    "message_id": 1003,
+    "message_url": "https://t.me/example/1003",
+    "published_at": "2026-09-10T10:02:00Z",
+    "text": "Київ 20 т зерно",
+    "has_media": false
+  }
+]
