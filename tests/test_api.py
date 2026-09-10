@@ -42,6 +42,7 @@ def test_review_business_kpis_requires_operator_token(monkeypatch):
 
 def test_review_business_kpis_returns_tenant_scoped_snapshot(monkeypatch):
     monkeypatch.setenv("REVIEW_OPERATOR_TOKEN", "operator-secret")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://logistics:logistics@db/logistics")
     tenant_id = uuid4()
     expected = {
         "ingestion_volume": 120,
