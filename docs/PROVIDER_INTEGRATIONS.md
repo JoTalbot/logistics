@@ -18,7 +18,19 @@ The adapter does not scrape the website or automate browser controls. `.github/w
 
 ## Market observations
 
-Provider responses are converted at the boundary by `backend/logistics/market_observations.py`. The adapter preserves provider-specific fields inside the observation payload instead of inventing canonical business values. Stable provider identifiers are used for idempotent persistence; responses without an identifier receive a deterministic content hash.
+Provider responses are converted at the boundary by `backend/logistics/market_observations.py`. The raw provider payload is retained for provenance, while canonical business fields must be extracted only through an explicit verified-field allowlist. The repository must not infer route, country, cargo, weight or price semantics merely because a similarly named JSON field happens to exist.
+
+Current-state observations are idempotent by `(tenant_id, source, external_ref)`. Every distinct verified observation timestamp is also retained in `market_observation_history` for replay, freshness checks and historical price analysis. A stale response cannot overwrite a newer current observation.
+
+## Route economics and pricing
+
+`backend/logistics/route_economics.py` provides deterministic route economics: direct cost, risk reserve, clean profit, risk-adjusted profit, margin rate, historical market-price buckets and a conservative recommended-price floor. Market price never overrides the economic floor.
+
+Historical trend analysis is advisory only. It does not authorize publication, negotiation or financial commitment.
+
+## Human review
+
+`backend/logistics/review.py` provides explicit approve/reject/hold transitions for publication intents and negotiation sessions. The API requires `REVIEW_OPERATOR_TOKEN` and records a durable `review_audit` entry. Review approval changes internal state only; it does not itself call an external provider.
 
 ## Publication
 
@@ -37,3 +49,5 @@ No unsupported DELLA transport is implemented. The integration boundary remains 
 5. Persist source provenance and provider identifiers.
 6. Treat provider APIs as replaceable adapters, not business logic.
 7. Keep discovery read-only until publication authorization is explicitly verified.
+8. Treat historical market data as observations, not truth; preserve timestamp and provenance.
+9. Never turn an unverified provider field into a canonical business value.
