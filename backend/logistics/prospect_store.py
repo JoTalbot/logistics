@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -23,6 +24,7 @@ def upsert_prospect(
     reasons = list(qualification.reasons) if qualification else []
     status = "suppressed" if suppressed else ("qualified" if qualification and tier in {"A", "B"} else "candidate")
     identity_key = f"{prospect.organization_name.strip().casefold()}|{(prospect.website or '').strip().casefold()}"
+    captured_at = prospect.source.captured_at
     row = conn.execute(
         """
         INSERT INTO customer_prospects
@@ -55,10 +57,10 @@ def upsert_prospect(
         (
             tenant_id, prospect.organization_name, prospect.country, prospect.city,
             prospect.website, prospect.contact, prospect.signal, prospect.source.source,
-            prospect.source.url, prospect.source.captured_at, suppressed, score, tier,
+            prospect.source.url, captured_at, suppressed, score, tier,
             json.dumps(reasons, ensure_ascii=False), status, identity_key,
             "operator_or_source_suppression" if suppressed else None,
-            prospect.source.captured_at if suppressed else None,
+            datetime.now(timezone.utc) if suppressed else None,
         ),
     ).fetchone()
     if not row:
@@ -66,14 +68,7 @@ def upsert_prospect(
     return row[0]
 
 
-def set_prospect_suppression(
-    conn: Any,
-    *,
-    tenant_id: UUID,
-    prospect_id: UUID,
-    suppressed: bool,
-    reason: str,
-) -> bool:
+def set_prospect_suppression(conn: Any, *, tenant_id: UUID, prospect_id: UUID, suppressed: bool, reason: str) -> bool:
     reason = reason.strip()
     if not reason:
         raise ValueError("suppression reason is required")
@@ -81,12 +76,12 @@ def set_prospect_suppression(
     row = conn.execute(
         """
         UPDATE customer_prospects
-        SET suppressed=%s, status=%s,
-            suppression_reason=%s, suppressed_at=%s, updated_at=now()
+        SET suppressed=%s, status=%s, suppression_reason=%s,
+            suppressed_at=%s, updated_at=now()
         WHERE tenant_id=%s AND id=%s
         RETURNING id
         """,
-        (suppressed, status, reason if suppressed else None, "now()" if suppressed else None, tenant_id, prospect_id),
+        (suppressed, status, reason if suppressed else None, datetime.now(timezone.utc) if suppressed else None, tenant_id, prospect_id),
     ).fetchone()
     return bool(row)
 
@@ -107,12 +102,7 @@ def list_prospects(conn: Any, *, tenant_id: UUID, limit: int = 50) -> list[dict[
         """,
         (tenant_id, limit),
     ).fetchall()
-    keys = (
-        "id", "organization_name", "country", "city", "website", "contact", "signal",
-        "source_name", "source_url", "captured_at", "suppressed", "suppression_reason",
-        "suppressed_at", "qualification_score", "qualification_tier", "qualification_reasons",
-        "status", "last_seen_at", "created_at", "updated_at",
-    )
+    keys = ("id", "organization_name", "country", "city", "website", "contact", "signal", "source_name", "source_url", "captured_at", "suppressed", "suppression_reason", "suppressed_at", "qualification_score", "qualification_tier", "qualification_reasons", "status", "last_seen_at", "created_at", "updated_at")
     result = []
     for row in rows:
         item = dict(zip(keys, row))
