@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from .demand import DemandSignal
 
@@ -16,6 +15,7 @@ class CustomerOpportunity:
     freshness_score: float
     total_score: float
     reasons: tuple[str, ...]
+    observed_at: datetime
 
 
 def freshness_score(observed_at: datetime, *, now: datetime | None = None) -> float:
@@ -39,7 +39,9 @@ def score_customer_opportunity(
     fresh = freshness_score(observed_at, now=now)
     total = round(demand.score * 0.55 + commercial_score * 0.30 + fresh * 0.15, 4)
     reasons = tuple(demand.reasons) + (("fresh_signal",) if fresh >= 0.5 else ())
-    return CustomerOpportunity(customer_id, load_id, demand.score, commercial_score, fresh, total, reasons)
+    return CustomerOpportunity(
+        customer_id, load_id, demand.score, commercial_score, fresh, total, reasons, observed_at
+    )
 
 
 def rank_customer_opportunities(items: list[CustomerOpportunity]) -> list[CustomerOpportunity]:
