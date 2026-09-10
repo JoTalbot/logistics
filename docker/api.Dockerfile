@@ -4,4 +4,4 @@ COPY pyproject.toml .
 COPY backend ./backend
 RUN pip install --no-cache-dir .
 EXPOSE 8000
-CMD ["uvicorn", "logistics.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "logistics.review_extensions:app", "--host", "0.0.0.0", "--port", "8000"]
