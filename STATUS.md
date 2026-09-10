@@ -2,13 +2,13 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: Architecture V1→V10 + ecosystem foundation
+CURRENT_STEP: Routing/Geo/Optimization architecture extension
 STATUS: done
 AGENT: architecture-bootstrap
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-10
 UPDATED: 2026-09-10
-SCOPE: Архитектура V1→V10, приоритетный roadmap и стратегия интеграций.
+SCOPE: Интеграция полезных идей из анализа открытых TMS/VRP-решений в архитектуру.
 WORK_AREA: released; ownership освобождён
 OWNER: none
 
@@ -20,7 +20,7 @@ OWNER: none
 
 **Этап 3: Европа и далее.** Добавлять Trans.eu, Teleroute/Wtransnet, Cargo.LT и другие подтверждённо полезные источники после проверки API, стоимости, юридических условий и интеграционной готовности. ATI.SU допускается только при отдельной юридической и санкционной проверке и не является базовой зависимостью.
 
-Ядро продукта не должно быть привязано к одной стране, бирже, карте, AI-провайдеру, телефонии или GPS-поставщику.
+Ядро продукта не должно быть привязано к одной стране, бирже, карте, AI-провайдеру, телефонии, GPS-поставщику или solver.
 
 ## Completed
 
@@ -33,8 +33,18 @@ OWNER: none
 - Немедленный commit/push после логически завершённого шага закреплён в `AGENTS.md`.
 - Техническая архитектура V1→V10 сохранена в `docs/ARCHITECTURE.md`.
 - Приоритетный roadmap сохранён в `docs/ROADMAP.md`.
-- Экосистема и стратегия интеграций сохранены в `docs/ECOSYSTEM_AND_INTEGRATIONS.md`.
-- Research log и reusable architecture skill сохранены в `docs/agent-log/architecture-bootstrap/` и `docs/agent-skills/architecture-bootstrap.md`.
+- Экосистема и стратегия интеграций сохранена в `docs/ECOSYSTEM_AND_INTEGRATIONS.md`.
+- Routing/optimization architecture сохранена в `docs/ROUTING_OPTIMIZATION.md`.
+
+## Routing decisions
+
+- VROOM выбран первоначальным general-purpose VRP solver candidate за внутренним `OptimizationService` adapter.
+- OR-Tools сохранён как advanced/experimental solver для нестандартных ограничений и objective functions.
+- `RoutingProvider` отделён от solver и поддерживает OSRM, Valhalla и коммерческие providers.
+- Геокодирование проходит через canonical address pipeline с confidence, provenance и freshness.
+- `MatrixCache` является необязательным оптимизационным слоем и использует полный context-aware fingerprint.
+- Routing/solver benchmarks и historical replay добавлены в evaluation track.
+- Локальные OSRM/Valhalla datasets являются deployment assets и не обязательны для минимального локального запуска.
 
 ## Active
 
@@ -55,44 +65,21 @@ OWNER: none
 | frontend | unassigned | open |
 | infrastructure | unassigned | open |
 
-## Research completed
-
-- OpenAI Agents SDK: orchestration, guardrails, results/state and observability.
-- MCP specification 2026-07-28: stateless core, routing, authorization hardening, tasks/extensions.
-- Temporal: durable execution and crash-resume workflows.
-- NATS/JetStream: event-driven messaging and durable streams.
-- OpenTelemetry: vendor-neutral traces, metrics and logs.
-- PostgreSQL Row-Level Security: multi-tenant isolation primitive.
-- Debezium Outbox: reliable state-to-event consistency pattern.
-
-## Architecture decisions
-
-- PostgreSQL is the transactional system of record for V1.
-- Event-driven boundaries are first-class; transactional changes use an outbox pattern.
-- NATS/JetStream is the initial event transport candidate, isolated behind an event-bus interface.
-- Temporal is the initial durable workflow candidate for long-running business processes, isolated behind workflow interfaces.
-- MCP is the preferred tool/integration protocol where it fits, but external providers remain behind explicit adapters.
-- OpenTelemetry is the observability standard.
-- Multi-tenancy is enforced at application and database layers, including PostgreSQL RLS where appropriate.
-- AI agents never bypass domain services or authorization to mutate business state directly.
-- V1 starts as a modular monolith plus workers; service decomposition is earned by scaling/ownership/reliability needs.
-- Simulation/shadow mode precedes dangerous autonomous external actions.
-
 ## Next
 
 1. Bootstrap V1 repository skeleton.
 2. Implement PostgreSQL domain migrations and canonical contracts.
 3. Implement event envelope + outbox + EventBus interface.
 4. Implement policy/authorization and audit primitives.
-5. Implement deterministic `load → normalize → score → opportunity` workflow.
-6. Add replay/simulation fixtures before real autonomous actions.
+5. Implement canonical geo/routing/optimization contracts and deterministic fakes.
+6. Implement deterministic `load → normalize → score → opportunity` workflow.
+7. Add replay/simulation fixtures before real autonomous actions.
 
 ## Handoff
 
-DONE: Architecture foundation, roadmap, ecosystem strategy, research log and architecture skill completed.
-VERIFIED: All new files were written to `main` through GitHub and each returned a commit SHA.
-RESEARCHED: Official OpenAI, MCP, Temporal, NATS, OpenTelemetry, PostgreSQL and Debezium documentation.
-FILES: `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/ECOSYSTEM_AND_INTEGRATIONS.md`, `docs/agent-log/architecture-bootstrap/2026-09-10-architecture-foundation.md`, `docs/agent-skills/architecture-bootstrap.md`, `STATUS.md`.
-COMMITS: `9f3dffa753611dd6b288a511cb86f1c15d57660b`, `11abd440baaf739f56ccff3631e0495b09d9fa4a`, `f2411530cf908816b0e06d5cf5e9621ab7cfd9e6`, `92b6ad36f338064c00edf85e9017bfe86264abe2`, `cc5faac6b27bcec6ed34081402b131d4fff22ab4`, `bca4c24b670f21b30dd39dcf1604d1e17fec5d5a`.
+DONE: Routing/geo/optimization architecture extension completed.
+VERIFIED: New routing architecture was committed to `main`; existing architecture, roadmap and integration strategy were updated with current blob SHAs before writes.
+FILES: `docs/ROUTING_OPTIMIZATION.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/ECOSYSTEM_AND_INTEGRATIONS.md`, `STATUS.md`.
+COMMITS: `d9b7768fba4ffa57b58a4c0ddd13679bd0012b55`, `0eb6dc835e10e0dcac65528cbe05101b1b9ac40b`, `9dc905e3df4fb19136a595d3efdbdf7bd9deab00`, `88d4709313295ba208b214c18a89cc7b11ff3c73`.
 OPEN_ISSUES: Exact provider contracts, legal terms, API versions and production sizing must be revalidated during each implementation step.
 NEXT_STEP: V1 domain/event skeleton.
