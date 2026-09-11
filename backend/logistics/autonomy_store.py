@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from .shadow_decisions import ShadowDecision
+from .autonomy_policy import AutonomyPolicy
+from .shadow_decisions import DecisionMode, ShadowDecision, classify_shadow_decision
 
 
 def save_shadow_decision(
@@ -24,18 +25,44 @@ def save_shadow_decision(
         ON CONFLICT (tenant_id, decision_id) DO NOTHING
         """,
         (
-            UUID(decision.tenant_id),
-            decision.decision_id,
-            correlation_id,
-            decision.action,
-            decision.confidence,
-            decision.tier.value,
-            decision.mode.value,
-            decision.policy_version,
-            decision.classification_reason,
-            decision.created_at,
+            UUID(decision.tenant_id), decision.decision_id, correlation_id,
+            decision.action, decision.confidence, decision.tier.value,
+            decision.mode.value, decision.policy_version,
+            decision.classification_reason, decision.created_at,
         ),
     )
+
+
+def classify_and_save_shadow_decision(
+    conn: object,
+    *,
+    decision_id: str,
+    tenant_id: str,
+    action: str,
+    confidence: float,
+    mode: DecisionMode = DecisionMode.SHADOW,
+    policy: AutonomyPolicy | None = None,
+    critical_risk: bool = False,
+    requires_human_approval: bool = False,
+    authorized: bool = True,
+    policy_version: str = "v21.1",
+    correlation_id: str | None = None,
+) -> ShadowDecision:
+    """Classify, persist and return a decision; no external action is performed."""
+    decision = classify_shadow_decision(
+        decision_id=decision_id,
+        tenant_id=tenant_id,
+        action=action,
+        confidence=confidence,
+        mode=mode,
+        policy=policy,
+        critical_risk=critical_risk,
+        requires_human_approval=requires_human_approval,
+        authorized=authorized,
+        policy_version=policy_version,
+    )
+    save_shadow_decision(conn, decision, correlation_id=correlation_id)
+    return decision
 
 
 def list_exception_decisions(
