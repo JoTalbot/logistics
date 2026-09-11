@@ -16,7 +16,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-APP = FastAPI(title="Logistics Remote Agent", version="0.2.0")
+APP = FastAPI(title="Logistics Remote Agent", version="0.2.1")
 TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
@@ -25,6 +25,7 @@ MODEL = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 CONTROL_URL = os.environ.get("CONTROL_PLANE_URL", "").rstrip("/")
 CONTROL_TOKEN = os.environ.get("CONTROL_PLANE_TOKEN", "")
+VERCEL_BYPASS_SECRET = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "")
 AGENT_NAME = os.environ.get("AGENT_NAME", os.uname().nodename)
 HEARTBEAT_SECONDS = int(os.environ.get("AGENT_HEARTBEAT_SECONDS", "30"))
 
@@ -75,7 +76,7 @@ async def start_control_channel() -> None:
 
 @APP.get("/health")
 async def health() -> dict[str, Any]:
-    return {"ok": True, "workspace": str(WORKSPACE), "model": MODEL, "control_plane": bool(CONTROL_URL and CONTROL_TOKEN), "agent_name": AGENT_NAME}
+    return {"ok": True, "workspace": str(WORKSPACE), "model": MODEL, "control_plane": bool(CONTROL_URL and CONTROL_TOKEN), "vercel_bypass": bool(VERCEL_BYPASS_SECRET), "agent_name": AGENT_NAME}
 
 
 @APP.post("/v1/exec")
@@ -123,7 +124,14 @@ async def chat(req: ChatRequest, authorization: str | None = Header(default=None
 
 def control_request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
     data = json.dumps(payload).encode() if payload is not None else None
-    req = urllib.request.Request(f"{CONTROL_URL}{path}", data=data, headers={"Authorization": f"Bearer {CONTROL_TOKEN}", "Content-Type": "application/json"}, method=method)
+    headers = {
+        "Authorization": f"Bearer {CONTROL_TOKEN}",
+        "Content-Type": "application/json",
+        "User-Agent": "logistics-remote-agent/0.2.1",
+    }
+    if VERCEL_BYPASS_SECRET:
+        headers["x-vercel-protection-bypass"] = VERCEL_BYPASS_SECRET
+    req = urllib.request.Request(f"{CONTROL_URL}{path}", data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=20) as response:
             return json.loads(response.read())
@@ -148,7 +156,6 @@ async def control_loop() -> None:
                     if result.get("stderr"):
                         await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stderr", "message": result["stderr"]})
                     await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/complete", "POST", {"returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]})
-        except Exception:
-            # Outbound control is best-effort. Local execution remains available.
-            pass
+        except Exception as exc:
+            print(f"control channel error: {type(exc).__name__}: {exc}", flush=True)
         await asyncio.sleep(HEARTBEAT_SECONDS)
