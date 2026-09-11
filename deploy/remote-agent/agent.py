@@ -25,7 +25,7 @@ TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
 GATEWAY_KEY = os.environ.get("AI_GATEWAY_API_KEY", "")
-MODEL = os.environ.get("AI_MODEL", "openai/gpt-5.6-sol")
+MODEL = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 
 # Deliberately small allowlist. Add commands only when there is a concrete need.
