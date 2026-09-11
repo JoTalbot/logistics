@@ -2,28 +2,30 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V21 — controlled autonomy foundation
-STATUS: v21_controlled_autonomy_ci_pending
+CURRENT_STEP: V21 — controlled autonomy integration
+STATUS: v21_shadow_replay_ci_pending
 AGENT: logistics-commercial-batch-v21
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-11
 UPDATED: 2026-09-11
-SCOPE: Deterministic simulation/shadow autonomy gating, auditable approval tiers and preparation for controlled rollout. No autonomous external commitment or outreach is enabled.
+SCOPE: Deterministic simulation/shadow autonomy gating, auditable policy metadata and replay metrics. No autonomous external commitment or outreach is enabled.
 
 ## V21 completed implementation
 
 - Added `backend/logistics/autonomy_policy.py` with deterministic approval tiers: `AUTO`, `REVIEW`, `HIGH_RISK`, `BLOCK`.
-- Default confidence bands are configurable: `>=0.90` AUTO, `0.70–0.89` REVIEW, `<0.70` HIGH_RISK.
+- Added `backend/logistics/shadow_decisions.py` with explicit `SIMULATION`/`SHADOW` decision records.
+- Shadow records persist in-memory the policy version, classification reason, tenant, action, confidence and timestamp without external side effects.
+- Default confidence bands remain configurable: `>=0.90` AUTO, `0.70–0.89` REVIEW, `<0.70` HIGH_RISK.
 - Unauthorized actions always resolve to BLOCK.
 - Critical-risk actions always resolve to BLOCK regardless of confidence.
 - Explicit human-approval requirements resolve to REVIEW even at high confidence.
-- Invalid confidence and threshold configurations fail closed.
-- Added `tests/test_autonomy_policy.py` covering confidence bands, hard blocks, human-approval override and bounds.
-- Added `docs/V21_CONTROLLED_AUTONOMY.md` defining the implementation boundary and next gates.
+- Added `backend/logistics/policy_replay.py` for deterministic historical replay metrics, including tier counts and AUTO failure rate.
+- Added tests covering policy integration, fail-closed behavior, simulation mode and replay metrics.
+- Added `docs/V21_CONTROLLED_AUTONOMY.md` defining the implementation boundary and rollout gates.
 
 ## Safety boundary
 
-The V21 policy gate only classifies an intended action. It does not send messages, publish listings, negotiate, sign contracts, move money, call external providers or mutate business state.
+The V21 policy and shadow layers only classify intended actions and calculate replay metrics. They do not send messages, publish listings, negotiate, sign contracts, move money, call external providers or mutate business state.
 
 Provider permissions, legal authorization, tenant policy and operational controls remain independent gates. Model confidence is never treated as authorization.
 
@@ -39,18 +41,19 @@ Provider permissions, legal authorization, tenant policy and operational control
 3. Lardi access/mapping verification: **BLOCKED BY PROVIDER**. Previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`.
 4. External publication permissions and contact adapters: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 
-## V21 next gates
+## V21 gates
 
-1. Integrate the classifier with simulation/shadow decision records.
-2. Persist policy version and classification reason alongside auditable decisions.
-3. Add replay metrics comparing policy classifications with historical outcomes.
-4. Add operator-visible exception queues for REVIEW, HIGH_RISK and BLOCK decisions.
-5. Keep real external side effects disabled until provider and authorization gates are independently verified.
+1. Shadow/simulation classifier integration: **IMPLEMENTED**.
+2. Policy version and classification reason: **IMPLEMENTED IN SHADOW RECORD**.
+3. Replay metrics comparing policy classifications with historical outcomes: **IMPLEMENTED AS SIDE-EFFECT-FREE REPLAY MODULE**.
+4. Operator-visible exception queues for REVIEW, HIGH_RISK and BLOCK: **PENDING EXISTING QUEUE/API INTEGRATION**.
+5. Real external side effects: **DISABLED** until provider and authorization gates are independently verified.
+6. Durable persistence of shadow decisions: **PENDING**, to be added only after the existing audit/decision persistence model is identified and extended rather than duplicated.
 
 ## Verification
 
 - V20 CI verification: **COMPLETE** via Run #258 `34544573319`.
-- V21 implementation is committed; a fresh CI run is required to verify the new module and tests.
+- V21 integration/tests are committed; a fresh CI run is required to verify the new modules.
 - Lardi smoke Run `34519177888` remains blocked by provider-side Cloudflare/browser-signature policy.
 - No retry loop, browser automation or anti-bot bypass is permitted.
 
@@ -60,8 +63,8 @@ Provider permissions, legal authorization, tenant policy and operational control
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and corrected CI verification, V21 deterministic autonomy policy foundation.
-IN_PROGRESS: V21 CI verification and controlled-autonomy integration.
-PENDING: V21 shadow decision persistence/replay/exception queue; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and corrected CI verification, V21 deterministic autonomy policy foundation plus side-effect-free shadow/replay integration.
+IN_PROGRESS: V21 CI verification and durable operator exception integration.
+PENDING: durable shadow decision persistence; existing operator queue/API integration; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current blocked state.
 OPEN_ISSUES: V21 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
