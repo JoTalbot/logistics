@@ -6,6 +6,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REVIEW_OPERATOR_TOKEN: ${REVIEW_OPERATOR_TOKEN:?REVIEW_OPERATOR_TOKEN is required}
+      REMOTE_AGENT_TOKEN: ${REMOTE_AGENT_TOKEN:?REMOTE_AGENT_TOKEN is required}
+      CONTROL_PLANE_OPERATOR_TOKEN: ${CONTROL_PLANE_OPERATOR_TOKEN:?CONTROL_PLANE_OPERATOR_TOKEN is required}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     read_only: true
@@ -84,6 +86,7 @@ services:
       - ./migrations/0021_outbox_delivery_telemetry.sql:/docker-entrypoint-initdb.d/0021_outbox_delivery_telemetry.sql:ro
       - ./migrations/0022_autonomy_decisions.sql:/docker-entrypoint-initdb.d/0022a_autonomy_decisions.sql:ro
       - ./migrations/0022_remote_control_plane.sql:/docker-entrypoint-initdb.d/0022b_remote_control_plane.sql:ro
+      - ./migrations/0023_remote_control_hardening.sql:/docker-entrypoint-initdb.d/0023_remote_control_hardening.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
