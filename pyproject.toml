@@ -37,5 +37,3 @@ where = ["backend"]
 testpaths = ["tests"]
 pythonpath = ["backend"]
 addopts = "-q"
-[tool.vercel]
-entrypoint = "api.index:app"
