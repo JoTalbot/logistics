@@ -20,7 +20,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-APP = FastAPI(title="Logistics Remote Agent", version="0.1.0")
+APP = FastAPI(title="Logistics Remote Agent", version="0.1.1")
 TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
@@ -28,7 +28,6 @@ GATEWAY_KEY = os.environ.get("AI_GATEWAY_API_KEY", "")
 MODEL = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 
-# Deliberately small allowlist. Add commands only when there is a concrete need.
 ALLOWED = {
     "pwd", "ls", "git", "docker", "docker-compose", "python", "pytest",
     "systemctl", "journalctl", "df", "free", "uptime", "uname", "whoami",
@@ -64,7 +63,7 @@ def validate_command(command: str) -> list[str]:
     if not argv or argv[0] not in ALLOWED:
         raise HTTPException(status_code=403, detail=f"command not allowed: {argv[0] if argv else ''}")
     # Prevent obvious shell composition. The agent is not a browser-controlled root shell.
-    if any(x in command for x in ["&&", "||", ";", "|", ">", "<", "`", "$(`]):
+    if any(x in command for x in ("&&", "||", ";", "|", ">", "<", "`", "$(")):
         raise HTTPException(status_code=403, detail="shell composition is disabled")
     return argv
 
