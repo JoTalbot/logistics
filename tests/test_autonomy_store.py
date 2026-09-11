@@ -2,7 +2,11 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from logistics.autonomy_policy import ApprovalTier
-from logistics.autonomy_store import list_exception_decisions, save_shadow_decision
+from logistics.autonomy_store import (
+    classify_and_save_shadow_decision,
+    list_exception_decisions,
+    save_shadow_decision,
+)
 from logistics.shadow_decisions import DecisionMode, ShadowDecision
 
 
@@ -43,6 +47,23 @@ def test_save_is_tenant_scoped_and_idempotent_sql():
     assert params[1] == "d-1"
     assert params[2] == "corr-1"
     assert params[6] == "SHADOW"
+
+
+def test_classify_and_save_connects_policy_to_durable_record():
+    conn = FakeConn()
+    decision = classify_and_save_shadow_decision(
+        conn,
+        decision_id="d-2",
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        action="contact_customer",
+        confidence=0.95,
+        authorized=False,
+        correlation_id="corr-2",
+    )
+    assert decision.tier is ApprovalTier.BLOCK
+    assert decision.policy_version == "v21.1"
+    assert "not authorized" in decision.classification_reason
+    assert conn.calls[0][1][1] == "d-2"
 
 
 def test_exception_queue_is_tenant_scoped_and_oldest_first():
