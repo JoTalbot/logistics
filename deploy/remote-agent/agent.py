@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal production-oriented Ubuntu agent.
-
-The agent executes only explicitly allowed commands in registered workspaces and
-uses Vercel AI Gateway for model calls. It is intentionally local-only by default;
-put a TLS/authenticated reverse proxy or private network in front of it if remote
-Android access is required.
-"""
+"""Ubuntu logistics agent with local API and outbound Vercel control channel."""
 from __future__ import annotations
 
 import asyncio
@@ -13,6 +7,8 @@ import hmac
 import json
 import os
 import shlex
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -20,13 +16,17 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-APP = FastAPI(title="Logistics Remote Agent", version="0.1.1")
+APP = FastAPI(title="Logistics Remote Agent", version="0.2.0")
 TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
 GATEWAY_KEY = os.environ.get("AI_GATEWAY_API_KEY", "")
 MODEL = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
+CONTROL_URL = os.environ.get("CONTROL_PLANE_URL", "").rstrip("/")
+CONTROL_TOKEN = os.environ.get("CONTROL_PLANE_TOKEN", "")
+AGENT_NAME = os.environ.get("AGENT_NAME", os.uname().nodename)
+HEARTBEAT_SECONDS = int(os.environ.get("AGENT_HEARTBEAT_SECONDS", "30"))
 
 ALLOWED = {
     "pwd", "ls", "git", "docker", "docker-compose", "python", "pytest",
@@ -62,28 +62,38 @@ def validate_command(command: str) -> list[str]:
         raise HTTPException(status_code=400, detail=f"invalid command: {exc}")
     if not argv or argv[0] not in ALLOWED:
         raise HTTPException(status_code=403, detail=f"command not allowed: {argv[0] if argv else ''}")
-    # Prevent obvious shell composition. The agent is not a browser-controlled root shell.
     if any(x in command for x in ("&&", "||", ";", "|", ">", "<", "`", "$(")):
         raise HTTPException(status_code=403, detail="shell composition is disabled")
     return argv
 
 
+@APP.on_event("startup")
+async def start_control_channel() -> None:
+    if CONTROL_URL and CONTROL_TOKEN:
+        asyncio.create_task(control_loop())
+
+
 @APP.get("/health")
 async def health() -> dict[str, Any]:
-    return {"ok": True, "workspace": str(WORKSPACE), "model": MODEL}
+    return {"ok": True, "workspace": str(WORKSPACE), "model": MODEL, "control_plane": bool(CONTROL_URL and CONTROL_TOKEN), "agent_name": AGENT_NAME}
 
 
 @APP.post("/v1/exec")
 async def execute(req: ExecRequest, authorization: str | None = Header(default=None)) -> JSONResponse:
     auth(authorization)
-    cwd = safe_cwd(req.cwd)
-    argv = validate_command(req.command)
-    if not cwd.exists():
+    result = await run_command(req.command, req.cwd)
+    return JSONResponse(result)
+
+
+async def run_command(command: str, cwd: str | None = None) -> dict[str, Any]:
+    target = safe_cwd(cwd)
+    argv = validate_command(command)
+    if not target.exists():
         raise HTTPException(status_code=404, detail="cwd does not exist")
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv,
-            cwd=str(cwd),
+            cwd=str(target),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env={"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(Path.home())},
@@ -93,14 +103,7 @@ async def execute(req: ExecRequest, authorization: str | None = Header(default=N
         proc.kill()
         await proc.wait()
         raise HTTPException(status_code=408, detail="command timed out")
-    return JSONResponse({
-        "ok": proc.returncode == 0,
-        "returncode": proc.returncode,
-        "stdout": stdout.decode(errors="replace"),
-        "stderr": stderr.decode(errors="replace"),
-        "command": req.command,
-        "cwd": str(cwd),
-    })
+    return {"ok": proc.returncode == 0, "returncode": proc.returncode, "stdout": stdout.decode(errors="replace"), "stderr": stderr.decode(errors="replace"), "command": command, "cwd": str(target)}
 
 
 @APP.post("/v1/chat")
@@ -109,23 +112,43 @@ async def chat(req: ChatRequest, authorization: str | None = Header(default=None
     if not GATEWAY_KEY:
         raise HTTPException(status_code=503, detail="AI_GATEWAY_API_KEY is not configured")
     try:
-        import urllib.request
-        payload = json.dumps({
-            "model": req.model or MODEL,
-            "messages": [
-                {"role": "system", "content": "You are the operations brain for an Ubuntu logistics server agent. Propose safe, explicit actions. Never assume secrets."},
-                {"role": "user", "content": req.prompt},
-            ],
-        }).encode()
-        request = urllib.request.Request(
-            f"{GATEWAY_URL.rstrip('/')}/chat/completions",
-            data=payload,
-            headers={"Authorization": f"Bearer {GATEWAY_KEY}", "Content-Type": "application/json"},
-            method="POST",
-        )
+        payload = json.dumps({"model": req.model or MODEL, "messages": [{"role": "system", "content": "You are the operations brain for an Ubuntu logistics server agent. Propose safe, explicit actions. Never assume secrets."}, {"role": "user", "content": req.prompt}]}).encode()
+        request = urllib.request.Request(f"{GATEWAY_URL.rstrip('/')}/chat/completions", data=payload, headers={"Authorization": f"Bearer {GATEWAY_KEY}", "Content-Type": "application/json"}, method="POST")
         loop = asyncio.get_running_loop()
         raw = await loop.run_in_executor(None, lambda: urllib.request.urlopen(request, timeout=120).read())
-        data = json.loads(raw)
-        return JSONResponse({"model": req.model or MODEL, "response": data})
+        return JSONResponse({"model": req.model or MODEL, "response": json.loads(raw)})
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"AI Gateway request failed: {exc}")
+
+
+def control_request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    data = json.dumps(payload).encode() if payload is not None else None
+    req = urllib.request.Request(f"{CONTROL_URL}{path}", data=data, headers={"Authorization": f"Bearer {CONTROL_TOKEN}", "Content-Type": "application/json"}, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 409):
+            return {"error": exc.code}
+        raise
+
+
+async def control_loop() -> None:
+    agent_id: str | None = None
+    while True:
+        try:
+            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", {"name": AGENT_NAME, "agent_id": agent_id, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL}})
+            agent_id = heartbeat.get("agent_id") or agent_id
+            if agent_id:
+                task = await asyncio.to_thread(control_request, f"/api/v1/control/agents/{agent_id}/tasks/next")
+                item = task.get("task")
+                if item:
+                    result = await run_command(item["command"], item.get("cwd"))
+                    await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stdout", "message": result.get("stdout", "")})
+                    if result.get("stderr"):
+                        await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stderr", "message": result["stderr"]})
+                    await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/complete", "POST", {"returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]})
+        except Exception:
+            # Outbound control is best-effort. Local execution remains available.
+            pass
+        await asyncio.sleep(HEARTBEAT_SECONDS)
