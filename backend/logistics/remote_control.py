@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 from fastapi import Header, HTTPException
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from .api import app, _dsn
@@ -121,7 +122,7 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
             row = conn.execute("SELECT id FROM remote_agents WHERE name=%s", (req.name,)).fetchone()
         agent_id = row[0] if row else uuid4()
         conn.execute("""INSERT INTO remote_agents(id,name,last_seen,status,metadata) VALUES(%s,%s,now(),'online',%s)
-                       ON CONFLICT(name) DO UPDATE SET last_seen=now(),status='online',metadata=EXCLUDED.metadata""", (agent_id, req.name, req.metadata))
+                       ON CONFLICT(name) DO UPDATE SET last_seen=now(),status='online',metadata=EXCLUDED.metadata""", (agent_id, req.name, Jsonb(req.metadata)))
         conn.commit()
         if not row:
             agent_id = conn.execute("SELECT id FROM remote_agents WHERE name=%s", (req.name,)).fetchone()[0]
