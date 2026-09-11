@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><title>Logistics Control Plane</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}body{margin:0;background:#0b1020;color:#eef2ff}main{max-width:900px;margin:auto;padding:16px}h1{font-size:24px;margin:4px 0 16px}.card{background:#121a2d;border:1px solid #26324d;border-radius:14px;padding:14px;margin:10px 0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}input,button,textarea{font:inherit;border-radius:10px;border:1px solid #34415f;background:#0b1020;color:#eef2ff;padding:10px}input,textarea{width:100%;box-sizing:border-box}button{cursor:pointer;background:#1e293b}button.primary{background:#2563eb;border-color:#2563eb}.muted{color:#9aa7c2;font-size:13px}.ok{color:#67e8a5}.bad{color:#fb7185}.mono{font-family:ui-monospace,monospace;white-space:pre-wrap;overflow:auto}.agent{display:flex;justify-content:space-between;gap:10px}.pill{padding:3px 8px;border-radius:999px;background:#26324d;font-size:12px}.danger{border-color:#7f1d1d}
+</style></head>
+<body><main>
+<h1>🚚 Logistics Control Plane</h1>
+<div class="card"><div class="muted">Операторский токен хранится только в браузере.</div><input id="token" type="password" placeholder="CONTROL_PLANE_OPERATOR_TOKEN"><button class="primary" onclick="saveToken();refresh()">Подключить</button></div>
+<div class="card"><div class="row"><strong>Ubuntu agents</strong><button onclick="refresh()">Обновить</button></div><div id="agents" class="muted">Нет данных</div></div>
+<div class="card"><strong>Новая задача</strong><textarea id="cmd" rows="3" placeholder="uname -a"></textarea><input id="agent" placeholder="agent UUID"><button class="primary" onclick="createTask()">Запустить</button><div id="taskmsg" class="muted"></div></div>
+<div class="card"><strong>Последние задачи</strong><div id="tasks" class="muted">Нет данных</div></div>
+<script>
+const $=id=>document.getElementById(id);let token=localStorage.getItem('logistics_operator_token')||'';$('token').value=token;
+function saveToken(){token=$('token').value.trim();localStorage.setItem('logistics_operator_token',token)}
+async function api(path,opt={}){opt.headers={...(opt.headers||{}),'Authorization':'Bearer '+token,'Content-Type':'application/json'};let r=await fetch(path,opt);if(!r.ok)throw new Error((await r.text())||r.status);return r.json()}
+async function refresh(){try{let a=await api('/api/v1/control/agents');$('agents').innerHTML=a.length?a.map(x=>`<div class="agent card"><span><b>${x.name}</b><br><span class="muted">${x.id}</span></span><span class="pill ${x.status==='online'?'ok':'bad'}">${x.status}</span></div>`).join(''):'Нет зарегистрированных agents';$('agent').value=a[0]?.id||$('agent').value;let t=await api('/api/v1/control/tasks');$('tasks').innerHTML=t.map(x=>`<div class="card"><b>${x.status}</b> · ${x.approval}<br><span class="mono">${esc(x.command)}</span><br><span class="muted">${x.id}</span>${x.stdout?`<pre class="mono">${esc(x.stdout)}</pre>`:''}${x.stderr?`<pre class="mono bad">${esc(x.stderr)}</pre>`:''}</div>`).join('')||'Нет задач'}catch(e){$('agents').innerHTML='<span class="bad">Ошибка: '+esc(e.message)+'</span>'}}
+async function createTask(){try{let r=await api('/api/v1/control/tasks',{method:'POST',body:JSON.stringify({agent_id:$('agent').value,command:$('cmd').value,requested_by:'android'})});$('taskmsg').textContent='Создано: '+r.task_id+' ['+r.approval+']';refresh()}catch(e){$('taskmsg').textContent='Ошибка: '+e.message}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}refresh();setInterval(refresh,10000)
+</script></main></body></html>
