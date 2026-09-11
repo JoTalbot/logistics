@@ -85,8 +85,8 @@ def control_agents(authorization: str | None = Header(default=None)) -> list[dic
     now = datetime.now(timezone.utc)
     return [
         {"id": str(r[0]), "name": r[1], "tenant_id": str(r[2]) if r[2] else None,
-         "status": "online" if r[3] and (now - r[3]).total_seconds() < 90 else "offline",
-         "last_seen": r[3].isoformat() if r[3] else None, "metadata": r[5], "created_at": r[6].isoformat()}
+         "status": "online" if r[4] and (now - r[4]).total_seconds() < 90 else "offline",
+         "last_seen": r[4].isoformat() if r[4] else None, "metadata": r[5], "created_at": r[6].isoformat()}
         for r in rows
     ]
 
@@ -129,7 +129,7 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
             raise HTTPException(status_code=403, detail="tenant mismatch")
         tenant_id = req.tenant_id or agent[0]
         if req.idempotency_key:
-            existing = conn.execute("SELECT id,status,approval FROM remote_tasks WHERE tenant_id=%s AND idempotency_key=%s", (tenant_id, req.idempotency_key)).fetchone()
+            existing = conn.execute("SELECT id,status,approval FROM remote_tasks WHERE tenant_id IS NOT DISTINCT FROM %s AND idempotency_key=%s", (tenant_id, req.idempotency_key)).fetchone()
             if existing:
                 return {"task_id": str(existing[0]), "status": existing[1], "approval": existing[2], "idempotent_replay": True}
         task_id = uuid4()

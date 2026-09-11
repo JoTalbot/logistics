@@ -73,3 +73,14 @@ def test_idempotency_returns_same_task(configured):
     second = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert second["task_id"] == first["task_id"]
     assert second["idempotent_replay"] is True
+
+
+def test_operator_listing_reports_last_seen_and_online_status(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    _agent(name)
+    agents = control_agents(authorization=f"Bearer {OPERATOR_TOKEN}")
+    match = [a for a in agents if a["name"] == name]
+    assert match, "registered agent is missing from the operator listing"
+    entry = match[0]
+    assert entry["status"] == "online"
+    assert entry["last_seen"] and entry["last_seen"].endswith("+00:00")
