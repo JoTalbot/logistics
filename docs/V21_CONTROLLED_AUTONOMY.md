@@ -16,7 +16,8 @@ Turn the roadmap's simulation/shadow-mode principle into a deterministic, reusab
 - `backend/logistics/policy_replay.py` provides deterministic replay metrics for policy tiers and historical outcomes, including AUTO failure rate.
 - `migrations/0022_autonomy_decisions.sql` adds a durable tenant-scoped decision record for simulation/shadow classifications. It is a decision store, not a replacement for the existing human `review_audit` trail.
 - `backend/logistics/autonomy_store.py` connects classification to durable persistence idempotently and exposes a tenant-scoped exception queue for `REVIEW`, `HIGH_RISK` and `BLOCK` decisions.
-- Tests cover confidence bands, hard blocks, human-approval override, simulation mode, policy metadata, durable persistence, tenant isolation, invalid bounds and replay metrics.
+- `GET /api/v1/review/autonomy-exceptions` exposes that queue through the existing authenticated operator review boundary.
+- Tests cover confidence bands, hard blocks, human-approval override, simulation mode, policy metadata, durable persistence, tenant isolation, invalid bounds, replay metrics and authenticated API access.
 
 ## Safety boundary
 
@@ -26,11 +27,10 @@ Provider permissions, legal authorization, tenant policy and operational control
 
 ## V21 remaining gates
 
-1. Expose the durable exception queue through the existing authenticated operator review API without weakening its authorization boundary.
-2. Connect replay metrics to persisted historical decision outcomes without changing production state.
-3. Add policy-version-aware outcome aggregation when enough real historical outcomes exist to make it meaningful.
-4. Keep real external side effects disabled until provider and authorization gates are independently verified.
+1. Connect replay metrics to persisted historical decision outcomes without changing production state.
+2. Add policy-version-aware outcome aggregation when enough real historical outcomes exist to make it meaningful.
+3. Keep real external side effects disabled until provider and authorization gates are independently verified.
 
 ## Exit criterion
 
-A simulated or shadow decision can be deterministically classified, explained, durably persisted, replayed against historical outcomes and surfaced to an operator before any production side effect is eligible for execution.
+A simulated or shadow decision can be deterministically classified, explained, durably persisted, replayed against historical outcomes and surfaced to an authenticated operator before any production side effect is eligible for execution.
