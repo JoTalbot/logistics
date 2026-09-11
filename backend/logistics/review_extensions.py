@@ -5,8 +5,10 @@ from uuid import UUID
 from fastapi import Header, HTTPException
 
 from .api import app, _dsn, _operator_auth
+from .autonomy_store import list_exception_decisions
 from .duplicate_loads import find_duplicate_load_groups
 from .recurring_demand_health import scheduler_health
+import psycopg
 
 
 @app.get("/api/v1/review/duplicate-loads")
@@ -21,7 +23,7 @@ def review_duplicate_loads(
         raise HTTPException(status_code=422, detail="limit must be between 1 and 1000")
     if not 1 <= window_hours <= 720:
         raise HTTPException(status_code=422, detail="window_hours must be between 1 and 720")
-    with __import__("psycopg").connect(_dsn()) as conn:
+    with psycopg.connect(_dsn()) as conn:
         groups = find_duplicate_load_groups(conn, tenant_id=tenant_id, window_hours=window_hours, limit=limit)
     return [{"load_ids": [str(load_id) for load_id in group]} for group in groups]
 
@@ -31,5 +33,19 @@ def review_recurring_demand_health(
     x_operator_token: str | None = Header(default=None),
 ) -> dict[str, object]:
     _operator_auth(x_operator_token)
-    with __import__("psycopg").connect(_dsn()) as conn:
+    with psycopg.connect(_dsn()) as conn:
         return scheduler_health(conn)
+
+
+@app.get("/api/v1/review/autonomy-exceptions")
+def review_autonomy_exceptions(
+    tenant_id: UUID,
+    limit: int = 100,
+    x_operator_token: str | None = Header(default=None),
+) -> list[dict[str, object]]:
+    """Return tenant-scoped non-AUTO shadow decisions for operator review."""
+    _operator_auth(x_operator_token)
+    if not 1 <= limit <= 500:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
+    with psycopg.connect(_dsn()) as conn:
+        return list_exception_decisions(conn, tenant_id=tenant_id, limit=limit)
