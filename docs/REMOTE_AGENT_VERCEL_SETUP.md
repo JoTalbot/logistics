@@ -5,10 +5,19 @@
 Set these in Project Settings → Environment Variables for Production:
 
 - `DATABASE_URL` — PostgreSQL connection string for the logistics database.
-- `REMOTE_AGENT_TOKEN` — must exactly match the Ubuntu `AGENT_AUTH_TOKEN` used by the remote agent.
+- `REMOTE_AGENT_TOKEN` — must exactly match the Ubuntu `CONTROL_PLANE_TOKEN` used by the remote agent.
 - `CONTROL_PLANE_OPERATOR_TOKEN` — separate long random token used only by the Android/browser console.
+- `VERCEL_AUTOMATION_BYPASS_SECRET` — the 32-character secret generated under Deployment Protection → Protection Bypass for Automation. It allows the remote agent to reach protected Vercel deployments using the `x-vercel-protection-bypass` header.
 
 Redeploy after changing environment variables.
+
+## Vercel Deployment Protection
+
+Keep Deployment Protection enabled. Do not disable SSO for the whole project just to support the Ubuntu agent.
+
+Create a dedicated Protection Bypass for Automation secret in the Vercel project and store the same value as the Production `VERCEL_AUTOMATION_BYPASS_SECRET` environment variable.
+
+The Ubuntu agent sends that value only as the `x-vercel-protection-bypass` request header. It is never exposed to browser JavaScript or returned by the agent health endpoint.
 
 ## Ubuntu agent variables
 
@@ -17,6 +26,7 @@ In `/etc/logistics-agent/agent.env`:
 ```env
 CONTROL_PLANE_URL=https://logistics-fawn-pi.vercel.app
 CONTROL_PLANE_TOKEN=<same value as REMOTE_AGENT_TOKEN>
+VERCEL_AUTOMATION_BYPASS_SECRET=<same value as the Vercel automation bypass secret>
 AGENT_NAME=arm-server-01
 AGENT_HEARTBEAT_SECONDS=30
 ```
