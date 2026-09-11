@@ -3,12 +3,12 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: V21 — controlled autonomy integration
-STATUS: v21_durable_shadow_persistence_ci_pending
+STATUS: v21_authenticated_exception_queue_ci_pending
 AGENT: logistics-commercial-batch-v21
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-11
 UPDATED: 2026-09-11
-SCOPE: Deterministic simulation/shadow autonomy gating, durable policy metadata, exception queue and replay metrics. No autonomous external commitment or outreach is enabled.
+SCOPE: Deterministic simulation/shadow autonomy gating, durable policy metadata, authenticated exception queue and replay metrics. No autonomous external commitment or outreach is enabled.
 
 ## V21 completed implementation
 
@@ -18,8 +18,9 @@ SCOPE: Deterministic simulation/shadow autonomy gating, durable policy metadata,
 - Added `backend/logistics/policy_replay.py` for deterministic historical replay metrics, including tier counts and AUTO failure rate.
 - Added `migrations/0022_autonomy_decisions.sql` for durable tenant-scoped simulation/shadow decision records with correlation IDs and idempotent `(tenant_id, decision_id)` identity.
 - Added `backend/logistics/autonomy_store.py` to connect policy classification to durable persistence and provide an oldest-first exception queue for `REVIEW`, `HIGH_RISK` and `BLOCK` records.
-- Added tests covering policy-to-persistence integration, tenant isolation, idempotency SQL and exception queue bounds.
-- Updated `docs/V21_CONTROLLED_AUTONOMY.md` with the durable persistence boundary and remaining API/replay gates.
+- Added authenticated `GET /api/v1/review/autonomy-exceptions` to expose the exception queue without weakening the existing operator-token boundary.
+- Added tests covering policy-to-persistence integration, tenant isolation, idempotency SQL, exception queue bounds and authenticated API access.
+- Updated `docs/V21_CONTROLLED_AUTONOMY.md` with the authenticated queue gate.
 
 ## Safety boundary
 
@@ -44,14 +45,14 @@ Provider permissions, legal authorization, tenant policy and operational control
 1. Shadow/simulation classifier integration: **IMPLEMENTED**.
 2. Policy version and classification reason: **IMPLEMENTED IN SHADOW RECORD**.
 3. Durable shadow decision persistence: **IMPLEMENTED** via migration `0022_autonomy_decisions.sql` and `autonomy_store.py`.
-4. Exception queue data access for REVIEW/HIGH_RISK/BLOCK: **IMPLEMENTED** in `autonomy_store.py`; authenticated API exposure remains pending.
+4. Authenticated exception queue API for REVIEW/HIGH_RISK/BLOCK: **IMPLEMENTED** at `/api/v1/review/autonomy-exceptions`.
 5. Replay metrics comparing policy classifications with historical outcomes: **IMPLEMENTED AS SIDE-EFFECT-FREE REPLAY MODULE**; durable historical aggregation remains pending.
 6. Real external side effects: **DISABLED** until provider and authorization gates are independently verified.
 
 ## Verification
 
 - V20 CI verification: **COMPLETE** via Run #258 `34544573319`.
-- V21 durable persistence and tests are committed; a fresh CI run is required to verify the new migration/store integration.
+- V21 durable persistence, exception API and tests are committed; a fresh CI run is required to verify the current batch.
 - Lardi smoke Run `34519177888` remains blocked by provider-side Cloudflare/browser-signature policy.
 - No retry loop, browser automation or anti-bot bypass is permitted.
 
@@ -61,8 +62,8 @@ Provider permissions, legal authorization, tenant policy and operational control
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and corrected CI verification, V21 deterministic autonomy policy, shadow/replay modules and durable decision persistence foundation.
-IN_PROGRESS: V21 CI verification and authenticated operator exception API integration.
-PENDING: authenticated exception queue API exposure; durable historical outcome aggregation; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and corrected CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence and authenticated exception queue.
+IN_PROGRESS: V21 CI verification and durable historical outcome aggregation.
+PENDING: durable historical outcome aggregation; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current blocked state.
-OPEN_ISSUES: V21 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
+OPEN_ISSUES: V21 CI verification, historical outcome evidence, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
