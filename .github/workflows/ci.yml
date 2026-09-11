@@ -50,6 +50,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://logistics:logistics@127.0.0.1:5432/logistics
           LARDI_API_KEY: ${{ secrets.LARDI_API_KEY }}
+          REVIEW_OPERATOR_TOKEN: ci-only-review-token
         run: pytest
       - name: Run V20 commercial baseline replay
         run: python scripts/v20_baseline.py
