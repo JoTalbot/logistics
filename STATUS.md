@@ -2,68 +2,60 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V21 — controlled autonomy integration
-STATUS: v21_authenticated_exception_queue_ci_pending
-AGENT: logistics-commercial-batch-v21
+CURRENT_STEP: V22 — bounded remote control plane
+STATUS: v22_remote_control_hardening_ci_pending
+AGENT: logistics-commercial-batch-v22
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-11
 UPDATED: 2026-09-11
-SCOPE: Deterministic simulation/shadow autonomy gating, durable policy metadata, authenticated exception queue and replay metrics. No autonomous external commitment or outreach is enabled.
+SCOPE: Auditable remote agent/task control with conservative command gating, tenant metadata, idempotency and lease-based execution. No autonomous external commitment or outreach is enabled.
 
-## V21 completed implementation
+## V22 completed implementation
 
-- Added `backend/logistics/autonomy_policy.py` with deterministic approval tiers: `AUTO`, `REVIEW`, `HIGH_RISK`, `BLOCK`.
-- Added `backend/logistics/shadow_decisions.py` with explicit `SIMULATION`/`SHADOW` decision records.
-- Shadow records carry policy version, classification reason, tenant, action, confidence and timestamp without external side effects.
-- Added `backend/logistics/policy_replay.py` for deterministic historical replay metrics, including tier counts and AUTO failure rate.
-- Added `migrations/0022_autonomy_decisions.sql` for durable tenant-scoped simulation/shadow decision records with correlation IDs and idempotent `(tenant_id, decision_id)` identity.
-- Added `backend/logistics/autonomy_store.py` to connect policy classification to durable persistence and provide an oldest-first exception queue for `REVIEW`, `HIGH_RISK` and `BLOCK` records.
-- Added authenticated `GET /api/v1/review/autonomy-exceptions` to expose the exception queue without weakening the existing operator-token boundary.
-- Added tests covering policy-to-persistence integration, tenant isolation, idempotency SQL, exception queue bounds and authenticated API access.
-- Updated `docs/V21_CONTROLLED_AUTONOMY.md` with the authenticated queue gate.
+- Hardened `backend/logistics/remote_control.py` so only a narrow read-only/diagnostic allowlist is eligible for `AUTO` dispatch.
+- Unknown commands require `REVIEW`; explicitly destructive command patterns are `BLOCK`.
+- Agent and operator credentials remain separate.
+- Added optional tenant association to agents/tasks and explicit tenant mismatch checks.
+- Added tenant-scoped idempotency keys for task creation.
+- Added 120-second task leases with heartbeat renewal and expiry recovery.
+- Completion is accepted only while a task lease remains active.
+- Added `migrations/0023_remote_control_hardening.sql` and wired it into Compose.
+- Added V22 deployment secret contract for `REMOTE_AGENT_TOKEN` and `CONTROL_PLANE_OPERATOR_TOKEN`.
+- Added integration coverage for authentication, safe lifecycle, conservative command gating and idempotent task creation.
+- Added `docs/V22_REMOTE_CONTROL_PLANE.md`.
 
-## Safety boundary
+## V22 safety boundary
 
-The V21 policy, shadow and persistence layers only classify intended actions, persist auditable decision metadata and calculate replay metrics. They do not send messages, publish listings, negotiate, sign contracts, move money, call external providers or mutate business state.
+The control plane is an execution transport, not an authorization grant. It does not publish listings, contact customers, negotiate, sign contracts, move money, call providers or bypass provider controls. Only explicitly allowlisted diagnostics can be dispatched automatically. All other commands require review or are blocked.
 
-Provider permissions, legal authorization, tenant policy and operational controls remain independent gates. Model confidence is never treated as authorization.
+## V21 verified baseline
+
+- Durable autonomy decisions, authenticated exception queue and historical policy replay are implemented.
+- Historical replay remains read-only and conservative: missing delivery telemetry is `UNKNOWN`.
+- Model confidence is never treated as authorization.
 
 ## V20 verified technical baseline
 
-- Corrected hosted CI Run #258 `34544573319` passed successfully on commit `e5e96527abf23d4b75c94e2c9f7d39f607ad9f23`.
-- CI passed dependency consistency, pip-audit, SQL migrations, full unit/integration tests, V20 commercial baseline replay, hardened Compose validation, release smoke checks and hardened API image build.
+- Corrected hosted CI Run #258 `34544573319` passed successfully.
+- Dependency consistency, pip-audit, SQL migrations, full unit/integration tests, V20 commercial replay, hardened Compose validation, release smoke and hardened API image build passed.
 
-## V20 production/business readiness remaining outside repository/CI
+## Production gates remaining outside repository/CI
 
-1. Actual backup/restore rehearsal in target infrastructure: **PENDING TARGET INFRASTRUCTURE**.
+1. Backup/restore rehearsal in target infrastructure: **PENDING TARGET INFRASTRUCTURE**.
 2. Hardened Compose end-to-end rehearsal in target deployment environment: **PENDING TARGET INFRASTRUCTURE**.
 3. Lardi access/mapping verification: **BLOCKED BY PROVIDER**. Previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`.
 4. External publication permissions and contact adapters: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 
-## V21 gates
-
-1. Shadow/simulation classifier integration: **IMPLEMENTED**.
-2. Policy version and classification reason: **IMPLEMENTED IN SHADOW RECORD**.
-3. Durable shadow decision persistence: **IMPLEMENTED** via migration `0022_autonomy_decisions.sql` and `autonomy_store.py`.
-4. Authenticated exception queue API for REVIEW/HIGH_RISK/BLOCK: **IMPLEMENTED** at `/api/v1/review/autonomy-exceptions`.
-5. Replay metrics comparing policy classifications with historical outcomes: **IMPLEMENTED AS SIDE-EFFECT-FREE REPLAY MODULE**; durable historical aggregation remains pending.
-6. Real external side effects: **DISABLED** until provider and authorization gates are independently verified.
-
 ## Verification
 
-- V20 CI verification: **COMPLETE** via Run #258 `34544573319`.
-- V21 durable persistence, exception API and tests are committed; a fresh CI run is required to verify the current batch.
-- Lardi smoke Run `34519177888` remains blocked by provider-side Cloudflare/browser-signature policy.
+- V22 changes are committed; fresh CI verification is pending.
 - No retry loop, browser automation or anti-bot bypass is permitted.
-
-## Release boundary
-
-**Production release is NOT declared.** Repository hardening and V20 CI gates are verified. Production requires target-infrastructure rehearsal, provider/legal verification and explicit authorization for every external side effect.
+- Production release is **NOT declared**.
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and corrected CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence and authenticated exception queue.
-IN_PROGRESS: V21 CI verification and durable historical outcome aggregation.
-PENDING: durable historical outcome aggregation; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current blocked state.
-OPEN_ISSUES: V21 CI verification, historical outcome evidence, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening.
+IN_PROGRESS: V22 CI verification.
+PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current code batch beyond configuring the new control-plane secrets in an actual deployment.
+OPEN_ISSUES: V22 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
