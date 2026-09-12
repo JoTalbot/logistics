@@ -9,6 +9,7 @@ from .autonomy_store import list_exception_decisions
 from .duplicate_loads import find_duplicate_load_groups
 from .historical_policy_replay import aggregate_historical_policy_replay
 from .recurring_demand_health import scheduler_health
+from . import commercial_queue  # noqa: F401
 import psycopg
 
 
