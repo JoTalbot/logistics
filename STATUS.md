@@ -2,36 +2,34 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V23 — commercial opportunity conversion
-STATUS: v23_commercial_opportunity_queue_ci_pending
-AGENT: logistics-commercial-batch-v23
+CURRENT_STEP: V24 — operator opportunity workflow
+STATUS: v24_operator_workflow_ci_pending
+AGENT: logistics-commercial-batch-v24
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-12
 UPDATED: 2026-09-12
-SCOPE: Convert persisted market intelligence into an operator-ready commercial opportunity queue with explainable economics. No autonomous external commitment or outreach is enabled.
+SCOPE: Turn prioritized commercial opportunities into a controlled, auditable human review workflow. No autonomous external commitment or outreach is enabled.
 
-## V22 verified
+## V23 verified
 
-- GitHub Actions Run #327 `34639450336` passed successfully.
-- Head commit: `c7fae902506c51e7d28dc89a79de8d768c73243d`.
-- 216 tests passed.
-- SQL migrations through `0023_remote_control_hardening.sql` passed.
-- Hardened Compose contract passed.
-- Release smoke checks passed.
-- Hardened API Docker image build passed.
+- PR #1 `feat(v23): commercial opportunity queue` merged to `main`.
+- Merge commit: `8d9d0280054fed5284f6ecf31c39d401d2883a5c`.
+- CI Run #329 `34707795550` passed successfully.
+- Full CI, migrations, Compose validation, release smoke and production API image build passed.
 
-## V23 implementation
+## V24 implementation
 
-- Added a tenant-scoped, authenticated, read-only commercial opportunity queue at `/api/v1/review/commercial-opportunities`.
-- Queue joins persisted opportunity economics with canonical load context.
-- Added bounded `status`, `min_priority` and `limit` filters.
-- Results are ordered by commercial priority and expose explainable opportunity/priority reasons.
-- Added focused tests for authentication, tenant scoping, ordering and validation.
-- Added `docs/V23_COMMERCIAL_OPPORTUNITY_QUEUE.md`.
+- Added migration `0024_opportunity_review_history.sql` for immutable operator decision history.
+- Added tenant-scoped `OpportunityReview` domain workflow with row locking and explicit status validation.
+- Added authenticated operator endpoints for opportunity decisions, review metrics and per-opportunity history.
+- Every status transition records previous status, new status, operator reference, reason and timestamp.
+- Added focused unit tests covering validation, tenant scope, transitions, audit history and acceptance metrics.
+- Added `docs/V24_OPERATOR_WORKFLOW.md`.
+- Updated Compose to mount migration 0024.
 
 ## Safety boundary
 
-The queue is a decision-support surface, not an authorization grant. It does not publish listings, contact customers/carriers, negotiate, sign contracts, move money or bypass provider controls. Model confidence is never treated as authorization.
+V24 changes internal review state only. It does not publish listings, contact customers/carriers, negotiate, sign contracts, move money or bypass provider controls. Model confidence is never treated as authorization.
 
 ## Production gates remaining outside repository/CI
 
@@ -42,14 +40,14 @@ The queue is a decision-support surface, not an authorization grant. It does not
 
 ## Verification
 
-- V23 implementation committed on branch `v23-commercial-opportunity-queue`.
+- V24 implementation committed on branch `v24-operator-workflow`.
 - Fresh CI verification is pending.
 - Production release is **NOT declared**.
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification.
-IN_PROGRESS: V23 commercial opportunity queue CI verification.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification.
+IN_PROGRESS: V24 operator opportunity workflow CI verification.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current V23 code batch.
-OPEN_ISSUES: V23 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current V24 code batch.
+OPEN_ISSUES: V24 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions and production-infrastructure rehearsal.
