@@ -88,6 +88,7 @@ services:
       - ./migrations/0022_remote_control_plane.sql:/docker-entrypoint-initdb.d/0022b_remote_control_plane.sql:ro
       - ./migrations/0023_remote_control_hardening.sql:/docker-entrypoint-initdb.d/0023_remote_control_hardening.sql:ro
       - ./migrations/0024_opportunity_review_history.sql:/docker-entrypoint-initdb.d/0024_opportunity_review_history.sql:ro
+      - ./migrations/0025_commercial_outcomes.sql:/docker-entrypoint-initdb.d/0025_commercial_outcomes.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
