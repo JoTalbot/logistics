@@ -30,26 +30,24 @@ def apply_opportunity_review(conn: object, *, tenant_id: UUID, review: Opportuni
     validate_opportunity_review(review)
     row = conn.execute(
         """
-        UPDATE opportunities
-           SET priority_status=%s, priority_updated_at=now()
-         WHERE tenant_id=%s AND id=%s
-           AND priority_score IS NOT NULL
-         RETURNING id, priority_status
-        """,
-        (review.new_status, tenant_id, review.opportunity_id),
-    ).fetchone()
-    if row is None:
-        raise ValueError("opportunity not found or has no priority decision")
-
-    previous = conn.execute(
-        """
-        SELECT previous_status FROM opportunity_review_history
-         WHERE tenant_id=%s AND opportunity_id=%s
-         ORDER BY created_at DESC, id DESC LIMIT 1
+        SELECT id, priority_status
+          FROM opportunities
+         WHERE tenant_id=%s AND id=%s AND priority_score IS NOT NULL
+         FOR UPDATE
         """,
         (tenant_id, review.opportunity_id),
     ).fetchone()
-    previous_status = previous[0] if previous else None
+    if row is None:
+        raise ValueError("opportunity not found or has no priority decision")
+    previous_status = row[1]
+    conn.execute(
+        """
+        UPDATE opportunities
+           SET priority_status=%s, priority_updated_at=now()
+         WHERE tenant_id=%s AND id=%s
+        """,
+        (review.new_status, tenant_id, review.opportunity_id),
+    )
     conn.execute(
         """
         INSERT INTO opportunity_review_history
@@ -61,7 +59,7 @@ def apply_opportunity_review(conn: object, *, tenant_id: UUID, review: Opportuni
     )
     return {
         "opportunity_id": str(row[0]),
-        "status": row[1],
+        "status": review.new_status,
         "previous_status": previous_status,
         "operator_ref": review.operator_ref,
         "reason": review.reason,
