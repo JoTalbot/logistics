@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import shlex
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -21,7 +22,10 @@ TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
 GATEWAY_KEY = os.environ.get("AI_GATEWAY_API_KEY", "")
-MODEL = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
+MODEL_RAW = os.environ.get("AI_MODEL", "openai/gpt-6-astra")
+MODEL_PREFERRED = [m.strip() for m in os.environ.get("AI_MODEL_PREFERRED", "openai/gpt-6-astra").split(",") if m.strip()]
+MODEL_CANDIDATES = [m.strip() for m in os.environ.get("AI_MODEL_CANDIDATES", "").split(",") if m.strip()]
+MODEL_CACHE_SECONDS = int(os.environ.get("AI_MODEL_CACHE_SECONDS", "900"))
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 CONTROL_URL = os.environ.get("CONTROL_PLANE_URL", "").rstrip("/")
 CONTROL_TOKEN = os.environ.get("CONTROL_PLANE_TOKEN", "")
@@ -34,9 +38,18 @@ ALLOWED = {
     "systemctl", "journalctl", "df", "free", "uptime", "uname", "whoami",
 }
 
+MODEL_CACHE: dict[str, Any] = {}
+
+SYSTEM_PROMPT = (
+    "You are the operations brain for an Ubuntu logistics server agent. "
+    "Propose safe, explicit actions. Never assume secrets."
+)
+
+
 class ExecRequest(BaseModel):
     command: str = Field(min_length=1, max_length=4000)
     cwd: str | None = None
+
 
 class ChatRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=20000)
@@ -68,6 +81,58 @@ def validate_command(command: str) -> list[str]:
     return argv
 
 
+def candidate_models() -> list[str]:
+    """Ordered list of models to try: the preferred one first, then fallbacks."""
+    if MODEL_RAW.strip().lower() == "auto":
+        preferred = MODEL_PREFERRED
+    else:
+        preferred = [MODEL_RAW]
+    ordered: list[str] = []
+    for model in preferred + MODEL_CANDIDATES:
+        if model and model not in ordered:
+            ordered.append(model)
+    return ordered
+
+
+def gateway_chat(model: str, messages: list[dict[str, str]], max_tokens: int | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"model": model, "messages": messages}
+    if max_tokens is not None:
+        payload["max_tokens"] = max_tokens
+    request = urllib.request.Request(
+        f"{GATEWAY_URL.rstrip('/')}/chat/completions",
+        data=json.dumps(payload).encode(),
+        headers={"Authorization": f"Bearer {GATEWAY_KEY}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=120) as response:
+        return json.loads(response.read())
+
+
+def probe_model(model: str) -> bool:
+    """A one-token request proves the key may use this model right now."""
+    try:
+        gateway_chat(model, [{"role": "user", "content": "ping"}], max_tokens=1)
+    except Exception:
+        return False
+    return True
+
+
+def resolve_model() -> str:
+    """Return the configured model, or the first usable one when AI_MODEL=auto."""
+    candidates = candidate_models()
+    if MODEL_RAW.strip().lower() != "auto":
+        return candidates[0]
+    now = time.monotonic()
+    cached = MODEL_CACHE.get("model")
+    if cached and now - float(MODEL_CACHE.get("at", 0.0)) < MODEL_CACHE_SECONDS:
+        return str(cached)
+    for model in candidates:
+        if probe_model(model):
+            MODEL_CACHE.update(model=model, at=now)
+            return model
+    raise HTTPException(status_code=502, detail="no AI Gateway model is available for the configured key")
+
+
 @APP.on_event("startup")
 async def start_control_channel() -> None:
     if CONTROL_URL and CONTROL_TOKEN:
@@ -76,7 +141,15 @@ async def start_control_channel() -> None:
 
 @APP.get("/health")
 async def health() -> dict[str, Any]:
-    return {"ok": True, "workspace": str(WORKSPACE), "model": MODEL, "control_plane": bool(CONTROL_URL and CONTROL_TOKEN), "vercel_bypass": bool(VERCEL_BYPASS_SECRET), "agent_name": AGENT_NAME}
+    return {
+        "ok": True,
+        "workspace": str(WORKSPACE),
+        "model": MODEL_RAW,
+        "model_resolved": MODEL_CACHE.get("model") if MODEL_RAW.strip().lower() == "auto" else MODEL_RAW,
+        "control_plane": bool(CONTROL_URL and CONTROL_TOKEN),
+        "vercel_bypass": bool(VERCEL_BYPASS_SECRET),
+        "agent_name": AGENT_NAME,
+    }
 
 
 @APP.post("/v1/exec")
@@ -113,11 +186,15 @@ async def chat(req: ChatRequest, authorization: str | None = Header(default=None
     if not GATEWAY_KEY:
         raise HTTPException(status_code=503, detail="AI_GATEWAY_API_KEY is not configured")
     try:
-        payload = json.dumps({"model": req.model or MODEL, "messages": [{"role": "system", "content": "You are the operations brain for an Ubuntu logistics server agent. Propose safe, explicit actions. Never assume secrets."}, {"role": "user", "content": req.prompt}]}).encode()
-        request = urllib.request.Request(f"{GATEWAY_URL.rstrip('/')}/chat/completions", data=payload, headers={"Authorization": f"Bearer {GATEWAY_KEY}", "Content-Type": "application/json"}, method="POST")
-        loop = asyncio.get_running_loop()
-        raw = await loop.run_in_executor(None, lambda: urllib.request.urlopen(request, timeout=120).read())
-        return JSONResponse({"model": req.model or MODEL, "response": json.loads(raw)})
+        model = req.model or await asyncio.to_thread(resolve_model)
+        payload = await asyncio.to_thread(
+            gateway_chat,
+            model,
+            [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": req.prompt}],
+        )
+        return JSONResponse({"model": model, "response": payload})
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"AI Gateway request failed: {exc}")
 
@@ -145,7 +222,7 @@ async def control_loop() -> None:
     agent_id: str | None = None
     while True:
         try:
-            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", {"name": AGENT_NAME, "agent_id": agent_id, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL}})
+            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", {"name": AGENT_NAME, "agent_id": agent_id, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL_RAW}})
             agent_id = heartbeat.get("agent_id") or agent_id
             if agent_id:
                 task = await asyncio.to_thread(control_request, f"/api/v1/control/agents/{agent_id}/tasks/next")
