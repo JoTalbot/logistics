@@ -2,35 +2,33 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V25 — commercial outcomes & learning
-STATUS: v25_commercial_outcomes_ci_pending
-AGENT: logistics-commercial-batch-v25
+CURRENT_STEP: V26 — commercial calibration & feedback loop
+STATUS: v25_verified_merged_v26_planning
+AGENT: logistics-commercial-batch-v26
 MACHINE: ChatGPT/GitHub connector
-STARTED: 2026-09-12
-UPDATED: 2026-09-12
-SCOPE: Connect operator decisions to durable realized outcomes, actual margin and shadow-only learning metrics. No autonomous external commitment or outreach is enabled.
+STARTED: 2026-09-13
+UPDATED: 2026-09-13
+SCOPE: Use realized commercial outcomes to measure calibration, drift and segment-level scoring quality in shadow mode. No automatic pricing, scoring or autonomy-policy mutation is enabled.
 
-## V24 verified
+## V25 verified
 
-- PR #2 `feat(v24): operator opportunity workflow` merged to `main`.
-- Merge commit: `eedcabd9ca6f0a773f1dec003c0af47187d69020`.
-- V24 adds tenant-scoped operator decisions, immutable review history, row locking and review metrics.
+- PR #3 `feat(v25): commercial outcomes and shadow learning` merged to `main`.
+- Merge commit: `c8af1fd0a8a1e2f98427b8225dca876311f16116`.
+- CI Run #336 completed successfully.
+- V25 adds tenant-scoped append-only commercial outcome history, realized margin, conversion metrics, prediction-vs-actual reporting and deterministic shadow-only learning evaluation.
 - Production release is not declared.
 
-## V25 implementation
+## V26 next stage
 
-- Added `0025_commercial_outcomes.sql` with tenant-scoped append-only commercial outcome history.
-- Added explicit outcomes: `won`, `lost`, `cancelled`, `unknown`.
-- Persisted offered price, actual revenue, actual cost, realized margin, operator reference, reason and correlation ID.
-- Added authenticated operator endpoints to record outcomes, inspect outcome history, view commercial outcome metrics and compare predicted versus actual margin.
-- Added deterministic shadow-only learning evaluation by priority bands.
-- Learning is evaluation only: it does not mutate pricing, scoring or autonomy policy.
-- Added focused tests for validation, tenant scoping, realized margin, API registration and learning calibration.
-- Updated Compose to mount migration 0025.
+- Calibrate commercial priority/scoring against realized outcomes.
+- Measure prediction error and outcome quality by priority bands and relevant commercial segments.
+- Detect score drift and insufficient sample sizes before proposing any policy change.
+- Produce deterministic shadow recommendations only; never mutate pricing, scoring or autonomy policy automatically.
+- Keep external publication, outreach, negotiation, contracts and financial actions outside the learning loop unless separately authorized and audited.
 
 ## Safety boundary
 
-V25 changes and measures internal commercial state only. It does not publish listings, contact customers/carriers, negotiate, sign contracts, move money, bypass provider controls, or automatically rewrite business policy. Model confidence and learning metrics are never authorization.
+V26 is an evaluation/calibration layer. It does not publish listings, contact customers/carriers, negotiate, sign contracts, move money, bypass provider controls, or automatically rewrite business policy. Model confidence and learning metrics are never authorization.
 
 ## Production gates remaining outside repository/CI
 
@@ -42,14 +40,14 @@ V25 changes and measures internal commercial state only. It does not publish lis
 
 ## Verification
 
-- V25 implementation committed on branch `v25-commercial-outcomes-learning`.
-- Fresh CI verification is pending.
+- V25 branch `v25-commercial-outcomes-learning` merged to `main` at `c8af1fd0a8a1e2f98427b8225dca876311f16116`.
+- CI Run #336 / `34769443372`: **SUCCESS**.
 - Production release is **NOT declared**.
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow.
-IN_PROGRESS: V25 commercial outcomes, prediction-vs-actual measurement and shadow learning CI verification.
-PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review; real outcome telemetry.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the current V25 code batch.
-OPEN_ISSUES: V25 CI verification, provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal and real commercial outcome telemetry.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes, prediction-vs-actual measurement and shadow learning CI verification.
+IN_PROGRESS: V26 commercial calibration & feedback loop.
+PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review; sufficient real outcome telemetry for calibration.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V26 evaluation foundation.
+OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
