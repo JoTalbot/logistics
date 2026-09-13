@@ -1,12 +1,12 @@
 from decimal import Decimal
 
-from backend.logistics.api import app
-from backend.logistics.commercial_calibration import (
+from logistics.api import app
+from logistics.commercial_calibration import (
     CalibrationObservation,
     calibrate_observations,
     priority_band,
 )
-import backend.logistics.commercial_calibration_api  # noqa: F401
+import logistics.commercial_calibration_api  # noqa: F401
 
 
 def test_priority_bands_are_deterministic():
