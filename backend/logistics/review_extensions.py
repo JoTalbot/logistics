@@ -11,16 +11,12 @@ from .historical_policy_replay import aggregate_historical_policy_replay
 from .recurring_demand_health import scheduler_health
 from . import commercial_queue  # noqa: F401
 from . import opportunity_review_api  # noqa: F401
+from . import commercial_outcomes_api  # noqa: F401
 import psycopg
 
 
 @app.get("/api/v1/review/duplicate-loads")
-def review_duplicate_loads(
-    tenant_id: UUID,
-    window_hours: int = 48,
-    limit: int = 100,
-    x_operator_token: str | None = Header(default=None),
-) -> list[dict[str, object]]:
+def review_duplicate_loads(tenant_id: UUID, window_hours: int = 48, limit: int = 100, x_operator_token: str | None = Header(default=None)) -> list[dict[str, object]]:
     _operator_auth(x_operator_token)
     if not 1 <= limit <= 1000:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 1000")
@@ -32,21 +28,14 @@ def review_duplicate_loads(
 
 
 @app.get("/api/v1/review/recurring-demand/health")
-def review_recurring_demand_health(
-    x_operator_token: str | None = Header(default=None),
-) -> dict[str, object]:
+def review_recurring_demand_health(x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
     _operator_auth(x_operator_token)
     with psycopg.connect(_dsn()) as conn:
         return scheduler_health(conn)
 
 
 @app.get("/api/v1/review/autonomy-exceptions")
-def review_autonomy_exceptions(
-    tenant_id: UUID,
-    limit: int = 100,
-    x_operator_token: str | None = Header(default=None),
-) -> list[dict[str, object]]:
-    """Return tenant-scoped non-AUTO shadow decisions for operator review."""
+def review_autonomy_exceptions(tenant_id: UUID, limit: int = 100, x_operator_token: str | None = Header(default=None)) -> list[dict[str, object]]:
     _operator_auth(x_operator_token)
     if not 1 <= limit <= 500:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
@@ -55,31 +44,10 @@ def review_autonomy_exceptions(
 
 
 @app.get("/api/v1/review/autonomy-replay")
-def review_autonomy_replay(
-    tenant_id: UUID,
-    limit: int = 10_000,
-    x_operator_token: str | None = Header(default=None),
-) -> dict[str, object]:
-    """Return tenant-scoped historical policy replay metrics by policy version."""
+def review_autonomy_replay(tenant_id: UUID, limit: int = 10_000, x_operator_token: str | None = Header(default=None)) -> dict[str, object]:
     _operator_auth(x_operator_token)
     if not 1 <= limit <= 100_000:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 100000")
     with psycopg.connect(_dsn()) as conn:
         result = aggregate_historical_policy_replay(conn, tenant_id=tenant_id, limit=limit)
-    return {
-        "tenant_id": str(result.tenant_id),
-        "reports": [
-            {
-                "policy_version": report.policy_version,
-                "report": {
-                    "cases": report.report.cases,
-                    "by_tier": report.report.by_tier,
-                    "successful_auto_cases": report.report.successful_auto_cases,
-                    "failed_auto_cases": report.report.failed_auto_cases,
-                    "auto_failure_rate": report.report.auto_failure_rate,
-                    "review_or_higher_cases": report.report.review_or_higher_cases,
-                },
-            }
-            for report in result.reports
-        ],
-    }
+    return {"tenant_id": str(result.tenant_id), "reports": [{"policy_version": report.policy_version, "report": {"cases": report.report.cases, "by_tier": report.report.by_tier, "successful_auto_cases": report.report.successful_auto_cases, "failed_auto_cases": report.report.failed_auto_cases, "auto_failure_rate": report.report.auto_failure_rate, "review_or_higher_cases": report.report.review_or_higher_cases}} for report in result.reports]}
