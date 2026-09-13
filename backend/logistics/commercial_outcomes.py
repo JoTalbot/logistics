@@ -42,32 +42,26 @@ def validate_commercial_outcome(outcome: CommercialOutcome) -> CommercialOutcome
         raise ValueError("operator_ref is required")
     if not outcome.reason.strip():
         raise ValueError("reason is required")
-    revenue = _money(outcome.actual_revenue, "actual_revenue")
-    cost = _money(outcome.actual_cost, "actual_cost")
-    offered = _money(outcome.offered_price, "offered_price")
-    if revenue is not None and cost is not None and outcome.outcome in {"won", "lost"}:
-        return CommercialOutcome(
-            opportunity_id=outcome.opportunity_id,
-            outcome=outcome.outcome,
-            currency=outcome.currency.strip().upper(),
-            operator_ref=outcome.operator_ref.strip(),
-            reason=outcome.reason.strip(),
-            offered_price=offered,
-            actual_revenue=revenue,
-            actual_cost=cost,
-            correlation_id=outcome.correlation_id,
-        )
     return CommercialOutcome(
         opportunity_id=outcome.opportunity_id,
         outcome=outcome.outcome,
         currency=outcome.currency.strip().upper(),
         operator_ref=outcome.operator_ref.strip(),
         reason=outcome.reason.strip(),
-        offered_price=offered,
-        actual_revenue=revenue,
-        actual_cost=cost,
+        offered_price=_money(outcome.offered_price, "offered_price"),
+        actual_revenue=_money(outcome.actual_revenue, "actual_revenue"),
+        actual_cost=_money(outcome.actual_cost, "actual_cost"),
         correlation_id=outcome.correlation_id,
     )
+
+
+def _decimal(value: object | None) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("database monetary value is not a valid decimal") from exc
 
 
 def realized_margin(actual_revenue: Decimal | None, actual_cost: Decimal | None) -> Decimal | None:
@@ -89,10 +83,12 @@ def record_commercial_outcome(conn: object, *, tenant_id: UUID, outcome: Commerc
     ).fetchone()
     if opportunity is None:
         raise ValueError("opportunity not found")
-    currency = outcome.currency or str(opportunity[2])
-    if outcome.currency != str(opportunity[2]).upper():
+    opportunity_currency = str(opportunity[2]).upper()
+    if outcome.currency != opportunity_currency:
         raise ValueError("currency does not match opportunity")
     margin = realized_margin(outcome.actual_revenue, outcome.actual_cost)
+    predicted_margin = _decimal(opportunity[3])
+    offered_price = outcome.offered_price if outcome.offered_price is not None else _decimal(opportunity[1])
     row = conn.execute(
         """
         INSERT INTO commercial_outcome_history
@@ -101,22 +97,22 @@ def record_commercial_outcome(conn: object, *, tenant_id: UUID, outcome: Commerc
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING id, recorded_at
         """,
-        (tenant_id, outcome.opportunity_id, outcome.outcome, currency,
-         outcome.offered_price if outcome.offered_price is not None else opportunity[1],
-         outcome.actual_revenue, outcome.actual_cost, margin,
+        (tenant_id, outcome.opportunity_id, outcome.outcome, outcome.currency,
+         offered_price, outcome.actual_revenue, outcome.actual_cost, margin,
          outcome.operator_ref, outcome.reason, outcome.correlation_id),
     ).fetchone()
+    prediction_error = margin - predicted_margin if margin is not None and predicted_margin is not None else None
     return {
         "id": str(row[0]),
         "opportunity_id": str(outcome.opportunity_id),
         "outcome": outcome.outcome,
-        "currency": currency,
-        "offered_price": str(outcome.offered_price if outcome.offered_price is not None else opportunity[1]),
+        "currency": outcome.currency,
+        "offered_price": str(offered_price) if offered_price is not None else None,
         "actual_revenue": str(outcome.actual_revenue) if outcome.actual_revenue is not None else None,
         "actual_cost": str(outcome.actual_cost) if outcome.actual_cost is not None else None,
         "actual_margin": str(margin) if margin is not None else None,
-        "predicted_margin": str(opportunity[3]) if opportunity[3] is not None else None,
-        "prediction_error": str(margin - opportunity[3]) if margin is not None and opportunity[3] is not None else None,
+        "predicted_margin": str(predicted_margin) if predicted_margin is not None else None,
+        "prediction_error": str(prediction_error) if prediction_error is not None else None,
         "operator_ref": outcome.operator_ref,
         "reason": outcome.reason,
         "recorded_at": row[1].isoformat(),
@@ -174,42 +170,46 @@ def commercial_outcome_metrics(conn: object, *, tenant_id: UUID) -> dict[str, ob
         """,
         (tenant_id,),
     ).fetchone()
-    total, won, lost, cancelled, unknown, revenue, margin, error = map(lambda x: x, row)
+    total, won, lost, cancelled, unknown, revenue, margin, error = row
     terminal = int(won) + int(lost)
     return {
         "outcomes_recorded": int(total),
-        "won": int(won), "lost": int(lost), "cancelled": int(cancelled), "unknown": int(unknown),
-        "won_rate_of_terminal": round(int(won) / terminal, 4) if terminal else 0.0,
-        "realized_revenue_won": str(revenue),
-        "realized_margin_won": str(margin),
-        "average_prediction_error": str(error.quantize(Decimal("0.01"))) if error is not None else None,
+        "won": int(won),
+        "lost": int(lost),
+        "cancelled": int(cancelled),
+        "unknown": int(unknown),
+        "win_rate": round(int(won) / terminal, 4) if terminal else 0.0,
+        "realized_revenue": str(_decimal(revenue) or Decimal("0")),
+        "realized_margin": str(_decimal(margin) or Decimal("0")),
+        "average_prediction_error": str(_decimal(error)) if error is not None else None,
     }
 
 
-def prediction_actual_report(conn: object, *, tenant_id: UUID, limit: int = 500) -> list[dict[str, object]]:
-    if not 1 <= limit <= 1000:
-        raise ValueError("limit must be between 1 and 1000")
+def prediction_vs_actual(conn: object, *, tenant_id: UUID, limit: int = 100) -> list[dict[str, object]]:
+    if not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
     rows = conn.execute(
         """
-        SELECT DISTINCT ON (h.opportunity_id)
-               h.opportunity_id, h.outcome, o.priority_score, o.estimated_margin,
-               h.actual_margin, h.currency, h.recorded_at
+        SELECT h.opportunity_id, h.outcome, o.priority_score, o.estimated_margin,
+               h.actual_margin, h.recorded_at
           FROM commercial_outcome_history h
           JOIN opportunities o ON o.id=h.opportunity_id AND o.tenant_id=h.tenant_id
-         WHERE h.tenant_id=%s AND h.actual_margin IS NOT NULL
-         ORDER BY h.opportunity_id, h.recorded_at DESC, h.id DESC
+         WHERE h.tenant_id=%s
+         ORDER BY h.recorded_at DESC, h.id DESC
          LIMIT %s
         """,
         (tenant_id, limit),
     ).fetchall()
-    return [
-        {
+    result = []
+    for r in rows:
+        predicted = _decimal(r[3])
+        actual = _decimal(r[4])
+        result.append({
             "opportunity_id": str(r[0]), "outcome": r[1],
             "priority_score": float(r[2]) if r[2] is not None else None,
-            "predicted_margin": str(r[3]) if r[3] is not None else None,
-            "actual_margin": str(r[4]),
-            "prediction_error": str(r[4] - r[3]) if r[3] is not None else None,
-            "currency": r[5], "recorded_at": r[6].isoformat(),
-        }
-        for r in rows
-    ]
+            "predicted_margin": str(predicted) if predicted is not None else None,
+            "actual_margin": str(actual) if actual is not None else None,
+            "prediction_error": str(actual - predicted) if actual is not None and predicted is not None else None,
+            "recorded_at": r[5].isoformat(),
+        })
+    return result
