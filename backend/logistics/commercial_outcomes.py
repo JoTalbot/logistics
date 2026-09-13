@@ -185,7 +185,8 @@ def commercial_outcome_metrics(conn: object, *, tenant_id: UUID) -> dict[str, ob
     }
 
 
-def prediction_vs_actual(conn: object, *, tenant_id: UUID, limit: int = 100) -> list[dict[str, object]]:
+def prediction_actual_report(conn: object, *, tenant_id: UUID, limit: int = 100) -> list[dict[str, object]]:
+    """Return deterministic, read-only prediction-versus-realized outcome rows."""
     if not 1 <= limit <= 500:
         raise ValueError("limit must be between 1 and 500")
     rows = conn.execute(
@@ -213,3 +214,7 @@ def prediction_vs_actual(conn: object, *, tenant_id: UUID, limit: int = 100) -> 
             "recorded_at": r[5].isoformat(),
         })
     return result
+
+
+# Backward-compatible descriptive alias for callers using the original helper name.
+prediction_vs_actual = prediction_actual_report
