@@ -1,6 +1,6 @@
 from pytest import raises
 
-from logistics.readiness import GateStatus, ReadinessGate, evaluate_readiness
+from logistics.readiness import GateStatus, ReadinessGate, evaluate_readiness, readiness_evidence
 
 
 def test_all_required_ready_means_release_ready():
@@ -44,3 +44,23 @@ def test_gate_names_must_be_unique():
 def test_non_ready_gate_requires_evidence():
     with raises(ValueError, match="evidence"):
         ReadinessGate("backup", GateStatus.PENDING)
+
+
+def test_readiness_evidence_has_deterministic_content_fingerprint():
+    gates = [
+        ReadinessGate("ci", GateStatus.READY, "run-1"),
+        ReadinessGate("backup", GateStatus.READY, "rehearsal-1"),
+    ]
+
+    first = readiness_evidence(gates)
+    second = readiness_evidence(tuple(gates))
+
+    assert first == second
+    assert first["schema"] == "logistics.release-readiness.v1"
+    assert len(first["content_sha256"]) == 64
+    assert first["content_sha256"] != ""
+
+
+def test_readiness_evidence_fails_closed_before_fingerprinting_unready_gate():
+    with raises(RuntimeError, match="release readiness blocked"):
+        readiness_evidence([ReadinessGate("backup", GateStatus.PENDING, "restore pending")])

@@ -3,12 +3,21 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: V34 — production evidence hardening
-STATUS: v33_merged_ci_verified
+STATUS: v34_evidence_integrity_implemented
 AGENT: logistics-commercial-batch-v34
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-14
 UPDATED: 2026-09-14
 SCOPE: V34 hardens production evidence and readiness reporting without enabling autonomous external actions.
+
+## V34 in progress
+
+- Added deterministic SHA-256 fingerprinting to `logistics.release-readiness.v1` evidence.
+- Canonical evidence serialization uses sorted keys, compact separators and UTF-8 encoding.
+- Required unready gates still fail closed before evidence is fingerprinted.
+- Added focused determinism/integrity tests.
+- Documented the evidence integrity contract.
+- PR #12 opened for review; CI verification is pending.
 
 ## V33 delivered and verified
 
@@ -33,14 +42,6 @@ SCOPE: V34 hardens production evidence and readiness reporting without enabling 
 - PR #10 merged to `main` with merge commit `bb92009e903f5fa600cac37074898611824bfc3f`.
 - Main CI run #375 passed all repository stages.
 
-## V31 delivered and merged
-
-- Deterministic readiness evidence integrated into release smoke.
-- Machine-readable `logistics.release-readiness.v1` evidence.
-- Required unready gates fail closed.
-- PR #9 merged to `main` with merge commit `84d97249dfee6942884e54fb446a87d5db79a9ee`.
-- V31 CI passed all repository stages.
-
 ## Safety boundary
 
 V34 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability.
@@ -58,7 +59,7 @@ V34 remains evidence-only. It does not enable autonomous publication, negotiatio
 
 DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration.
 IN_PROGRESS: V34 production evidence hardening.
-NEXT: inspect existing readiness/release evidence paths, identify the smallest non-duplicative production-evidence gap, implement deterministic evidence-only hardening with focused tests/docs, then verify full main CI before advancing.
+NEXT: verify PR #12 with full CI, merge after green checks, verify main CI, then advance to final production-readiness audit.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent rollout only after security review; real outcome telemetry; Vercel account/integration remediation.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, and Vercel account remediation remain external blockers.
 OPEN_ISSUES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
