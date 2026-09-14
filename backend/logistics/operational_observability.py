@@ -43,6 +43,11 @@ class RouteQualityObservation:
     def absolute_error(self) -> float:
         return abs(self.expected_score - self.observed_score)
 
+    @property
+    def regression(self) -> float:
+        """Positive score loss only; improvements are not regressions."""
+        return max(0.0, self.expected_score - self.observed_score)
+
 
 @dataclass(frozen=True)
 class CostAttribution:
@@ -89,7 +94,7 @@ def build_observability_report(
     cost_items = tuple(costs)
 
     errors = tuple(item.absolute_error for item in route_items)
-    regressions = sum(error >= regression_threshold for error in errors) if errors else 0
+    regressions = sum(item.regression >= regression_threshold for item in route_items) if route_items else 0
     return OperationalObservabilityReport(
         provider_latency_ms={item.provider: item.mean_ms for item in latency_items},
         provider_samples={item.provider: item.sample_count for item in latency_items},
