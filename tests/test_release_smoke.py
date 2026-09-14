@@ -1,7 +1,6 @@
 import pytest
 
-from logistics.readiness import GateStatus, ReadinessGate
-from scripts.release_smoke import readiness_evidence
+from logistics.readiness import GateStatus, ReadinessGate, readiness_evidence
 
 
 def test_readiness_evidence_is_machine_readable_and_fail_closed():
