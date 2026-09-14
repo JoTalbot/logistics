@@ -2,13 +2,24 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V33 — observability/KPI integration
-STATUS: v32_merged_ci_verified
-AGENT: logistics-commercial-batch-v33
+CURRENT_STEP: V34 — production evidence hardening
+STATUS: v33_merged_ci_verified
+AGENT: logistics-commercial-batch-v34
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-14
 UPDATED: 2026-09-14
-SCOPE: V33 integrates deterministic V32 operational signals into existing observability/KPI evidence paths and adds bounded time-windowed operational reporting.
+SCOPE: V34 hardens production evidence and readiness reporting without enabling autonomous external actions.
+
+## V33 delivered and verified
+
+- Composed existing BusinessKPI with V32 OperationalObservabilityReport.
+- Added validated timezone-aware half-open reporting windows.
+- Added deterministic event counts inside bounded UTC windows.
+- Added machine-readable `logistics.operational-snapshot.v1` evidence.
+- Added focused boundary, timezone and determinism tests.
+- Evidence-only implementation with no autonomous publication, negotiation, contracting, pricing mutation or financial actions.
+- PR #11 merged to `main` with merge commit `00e072b1e064cd20cd32e59b40b551c45dc6c15f`.
+- Main CI run #378 passed all repository stages.
 
 ## V32 delivered and verified
 
@@ -32,7 +43,7 @@ SCOPE: V33 integrates deterministic V32 operational signals into existing observ
 
 ## Safety boundary
 
-V33 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability.
+V34 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability.
 
 ## External production gates
 
@@ -45,9 +56,9 @@ V33 remains evidence-only. It does not enable autonomous publication, negotiatio
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability.
-IN_PROGRESS: V33 observability/KPI integration.
-NEXT: complete V33 integration, bounded time-window reporting, focused tests/docs, then verify full main CI before advancing.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration.
+IN_PROGRESS: V34 production evidence hardening.
+NEXT: inspect existing readiness/release evidence paths, identify the smallest non-duplicative production-evidence gap, implement deterministic evidence-only hardening with focused tests/docs, then verify full main CI before advancing.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent rollout only after security review; real outcome telemetry; Vercel account/integration remediation.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, and Vercel account remediation remain external blockers.
 OPEN_ISSUES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
