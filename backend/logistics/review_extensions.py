@@ -13,6 +13,7 @@ from . import commercial_queue  # noqa: F401
 from . import opportunity_review_api  # noqa: F401
 from . import commercial_outcomes_api  # noqa: F401
 from . import commercial_calibration_api  # noqa: F401
+from . import calibration_learning_api  # noqa: F401
 import psycopg
 
 
