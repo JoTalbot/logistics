@@ -1,6 +1,8 @@
 """Pure readiness gate aggregation for release evidence."""
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import Iterable
@@ -68,7 +70,7 @@ def readiness_evidence(gates: Iterable[ReadinessGate]) -> dict[str, object]:
         raise RuntimeError(
             "release readiness blocked: " + ", ".join(report.required_unready)
         )
-    return {
+    payload: dict[str, object] = {
         "schema": "logistics.release-readiness.v1",
         "report": asdict(report),
         "gates": [
@@ -81,3 +83,6 @@ def readiness_evidence(gates: Iterable[ReadinessGate]) -> dict[str, object]:
             for gate in items
         ],
     }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    payload["content_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return payload
