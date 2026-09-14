@@ -2,38 +2,37 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V27 — commercial calibration operations & controlled learning
-STATUS: v26_verified_v27_ready
-AGENT: logistics-commercial-batch-v27
+CURRENT_STEP: V28 — calibration learning loop
+STATUS: v28_implementation_complete_ci_pending
+AGENT: logistics-commercial-batch-v28
 MACHINE: ChatGPT/GitHub connector
-STARTED: 2026-09-13
-UPDATED: 2026-09-13
-SCOPE: V26 verified. Commercial calibration is now available in shadow mode; V27 focuses on operationalizing calibration evidence without automatic pricing, scoring or autonomy-policy mutation.
+STARTED: 2026-09-14
+UPDATED: 2026-09-14
+SCOPE: V28 makes commercial calibration durable and operator-auditable while keeping production pricing, scoring and autonomy policy immutable.
 
-## V26 verified
+## V27 verified
 
-- PR #5 `feat(v26): commercial calibration and feedback loop` merged to `main`.
-- Merge commit: `b9efbdf0c314707b99dcb836f19c3409c32b5ad6`.
-- Fresh CI Run #341 completed successfully.
-- V26 adds deterministic calibration by priority bands: low, medium, high and very_high.
-- Reports win rate, mean prediction error and mean absolute prediction error per band.
-- Gates drift signals on minimum terminal sample size.
-- Uses the latest commercial outcome per opportunity to prevent duplicate outcome-history rows from distorting calibration.
-- Provides authenticated, tenant-scoped, read-only calibration reporting.
-- Recommendations remain shadow-only with explicit `policy_mutation: false`.
-- No automatic pricing, scoring or autonomy-policy mutation is enabled.
+- V27 controlled commercial calibration operations is merged to `main`.
+- Main merge commit: `ee859bda20ea2bf8efb53013183c26a497646ffe`.
+- V27 requires drift, sufficient terminal sample and explicit operator approval before a shadow adjustment is considered eligible.
+- Suggested score changes are bounded.
+- Production policy remains unchanged.
+
+## V28 delivered
+
+- Durable tenant-scoped calibration snapshots.
+- Deterministic shadow recommendations derived from sampled drift evidence.
+- Recommendation identity includes the snapshot, preserving history across runs.
+- Append-only operator acknowledgement/rejection events.
+- Tenant-scoped recommendation and event reads.
+- Learning metrics for snapshots, drift, recommendations and operator decisions.
+- Authenticated operator API for snapshot creation, review and acknowledgement.
+- Migration `0026_calibration_learning_loop.sql` wired into Compose.
+- No automatic pricing, scoring, autonomy-policy, publication, negotiation, contract or financial mutation.
 
 ## Safety boundary
 
-V26 is an evaluation/calibration layer. It does not publish listings, contact customers/carriers, negotiate, sign contracts, move money, bypass provider controls, or automatically rewrite pricing, scoring or autonomy policy. Model confidence and learning metrics are never authorization.
-
-## V27 direction
-
-- Turn calibration evidence into durable operator-facing learning reports and review queues.
-- Track calibration/drift snapshots over time without mutating live policy.
-- Add deterministic recommendation history and explicit operator acknowledgement.
-- Preserve tenant isolation, append-only auditability and shadow-only behavior.
-- Require sufficient real commercial outcome telemetry before any policy-change proposal can be considered.
+V28 is a controlled learning/evaluation layer. An operator acknowledgement records a decision but does not mutate production policy. Recommendations remain shadow artifacts and require a separate authorized release process before any production policy change.
 
 ## Production gates remaining outside repository/CI
 
@@ -45,9 +44,9 @@ V26 is an evaluation/calibration layer. It does not publish listings, contact cu
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes, prediction-vs-actual measurement and shadow learning CI verification, V26 commercial calibration & feedback loop CI verification.
-IN_PROGRESS: none.
-NEXT: V27 commercial calibration operations & controlled learning.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes and prediction-vs-actual measurement, V26 commercial calibration & feedback loop CI verification, V27 controlled calibration operations, V28 calibration learning loop implementation.
+IN_PROGRESS: V28 CI verification.
+NEXT: V29 replay/evaluation of recommendation effectiveness and stronger operational observability, still shadow-only.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review; sufficient real outcome telemetry for calibration.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V26 evaluation foundation.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V28 evaluation foundation.
 OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
