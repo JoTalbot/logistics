@@ -2,37 +2,36 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V28 — calibration learning loop
-STATUS: v28_implementation_complete_ci_pending
-AGENT: logistics-commercial-batch-v28
+CURRENT_STEP: V29 — recommendation replay/evaluation
+STATUS: v29_implementation_complete_ci_pending
+AGENT: logistics-commercial-batch-v29
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-14
 UPDATED: 2026-09-14
-SCOPE: V28 makes commercial calibration durable and operator-auditable while keeping production pricing, scoring and autonomy policy immutable.
+SCOPE: V29 adds deterministic, read-only replay/evaluation of shadow commercial recommendations without mutating production pricing, scoring, autonomy policy, publication, negotiation, contract or financial state.
 
-## V27 verified
+## V29 delivered
 
-- V27 controlled commercial calibration operations is merged to `main`.
-- Main merge commit: `ee859bda20ea2bf8efb53013183c26a497646ffe`.
-- V27 requires drift, sufficient terminal sample and explicit operator approval before a shadow adjustment is considered eligible.
-- Suggested score changes are bounded.
-- Production policy remains unchanged.
+- Deterministic recommendation replay/evaluation.
+- Later score observations and terminal wins/losses are measured.
+- Mean score delta is calculated from suggested vs later observed scores.
+- Mean absolute margin prediction error is calculated when both margins exist.
+- Invalid score ranges are rejected.
+- Evaluation remains pure and side-effect free.
+- Focused V29 tests and documentation are present.
+- Corrected the V29 test expectation for the sample score delta: `0.0`.
 
-## V28 delivered
+## CI status
 
-- Durable tenant-scoped calibration snapshots.
-- Deterministic shadow recommendations derived from sampled drift evidence.
-- Recommendation identity includes the snapshot, preserving history across runs.
-- Append-only operator acknowledgement/rejection events.
-- Tenant-scoped recommendation and event reads.
-- Learning metrics for snapshots, drift, recommendations and operator decisions.
-- Authenticated operator API for snapshot creation, review and acknowledgement.
-- Migration `0026_calibration_learning_loop.sql` wired into Compose.
-- No automatic pricing, scoring, autonomy-policy, publication, negotiation, contract or financial mutation.
+- Latest V29 CI run before the test correction: **FAILED** at the unit/integration test step.
+- Dependency consistency, dependency audit and SQL migration stages passed.
+- Failure was caused by an incorrect test assertion, not the V29 evaluation implementation.
+- Test correction committed on `v29-recommendation-evaluation` as `2230ffeac78a435d11c4d1f3b4e21ff3fcc66bc6`.
+- **NEXT GATE: rerun CI and require green before merge.**
 
 ## Safety boundary
 
-V28 is a controlled learning/evaluation layer. An operator acknowledgement records a decision but does not mutate production policy. Recommendations remain shadow artifacts and require a separate authorized release process before any production policy change.
+V29 is evaluation-only. Results are evidence for an operator/release process and do not authorize or perform production policy mutation.
 
 ## Production gates remaining outside repository/CI
 
@@ -44,9 +43,9 @@ V28 is a controlled learning/evaluation layer. An operator acknowledgement recor
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes and prediction-vs-actual measurement, V26 commercial calibration & feedback loop CI verification, V27 controlled calibration operations, V28 calibration learning loop implementation.
-IN_PROGRESS: V28 CI verification.
-NEXT: V29 replay/evaluation of recommendation effectiveness and stronger operational observability, still shadow-only.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes and prediction-vs-actual measurement, V26 commercial calibration & feedback loop CI verification, V27 controlled calibration operations, V28 calibration learning loop implementation, V29 recommendation replay/evaluation implementation.
+IN_PROGRESS: V29 CI verification.
+NEXT: after green CI, review/merge V29 and continue operational observability and production-readiness gates.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review; sufficient real outcome telemetry for calibration.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V28 evaluation foundation.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V29 evaluation foundation.
 OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
