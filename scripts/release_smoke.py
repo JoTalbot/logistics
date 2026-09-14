@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict
 from datetime import datetime, timezone
 from unittest.mock import patch
 from uuid import uuid4
@@ -12,7 +11,7 @@ import psycopg
 from fastapi import HTTPException
 
 from logistics import api
-from logistics.readiness import GateStatus, ReadinessGate, ReadinessReport, evaluate_readiness
+from logistics.readiness import GateStatus, ReadinessGate, readiness_evidence
 
 
 class _Cursor:
@@ -43,28 +42,6 @@ class _Conn:
         if self.calls == 2:
             return _Cursor([(datetime.now(timezone.utc), "approve", 1)])
         return _Cursor([(0, 0.0, 0.0)])
-
-
-def readiness_evidence(gates: list[ReadinessGate]) -> dict[str, object]:
-    """Return stable, machine-readable smoke evidence without mutating policy."""
-    report: ReadinessReport = evaluate_readiness(gates)
-    if not report.release_ready:
-        raise RuntimeError(
-            "release readiness blocked: " + ", ".join(report.required_unready)
-        )
-    return {
-        "schema": "logistics.release-readiness.v1",
-        "report": asdict(report),
-        "gates": [
-            {
-                "name": gate.name,
-                "status": gate.status.value,
-                "evidence": gate.evidence,
-                "required": gate.required,
-            }
-            for gate in gates
-        ],
-    }
 
 
 def main() -> None:
