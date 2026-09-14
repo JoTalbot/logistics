@@ -2,15 +2,15 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V32 — operational observability
-STATUS: v32_implementation_ci_pending
-AGENT: logistics-commercial-batch-v32
+CURRENT_STEP: V33 — observability/KPI integration
+STATUS: v32_merged_ci_verified
+AGENT: logistics-commercial-batch-v33
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-14
 UPDATED: 2026-09-14
-SCOPE: V32 adds deterministic, side-effect-free operational evidence for provider latency, route-quality regression and cost attribution.
+SCOPE: V33 integrates deterministic V32 operational signals into existing observability/KPI evidence paths and adds bounded time-windowed operational reporting.
 
-## V32 delivered
+## V32 delivered and verified
 
 - Provider latency aggregation with sample counts and mean milliseconds.
 - Route-quality mean absolute error and regression count.
@@ -19,6 +19,8 @@ SCOPE: V32 adds deterministic, side-effect-free operational evidence for provide
 - Pure report generation with no provider calls or business-state mutation.
 - Focused V32 regression tests.
 - Operational observability contract documented.
+- PR #10 merged to `main` with merge commit `bb92009e903f5fa600cac37074898611824bfc3f`.
+- Main CI run #375 passed all repository stages.
 
 ## V31 delivered and merged
 
@@ -30,7 +32,7 @@ SCOPE: V32 adds deterministic, side-effect-free operational evidence for provide
 
 ## Safety boundary
 
-V32 is evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability.
+V33 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability.
 
 ## External production gates
 
@@ -43,9 +45,9 @@ V32 is evidence-only. It does not enable autonomous publication, negotiation, co
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration.
-IN_PROGRESS: V32 CI verification.
-NEXT: integrate V32 signals into existing observability/KPI evidence paths, then add bounded time-windowed operational reporting.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability.
+IN_PROGRESS: V33 observability/KPI integration.
+NEXT: complete V33 integration, bounded time-window reporting, focused tests/docs, then verify full main CI before advancing.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent rollout only after security review; real outcome telemetry; Vercel account/integration remediation.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, and Vercel account remediation remain external blockers.
 OPEN_ISSUES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
