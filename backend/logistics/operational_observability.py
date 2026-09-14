@@ -94,7 +94,10 @@ def build_observability_report(
     cost_items = tuple(costs)
 
     errors = tuple(item.absolute_error for item in route_items)
-    regressions = sum(item.regression >= regression_threshold for item in route_items) if route_items else 0
+    regressions = sum(
+        item.regression >= regression_threshold
+        for item in route_items
+    ) if route_items else 0
     return OperationalObservabilityReport(
         provider_latency_ms={item.provider: item.mean_ms for item in latency_items},
         provider_samples={item.provider: item.sample_count for item in latency_items},
