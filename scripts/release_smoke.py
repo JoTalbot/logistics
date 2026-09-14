@@ -1,6 +1,7 @@
 """Fail-closed release smoke checks using only local/fake dependencies."""
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -10,6 +11,7 @@ import psycopg
 from fastapi import HTTPException
 
 from logistics import api
+from logistics.readiness import GateStatus, ReadinessGate, readiness_evidence
 
 
 class _Cursor:
@@ -45,8 +47,10 @@ class _Conn:
 def main() -> None:
     os.environ["REVIEW_OPERATOR_TOKEN"] = "smoke-secret"
     os.environ["DATABASE_URL"] = "postgresql://smoke"
+    gates: list[ReadinessGate] = []
 
     assert api.health()["status"] == "ok"
+    gates.append(ReadinessGate("api-health", GateStatus.READY, "health endpoint"))
 
     with patch("logistics.api.psycopg.connect", side_effect=psycopg.OperationalError("database down")):
         try:
@@ -55,6 +59,7 @@ def main() -> None:
             assert exc.status_code == 503
         else:
             raise AssertionError("unexpected readiness success with broken database")
+    gates.append(ReadinessGate("database-fail-closed", GateStatus.READY, "503 on database failure"))
 
     try:
         api.review_metrics(uuid4(), x_operator_token="wrong")
@@ -62,6 +67,7 @@ def main() -> None:
         assert exc.status_code == 401
     else:
         raise AssertionError("invalid operator token was accepted")
+    gates.append(ReadinessGate("operator-auth", GateStatus.READY, "401 for invalid token"))
 
     tenant_id = uuid4()
     conn = _Conn()
@@ -70,7 +76,10 @@ def main() -> None:
     assert report["tenant_id"] == str(tenant_id)
     assert report["decisions"] == {"approve": 1}
     assert report["queue_age"]["pending_total"] == 0
+    gates.append(ReadinessGate("tenant-audit-report", GateStatus.READY, "tenant-scoped audit report"))
 
+    evidence = readiness_evidence(gates)
+    print(json.dumps(evidence, sort_keys=True))
     print("release smoke: PASS")
 
 

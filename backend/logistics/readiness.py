@@ -1,7 +1,7 @@
 """Pure readiness gate aggregation for release evidence."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import Iterable
 
@@ -58,3 +58,26 @@ def evaluate_readiness(gates: Iterable[ReadinessGate]) -> ReadinessReport:
         required_unready=required_unready,
         release_ready=not required_unready,
     )
+
+
+def readiness_evidence(gates: Iterable[ReadinessGate]) -> dict[str, object]:
+    """Return stable, machine-readable evidence and fail closed when required gates are unready."""
+    items = tuple(gates)
+    report = evaluate_readiness(items)
+    if not report.release_ready:
+        raise RuntimeError(
+            "release readiness blocked: " + ", ".join(report.required_unready)
+        )
+    return {
+        "schema": "logistics.release-readiness.v1",
+        "report": asdict(report),
+        "gates": [
+            {
+                "name": gate.name,
+                "status": gate.status.value,
+                "evidence": gate.evidence,
+                "required": gate.required,
+            }
+            for gate in items
+        ],
+    }
