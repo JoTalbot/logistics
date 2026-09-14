@@ -2,36 +2,36 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V29 — recommendation replay/evaluation
-STATUS: v29_implementation_complete_ci_pending
-AGENT: logistics-commercial-batch-v29
+CURRENT_STEP: V30 — operational observability and production-readiness hardening
+STATUS: v29_merged_v30_started
+AGENT: logistics-commercial-batch-v30
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-14
 UPDATED: 2026-09-14
-SCOPE: V29 adds deterministic, read-only replay/evaluation of shadow commercial recommendations without mutating production pricing, scoring, autonomy policy, publication, negotiation, contract or financial state.
+SCOPE: V29 is merged. V30 continues with operational observability and production-readiness hardening while preserving the shadow-only commercial safety boundary.
 
-## V29 delivered
+## V29 delivered and merged
 
 - Deterministic recommendation replay/evaluation.
 - Later score observations and terminal wins/losses are measured.
-- Mean score delta is calculated from suggested vs later observed scores.
-- Mean absolute margin prediction error is calculated when both margins exist.
+- Mean score delta and mean absolute margin prediction error are calculated.
 - Invalid score ranges are rejected.
 - Evaluation remains pure and side-effect free.
-- Focused V29 tests and documentation are present.
-- Corrected the V29 test expectation for the sample score delta: `0.0`.
+- Focused tests and documentation are present.
+- Incorrect sample test expectation was corrected to `0.0`.
+- PR #7 merged to `main` with merge commit `d19674a9b9c17760aa309b293b136b765b42ebb8`.
+- V29 CI on head commit `b4e9fa79bd948dcc1e42ffcaeabfaa3a1d436244` completed successfully (run `34842926022`).
 
-## CI status
+## V30 target
 
-- Latest V29 CI run before the test correction: **FAILED** at the unit/integration test step.
-- Dependency consistency, dependency audit and SQL migration stages passed.
-- Failure was caused by an incorrect test assertion, not the V29 evaluation implementation.
-- Test correction committed on `v29-recommendation-evaluation` as `2230ffeac78a435d11c4d1f3b4e21ff3fcc66bc6`.
-- **NEXT GATE: rerun CI and require green before merge.**
+- Strengthen operational observability around recommendation evaluation and commercial workflows.
+- Keep metrics deterministic and side-effect free where possible.
+- Improve production-readiness evidence without enabling autonomous publication, negotiation, contracts or financial mutations.
+- Preserve tenant isolation, auditability and explicit operator authorization boundaries.
 
 ## Safety boundary
 
-V29 is evaluation-only. Results are evidence for an operator/release process and do not authorize or perform production policy mutation.
+Commercial learning/evaluation remains evidence-only. No automatic mutation of production pricing, scoring, autonomy policy, publication, negotiation, contract or financial state is authorized by V30.
 
 ## Production gates remaining outside repository/CI
 
@@ -43,9 +43,9 @@ V29 is evaluation-only. Results are evidence for an operator/release process and
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes and prediction-vs-actual measurement, V26 commercial calibration & feedback loop CI verification, V27 controlled calibration operations, V28 calibration learning loop implementation, V29 recommendation replay/evaluation implementation.
-IN_PROGRESS: V29 CI verification.
-NEXT: after green CI, review/merge V29 and continue operational observability and production-readiness gates.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, shadow/replay modules, durable decision persistence, authenticated exception queue and historical aggregation, V22 bounded remote control hardening and CI verification, V23 commercial opportunity queue and CI verification, V24 operator opportunity workflow, V25 commercial outcomes and prediction-vs-actual measurement, V26 commercial calibration & feedback loop CI verification, V27 controlled calibration operations, V28 calibration learning loop implementation, V29 recommendation replay/evaluation implementation and CI verification.
+IN_PROGRESS: V30 operational observability and production-readiness hardening.
+NEXT: implement the smallest high-value observability/readiness increment, test it, update status, and verify CI.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent operational rollout only after security review; sufficient real outcome telemetry for calibration.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for the V29 evaluation foundation.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal plus Lardi provider/support action before another live smoke. No repository-secret change is required for V30 foundation work.
 OPEN_ISSUES: provider access/mapping, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
