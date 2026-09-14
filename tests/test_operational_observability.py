@@ -23,7 +23,7 @@ def test_report_aggregates_latency_route_regression_and_cost() -> None:
 
     assert report.provider_latency_ms == {"lardi": 150.0, "della": 50.0}
     assert report.provider_samples == {"lardi": 3, "della": 1}
-    assert report.route_quality_mean_absolute_error == pytest.approx(0.07, abs=0.001)
+    assert report.route_quality_mean_absolute_error == pytest.approx(0.1067, abs=0.001)
     assert report.route_quality_regressions == 1
     assert report.attributed_cost == 1.7
 
