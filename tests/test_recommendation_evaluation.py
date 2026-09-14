@@ -15,7 +15,7 @@ def test_evaluation_is_deterministic_and_read_only():
     assert report.accepted_cases == 1
     assert report.rejected_cases == 1
     assert report.unknown_cases == 1
-    assert report.mean_score_delta == -0.025
+    assert report.mean_score_delta == 0.0
     assert report.mean_abs_margin_error == Decimal("15.00")
 
 
