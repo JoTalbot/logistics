@@ -1,3 +1,5 @@
 # V39 Next Gate
 
-Run authoritative CI for the V39 branch, review the rollback test result, then update the release decision and status from observed evidence.
+V39 repository verification is complete. Authoritative CI passed and the rollback evidence was merged into `main`.
+
+The next gates are external production-activation prerequisites, not another repository CI step. See `STATUS.md` and `docs/V39_RELEASE_DECISION.md` for the current decision and remaining blockers.
