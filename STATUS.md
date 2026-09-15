@@ -3,12 +3,12 @@
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
 CURRENT_STEP: V41 — Per-agent credential lifecycle hardening
-STATUS: v41_verified_pending_latest_ci
+STATUS: v41_verified_external_gates_blocked
 AGENT: logistics-commercial-batch-v41
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
 UPDATED: 2026-09-15
-SCOPE: V41 завершён на уровне репозитория; per-agent credentials, immutable agent identity, tenant binding, credential revocation и recovery remote-agent после отзыва усилены. Последний кодовый head требует завершения свежих CI/E2E прогонов.
+SCOPE: V41 завершён на уровне репозитория; per-agent credentials, immutable agent identity, tenant binding, credential revocation и recovery remote-agent после отзыва усилены и проверены.
 
 ## V41 completion
 
@@ -25,7 +25,7 @@ SCOPE: V41 завершён на уровне репозитория; per-agent 
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN BASELINE / FRESH V41 RUNS IN PROGRESS** — предыдущий verified head `539b91515ce59ec3fc9e666f2a899153db3f16f8` имел успешные CI #466, Backup Restore E2E #36 и Compose E2E #38. Текущий application head `bde17c4a3beebe3c1dd616129b9ff25e91821912` содержит lifecycle-recovery fix и проходит свежие GitHub Actions проверки.
+**SOFTWARE CONTOUR: GREEN** — текущий application head `3ebb08f9312d83ad92a79a08fba85248e8ee638b` прошёл GitHub Actions CI #468 и Backup Restore E2E #38. Последний Compose E2E для application head `bde17c4a3beebe3c1dd616129b9ff25e91821912` также завершился успешно (#39). Кодовые изменения V41 не имеют незакрытой ошибки CI.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -36,7 +36,7 @@ SCOPE: V41 завершён на уровне репозитория; per-agent 
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; no successful Vercel deployment is claimed for the current application head.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current commit status still reports Vercel failure and no successful Vercel deployment is claimed for the current application head.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 
 ## Safety boundary
@@ -46,8 +46,8 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 ## Handoff
 
 DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening.
-IN_PROGRESS: fresh verification for V41 lifecycle-recovery fix plus external production-readiness/activation gates.
-NEXT: finish fresh V41 CI/E2E verification, then resolve external production gates. Avoid decorative application changes while external blockers remain unchanged.
+IN_PROGRESS: external production-readiness/activation gates only.
+NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, and real booked/delivered outcome telemetry. Avoid decorative application changes while these external blockers remain unchanged.
 PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout after security review.
 REQUIRED HUMAN ACTION: target infrastructure backup/restore rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
 OPEN_GATES: provider access/mapping, Vercel account/integration block, contact adapters, external publication permissions, production backup/restore rehearsal, real commercial outcome telemetry, calibration sample size.
