@@ -10,7 +10,7 @@ import pytest
 from fastapi import HTTPException
 
 from logistics import remote_control  # noqa: F401
-from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskRequest, _approval, control_agents, control_cancel, control_complete, control_create_task, control_heartbeat, control_next_task
+from logistics.remote_control import AgentHeartbeat, CompleteRequest, EventRequest, TaskRequest, _approval, control_agents, control_cancel, control_complete, control_create_task, control_event, control_heartbeat, control_next_task
 
 AGENT_TOKEN = "pytest-remote-agent-token"
 OPERATOR_TOKEN = "pytest-operator-token"
@@ -124,6 +124,18 @@ def test_cancelling_running_task_finalizes_it(configured):
         control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=f"Bearer {AGENT_TOKEN}")
     assert excinfo.value.status_code == 404
     assert control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"] is None
+
+
+def test_cancelled_task_rejects_late_events(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    agent_id = UUID(str(_agent(name)["agent_id"]))
+    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"event-cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
+    assert task["id"] == created["task_id"]
+    control_cancel(UUID(str(task["id"])), authorization=f"Bearer {OPERATOR_TOKEN}")
+    with pytest.raises(HTTPException) as excinfo:
+        control_event(UUID(str(task["id"])), EventRequest(stream="stdout", message="late"), authorization=f"Bearer {AGENT_TOKEN}")
+    assert excinfo.value.status_code == 404
 
 
 def test_task_tenant_must_match_agent_tenant(configured):
