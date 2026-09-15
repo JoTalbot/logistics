@@ -77,7 +77,7 @@ def test_safe_task_lifecycle(configured):
 
 def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"]))
+    agent_id = UUID(str(_agent(name)["agent_id"])
     review = control_create_task(TaskRequest(agent_id=agent_id, command="python -c 'print(1)'"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert review["approval"] == "REVIEW"
     blocked = control_create_task(TaskRequest(agent_id=agent_id, command="rm -rf /tmp/pytest-example"), authorization=f"Bearer {OPERATOR_TOKEN}")
@@ -125,7 +125,7 @@ def test_auto_policy_is_strict_about_shell_composition_and_arguments():
 
 def test_cancelling_running_task_finalizes_it(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"])
+    agent_id = UUID(str(_agent(name)["agent_id"]))
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
     assert task["id"] == created["task_id"]
@@ -139,7 +139,7 @@ def test_cancelling_running_task_finalizes_it(configured):
 
 def test_cancelled_task_rejects_late_events(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"])
+    agent_id = UUID(str(_agent(name)["agent_id"]))
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"event-cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
     assert task["id"] == created["task_id"]
