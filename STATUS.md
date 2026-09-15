@@ -23,11 +23,14 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 - Backup Restore E2E run `34976673543` успешно завершён после исправления несовместимости клиента PostgreSQL 16 с сервером PostgreSQL 17: backup создан, восстановлен в отдельную БД, schema и rehearsal marker проверены.
 - Основной CI run `34976673729` успешно завершён на commit `e58378c4624a0e794e3a6cd30462c26b7454cde7`: зависимости, audit, миграции, unit/integration tests, V20 baseline replay, Compose contract, release smoke и hardened API image build прошли.
 - Для backup/restore workflow `pg_dump` и `pg_restore` выполняются matching PostgreSQL 17 client из `postgres:17-alpine`, а runner-side `psql/createdb` используются для миграций и проверки.
+- Исправлено рассогласование между Control Plane AUTO-policy и `deploy/remote-agent/agent.py`: команда `date`, разрешённая серверной AUTO-policy, теперь присутствует в agent allowlist.
+- Добавлен регрессионный тест, который извлекает `ALLOWED` remote-agent и проверяет поддержку всех root-команд из AUTO-policy, включая `date`.
+- Последний application commit `b07dbffc3cd5cfaae6507aba80db1616d43fc822` прошёл обязательные проверки GitHub Actions; hardened Compose E2E и disposable backup/restore E2E также остаются зелёными.
 - Граница безопасности не изменена: никаких provider protection bypass, autonomous publication, contact/messaging, negotiation, contracting, pricing mutation, booking или financial action.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — application-bearing baseline, hardened Compose E2E и disposable backup/restore E2E verified by GitHub Actions. Current head before this documentation-only synchronization is `e58378c4624a0e794e3a6cd30462c26b7454cde7`.
+**SOFTWARE CONTOUR: GREEN** — application-bearing baseline, hardened Compose E2E, disposable backup/restore E2E и последняя правка remote-agent allowlist verified by GitHub Actions. Current verified head is `b07dbffc3cd5cfaae6507aba80db1616d43fc822`.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -48,8 +51,8 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 ## Handoff
 
 DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness.
-IN_PROGRESS: external production-readiness/activation gates; no application code changes are currently justified by repository evidence.
-NEXT: resolve external production gates, then rerun the affected verification contours. Documentation synchronization should follow verified external state rather than create repeated no-op commits.
-PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout only after security review.
+IN_PROGRESS: external production-readiness/activation gates; internal remote-agent AUTO-policy consistency defect is fixed and verified.
+NEXT: resolve external production gates, then rerun the affected verification contours. No decorative application changes are justified while external blockers remain unchanged.
+PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout after security review.
 REQUIRED HUMAN ACTION: target infrastructure backup/restore rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
 OPEN_GATES: provider access/mapping, Vercel account/integration block, contact adapters, external publication permissions, production backup/restore rehearsal, real commercial outcome telemetry, calibration sample size.
