@@ -15,13 +15,14 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 - Добавлен интеграционный тест транзакционного rollback при отказе `commit()` в Telegram ingestion store.
 - При сбое транзакции подтверждено отсутствие частично сохранённых source message, canonical load, outbox event и Telegram checkpoint.
 - Существующие replay/rejection/idempotency проверки сохранены.
-- Authoritative CI #401 завершился успешно по тестам, миграциям, replay, Compose contract, release smoke и hardened API image build.
-- PR #17 `test(v39): prove Telegram ingestion rollback boundary` объединён в `main` squash-коммитом `6f6cd81210edeb18345a57f7474db80c6d0ef011`.
+- Текущий `main` дополнительно подтверждён GitHub Actions CI #414: тесты, миграции, replay, Compose contract, release smoke и hardened API image build завершились успешно.
+- PR #17 `test(v39): prove Telegram ingestion rollback boundary` ранее объединён в `main` squash-коммитом `6f6cd81210edeb18345a57f7474db80c6d0ef011`.
+- Актуальная CI-доказательная запись сохранена в `docs/V39_CURRENT_CI_EVIDENCE.md`.
 - Граница безопасности не изменена: никаких provider protection bypass, autonomous publication, contact/messaging, negotiation, contracting, pricing mutation, booking или financial action.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — repository-level transactional and replay/failure evidence verified by authoritative CI.
+**SOFTWARE CONTOUR: GREEN** — repository-level transactional and replay/failure evidence verified by the current authoritative CI run #414.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -46,4 +47,4 @@ IN_PROGRESS: none at repository level.
 NEXT: external production-readiness/activation gates. Further code changes only when new evidence, an actual failure, or an authorized production prerequisite requires them.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout only after security review.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
-OPEN_ISSUES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
+OPEN_GATES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
