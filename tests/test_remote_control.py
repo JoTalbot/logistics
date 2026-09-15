@@ -107,6 +107,18 @@ def test_heartbeat_cannot_change_enrolled_agent_tenant(configured):
     assert excinfo.value.status_code == 403
 
 
+def test_bootstrap_cannot_change_enrolled_agent_tenant(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    tenant_id = _tenant()
+    agent = _agent(name, tenant_id=tenant_id)
+    with pytest.raises(HTTPException) as excinfo:
+        control_heartbeat(
+            AgentHeartbeat(name=name),
+            authorization=f"Bearer {BOOTSTRAP_TOKEN}",
+        )
+    assert excinfo.value.status_code == 403
+
+
 def test_operator_authentication_is_enforced(configured):
     with pytest.raises(HTTPException) as excinfo:
         control_agents(authorization=None)
@@ -132,7 +144,8 @@ def test_safe_task_lifecycle(configured):
 def test_wrong_agent_credential_is_rejected(configured):
     first = _agent(f"pytest-agent-{uuid4().hex[:12]}")
     second = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    first_id = UUID(str(first["agent_id"]))
+    first_id = UUID(str(first["agent_id"])
+    )
     with pytest.raises(HTTPException) as excinfo:
         control_next_task(first_id, authorization=_auth(second))
     assert excinfo.value.status_code == 401
@@ -147,8 +160,7 @@ def test_global_token_cannot_operate_enrolled_agent(configured):
 
 def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"])
-    )
+    agent_id = UUID(str(agent["agent_id"]))
     review = control_create_task(
         TaskRequest(agent_id=agent_id, command="python -c 'print(1)'"),
         authorization=f"Bearer {OPERATOR_TOKEN}",
