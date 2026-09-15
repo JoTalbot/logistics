@@ -35,7 +35,7 @@ HEARTBEAT_SECONDS = int(os.environ.get("AGENT_HEARTBEAT_SECONDS", "30"))
 
 ALLOWED = {
     "pwd", "ls", "git", "docker", "docker-compose", "python", "pytest",
-    "systemctl", "journalctl", "df", "free", "uptime", "uname", "whoami",
+    "systemctl", "journalctl", "df", "free", "uptime", "uname", "whoami", "date",
 }
 
 MODEL_CACHE: dict[str, Any] = {}
