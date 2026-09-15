@@ -16,14 +16,14 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 - При сбое транзакции подтверждено отсутствие частично сохранённых source message, canonical load, outbox event и Telegram checkpoint.
 - Существующие replay/rejection/idempotency проверки сохранены.
 - Последний application-bearing `main` commit `cfedc933f2704951768a64dce0900340782a62c8` подтверждён GitHub Actions CI #414: тесты, миграции, replay, Compose contract, release smoke и hardened API image build завершились успешно.
-- Последующие documentation-only commits `60850ee796b81e33b7fea6d9447274a9791de26c`, `6bcc65980f9866f35804c70a4f4b117a8380d028`, `0198f25db0734e79ca081d8c2ce5458177e82dae`, `b4b6a2773fbce09f6b495901067ff6399ba0343b`, `13d19d01d5652df28efa79ace2ac435b333e1b0c`, `9d6e7c1002e85fad5ef8e48ce96ab972b10a28d8`, `7c811e311dc2fb03d59ae78a902168322b2f2d74`, `aa78bccaa229c8e97ce288620de2cbd21ef9a891` и `09722f47ab94ecf18c9c9be690328320cfc7d800` подтверждены CI #415–#423 успешно.
+- Последующие documentation-only commits `60850ee796b81e33b7fea6d9447274a9791de26c`, `6bcc65980f9866f35804c70a4f4b117a8380d028`, `0198f25db0734e79ca081d8c2ce5458177e82dae`, `b4b6a2773fbce09f6b495901067ff6399ba0343b`, `13d19d01d5652df28efa79ace2ac435b333e1b0c`, `9d6e7c1002e85fad5ef8e48ce96ab972b10a28d8`, `7c811e311dc2fb03d59ae78a902168322b2f2d74`, `aa78bccaa229c8e97ce288620de2cbd21ef9a891`, `09722f47ab94ecf18c9c9be690328320cfc7d800`, `08d6b0e1655a5458a0c8a19efff1432c64d6c5b6`, `815774e285d68882093142e80085a98e1eb0ed03` и `52d5ffdc5d7e1bed03ddd8f61d22e6b51c5f1e88` синхронизируют доказательную документацию с текущим `main`.
 - PR #17 `test(v39): prove Telegram ingestion rollback boundary` ранее объединён в `main` squash-коммитом `6f6cd81210edeb18345a57f7474db80c6d0ef011`.
 - Актуальная CI-доказательная запись сохранена в `docs/V39_CURRENT_CI_EVIDENCE.md`.
 - Граница безопасности не изменена: никаких provider protection bypass, autonomous publication, contact/messaging, negotiation, contracting, pricing mutation, booking или financial action.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — application-bearing V39 baseline is verified by CI #414; all subsequent documentation-only commits through current `main` head are also verified successfully by CI #415–#423.
+**SOFTWARE CONTOUR: GREEN** — application-bearing V39 baseline is verified by CI #414; subsequent documentation-only synchronization commits are not treated as new application-bearing changes.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -34,7 +34,7 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current main commit `09722f47ab94ecf18c9c9be690328320cfc7d800` has Vercel status `Account is blocked` and deployment check pending.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; latest verified Vercel combined status was observed on main commit `815774e285d68882093142e80085a98e1eb0ed03`: `Vercel` = `failure` with account-blocked target, while `Vercel Deployments – fgfgggg` remained `pending`. Current main is `52d5ffdc5d7e1bed03ddd8f61d22e6b51c5f1e88`; no successful Vercel deployment is claimed for this newer documentation-only head.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 
 ## Safety boundary
