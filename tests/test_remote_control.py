@@ -10,7 +10,7 @@ import pytest
 from fastapi import HTTPException
 
 from logistics import remote_control  # noqa: F401
-from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskRequest, control_agents, control_complete, control_create_task, control_heartbeat, control_next_task
+from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskRequest, _approval, control_agents, control_complete, control_create_task, control_heartbeat, control_next_task
 
 AGENT_TOKEN = "pytest-remote-agent-token"
 OPERATOR_TOKEN = "pytest-operator-token"
@@ -100,3 +100,13 @@ def test_auto_policy_commands_are_supported_by_remote_agent():
     auto_examples = ("pwd", "whoami", "uname", "date", "git status", "git diff", "git log", "python -m pytest", "python -m compileall")
     assert {command.split()[0] for command in auto_examples} <= allowed
     assert "date" in allowed
+
+
+def test_auto_policy_is_strict_about_shell_composition_and_arguments():
+    assert _approval("git status") == "AUTO"
+    assert _approval("uname -a") == "AUTO"
+    assert _approval("git status; rm -rf /tmp/example") == "REVIEW"
+    assert _approval("git status && whoami") == "REVIEW"
+    assert _approval("git status --output=/tmp/task") == "REVIEW"
+    assert _approval("python -c 'print(1)'") == "REVIEW"
+    assert _approval("python -m pytest -q") == "AUTO"
