@@ -6,7 +6,6 @@ contracts, mutates prices, or performs financial actions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Iterable
 from uuid import UUID
 
@@ -84,7 +83,7 @@ def candidate_digest(candidate: CommercialCandidate) -> dict[str, object]:
         "weight_kg": candidate.load.weight_kg,
         "offered_price": str(candidate.load.offered_price),
         "currency": candidate.load.currency,
-        "estimated_price": str(candidate.price.amount),
+        "estimated_price": str(candidate.price.target_price),
         "opportunity_score": candidate.opportunity_score,
         "priority_score": candidate.priority_score,
         "carrier_match_count": len(candidate.carrier_matches),
