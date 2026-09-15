@@ -10,7 +10,7 @@ import pytest
 from fastapi import HTTPException
 
 from logistics import remote_control  # noqa: F401
-from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskRequest, _approval, control_agents, control_complete, control_create_task, control_heartbeat, control_next_task
+from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskRequest, _approval, control_agents, control_cancel, control_complete, control_create_task, control_heartbeat, control_next_task
 
 AGENT_TOKEN = "pytest-remote-agent-token"
 OPERATOR_TOKEN = "pytest-operator-token"
@@ -110,3 +110,17 @@ def test_auto_policy_is_strict_about_shell_composition_and_arguments():
     assert _approval("git status --output=/tmp/task") == "REVIEW"
     assert _approval("python -c 'print(1)'") == "REVIEW"
     assert _approval("python -m pytest -q") == "AUTO"
+
+
+def test_cancelling_running_task_finalizes_it(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    agent_id = UUID(str(_agent(name)["agent_id"]))
+    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
+    assert task["id"] == created["task_id"]
+    cancelled = control_cancel(UUID(str(task["id"])), authorization=f"Bearer {OPERATOR_TOKEN}")
+    assert cancelled == {"task_id": task["id"], "status": "cancelled"}
+    with pytest.raises(HTTPException) as excinfo:
+        control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=f"Bearer {AGENT_TOKEN}")
+    assert excinfo.value.status_code == 404
+    assert control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"] is None
