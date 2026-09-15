@@ -85,7 +85,8 @@ def test_heartbeat_accepts_json_metadata(configured):
 
 
 def test_heartbeat_cannot_change_enrolled_agent_name(configured):
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    agent = _agent(name)
     with pytest.raises(HTTPException) as excinfo:
         control_heartbeat(
             AgentHeartbeat(agent_id=UUID(str(agent["agent_id"])), name=f"other-{uuid4().hex[:12]}"),
@@ -95,11 +96,12 @@ def test_heartbeat_cannot_change_enrolled_agent_name(configured):
 
 
 def test_heartbeat_cannot_change_enrolled_agent_tenant(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
     tenant_id = _tenant()
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}", tenant_id=tenant_id)
+    agent = _agent(name, tenant_id=tenant_id)
     with pytest.raises(HTTPException) as excinfo:
         control_heartbeat(
-            AgentHeartbeat(agent_id=UUID(str(agent["agent_id"])), name=agent["__name__"] if False else "invalid"),
+            AgentHeartbeat(agent_id=UUID(str(agent["agent_id"])), name=name, tenant_id=_tenant()),
             authorization=_auth(agent),
         )
     assert excinfo.value.status_code == 403
@@ -145,7 +147,8 @@ def test_global_token_cannot_operate_enrolled_agent(configured):
 
 def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"]))
+    agent_id = UUID(str(agent["agent_id"])
+    )
     review = control_create_task(
         TaskRequest(agent_id=agent_id, command="python -c 'print(1)'"),
         authorization=f"Bearer {OPERATOR_TOKEN}",
@@ -161,7 +164,8 @@ def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
 
 def test_idempotency_returns_same_task(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"]))
+    agent_id = UUID(str(agent["agent_id"])
+    )
     key = f"idem-{uuid4().hex}"
     first = control_create_task(
         TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=key),
