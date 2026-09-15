@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hmac
 import os
+import shlex
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
@@ -60,19 +61,27 @@ class CompleteRequest(BaseModel):
 
 
 def _approval(command: str) -> str:
-    """Classify commands conservatively: only a small read-only allowlist is AUTO."""
-    normalized = command.strip().lower()
-    blocked = (
+    """Classify commands conservatively using parsed argv, not string prefixes."""
+    if any(token in command for token in ("&&", "||", ";", "|", ">", "<", "`", "$(")):
+        return "REVIEW"
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        return "REVIEW"
+    if not argv:
+        return "REVIEW"
+    blocked = {
         "rm -rf", "shutdown", "reboot", "mkfs", "dd if=", "docker system prune",
         "git push --force", "chmod 777", "chown -r", "curl |", "wget |",
-    )
+    }
+    normalized = command.strip().lower()
     if any(token in normalized for token in blocked):
         return "BLOCK"
-    auto_prefixes = (
-        "pwd", "whoami", "uname", "date", "git status", "git diff",
-        "git log", "python -m pytest", "python -m compileall",
-    )
-    if normalized.startswith(auto_prefixes):
+    if argv in (["pwd"], ["whoami"], ["date"], ["uname"], ["uname", "-a"]):
+        return "AUTO"
+    if argv in (["git", "status"], ["git", "diff"], ["git", "log"]):
+        return "AUTO"
+    if len(argv) >= 3 and argv[:3] in (["python", "-m", "pytest"], ["python", "-m", "compileall"]):
         return "AUTO"
     return "REVIEW"
 
