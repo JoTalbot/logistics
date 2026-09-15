@@ -29,6 +29,7 @@ MODEL_CACHE_SECONDS = int(os.environ.get("AI_MODEL_CACHE_SECONDS", "900"))
 MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 CONTROL_URL = os.environ.get("CONTROL_PLANE_URL", "").rstrip("/")
 CONTROL_TOKEN = os.environ.get("CONTROL_PLANE_TOKEN", "")
+CONTROL_AGENT_TOKEN = os.environ.get("CONTROL_AGENT_TOKEN", "")
 VERCEL_BYPASS_SECRET = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "")
 AGENT_NAME = os.environ.get("AGENT_NAME", os.uname().nodename)
 HEARTBEAT_SECONDS = int(os.environ.get("AGENT_HEARTBEAT_SECONDS", "30"))
@@ -147,6 +148,7 @@ async def health() -> dict[str, Any]:
         "model": MODEL_RAW,
         "model_resolved": MODEL_CACHE.get("model") if MODEL_RAW.strip().lower() == "auto" else MODEL_RAW,
         "control_plane": bool(CONTROL_URL and CONTROL_TOKEN),
+        "control_credential_mode": "per_agent" if CONTROL_AGENT_TOKEN else "bootstrap_pending",
         "vercel_bypass": bool(VERCEL_BYPASS_SECRET),
         "agent_name": AGENT_NAME,
     }
@@ -201,8 +203,9 @@ async def chat(req: ChatRequest, authorization: str | None = Header(default=None
 
 def control_request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
     data = json.dumps(payload).encode() if payload is not None else None
+    token = CONTROL_AGENT_TOKEN or CONTROL_TOKEN
     headers = {
-        "Authorization": f"Bearer {CONTROL_TOKEN}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "User-Agent": "logistics-remote-agent/0.2.1",
     }
@@ -249,12 +252,19 @@ async def execute_control_task(item: dict[str, Any]) -> None:
 
 
 async def control_loop() -> None:
+    global CONTROL_AGENT_TOKEN
     agent_id: str | None = None
     while True:
         try:
-            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", {"name": AGENT_NAME, "agent_id": agent_id, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL_RAW}})
-            agent_id = heartbeat.get("agent_id") or agent_id
+            heartbeat_payload: dict[str, Any] = {"name": AGENT_NAME, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL_RAW}}
             if agent_id:
+                heartbeat_payload["agent_id"] = agent_id
+            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", heartbeat_payload)
+            agent_id = heartbeat.get("agent_id") or agent_id
+            issued = heartbeat.get("control_token")
+            if issued:
+                CONTROL_AGENT_TOKEN = str(issued)
+            if agent_id and CONTROL_AGENT_TOKEN:
                 task = await asyncio.to_thread(control_request, f"/api/v1/control/agents/{agent_id}/tasks/next")
                 item = task.get("task")
                 if item:
