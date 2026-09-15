@@ -167,11 +167,11 @@ def control_next_task(agent_id: UUID, authorization: str | None = Header(default
 def control_event(task_id: UUID, req: EventRequest, authorization: str | None = Header(default=None)) -> dict[str, str]:
     _require(authorization, _agent_token(), "agent unauthorized")
     with _db() as conn:
-        active = conn.execute("SELECT 1 FROM remote_tasks WHERE id=%s AND status='running' AND lease_expires_at > now()", (task_id,)).fetchone()
-        if not active:
+        changed = conn.execute("UPDATE remote_tasks SET heartbeat_at=now(),lease_expires_at=now()+interval '120 seconds' WHERE id=%s AND status='running' AND lease_expires_at > now()", (task_id,)).rowcount
+        if not changed:
+            conn.rollback()
             raise HTTPException(status_code=404, detail="active task not found")
         conn.execute("INSERT INTO remote_task_events(task_id,stream,message) VALUES(%s,%s,%s)", (task_id, req.stream, req.message))
-        conn.execute("UPDATE remote_tasks SET heartbeat_at=now(),lease_expires_at=now()+interval '120 seconds' WHERE id=%s", (task_id,))
         conn.commit()
     return {"status": "accepted"}
 
