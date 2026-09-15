@@ -16,17 +16,16 @@ Date: 2026-09-10
 
 ## Verification boundary
 
-The latest direct commits are present on `main`. GitHub currently reports no workflow runs for the latest direct test commit, so CI is **not** claimed as green.
+This document records the V11 implementation state from 2026-09-10. Later V38/V39 work superseded the verification notes below.
 
-A real PostgreSQL tenant-isolation integration suite is still pending because the repository's current automated environment does not expose a verified integration database run from this connector. Tenant scoping remains enforced in the application SQL paths.
+- PostgreSQL integration coverage is now part of the repository test suite, including tenant-isolation, market-observation, outbox-recovery and Telegram-store integration tests.
+- CI provisions PostgreSQL 17 as a GitHub Actions service, applies all migrations in order, and runs the unit/integration test suite. The current V39 status records the authoritative successful CI verification.
+- Lardi provider-specific field mapping remains blocked by the previously observed provider-edge Cloudflare 403 and is not guessed around.
 
-Lardi provider-specific field mapping remains blocked by the previously observed provider-edge Cloudflare 403 and is not guessed around.
+## Superseded next-batch items
 
-## Next batch
+The original V11 next-batch list is retained as historical context. Its PostgreSQL integration-harness item is complete; subsequent V12-V39 work delivered the later reliability, observability, commercial-learning, controlled-autonomy, Telegram-ingestion and production-readiness increments.
 
-1. Add a real PostgreSQL integration harness with isolated tenant fixtures and run it in CI.
-2. Harden duplicate grouping into connected components and add deterministic false-positive fixtures.
-3. Add operator-level metrics for duplicate volume and recurring-demand freshness.
-4. Resume Lardi canonical mapping only after verified provider response samples or provider-side access restoration.
-5. Add only explicitly authorized provider contact adapters, with autonomous sending disabled.
-6. Keep external publication gated until provider permission, terms, privacy/retention and legal requirements are verified.
+Current execution priority is therefore governed by `STATUS.md` and the V39 production-closure evidence, not this historical batch note.
+
+Remaining work is primarily external production activation: target-infrastructure backup/restore rehearsal, provider access/mapping, explicitly authorized contact/publication permissions, authorized Telegram source access, real commercial outcome telemetry, and Vercel account remediation.
