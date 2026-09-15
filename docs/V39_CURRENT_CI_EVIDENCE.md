@@ -4,12 +4,12 @@ Updated: 2026-09-15
 
 The last application-bearing `main` commit `cfedc933f2704951768a64dce0900340782a62c8` was verified by GitHub Actions CI run #414.
 
-Subsequent `main` commits are documentation-only reconciliation commits. CI runs #415 through #423 completed successfully for those documentation-only commits. The current `main` head is `aa78bccaa229c8e97ce288620de2cbd21ef9a891`.
+Subsequent `main` commits are documentation-only reconciliation commits. CI runs #415 through #423 completed successfully for those documentation-only commits. The current `main` head is `08d6b0e1655a5458a0c8a19efff1432c64d6c5b6`.
 
 - Workflow: `CI`
 - Event: `push`
 - Head branch: `main`
-- Current `main` head: `aa78bccaa229c8e97ce288620de2cbd21ef9a891`
+- Current `main` head: `08d6b0e1655a5458a0c8a19efff1432c64d6c5b6`
 - Application-bearing verification SHA: `cfedc933f2704951768a64dce0900340782a62c8`
 - Application-bearing verification run: #414
 - Application-bearing verification conclusion: `success`
