@@ -24,12 +24,14 @@ The Ubuntu agent sends that value only as the `x-vercel-protection-bypass` reque
 In `/etc/logistics-agent/agent.env`:
 
 ```env
-CONTROL_PLANE_URL=https://logistics-fawn-pi.vercel.app
+CONTROL_PLANE_URL=<current Vercel production URL for the logistics project>
 CONTROL_PLANE_TOKEN=<same value as REMOTE_AGENT_TOKEN>
 VERCEL_AUTOMATION_BYPASS_SECRET=<same value as the Vercel automation bypass secret>
 AGENT_NAME=arm-server-01
 AGENT_HEARTBEAT_SECONDS=30
 ```
+
+Do not hard-code a historical Vercel deployment URL here. Resolve and record the current production URL from the active Vercel project before configuring the agent.
 
 Do not expose these values in Git or browser JavaScript.
 
@@ -58,11 +60,11 @@ printf '%s\n' "$TOKEN" | vercel env add REMOTE_AGENT_TOKEN production
 unset TOKEN
 ```
 
-The CLI may ask for project/scope if the local directory is not linked. Use the existing `fgfgggg/logistics` project.
+The CLI may ask for project/scope if the local directory is not linked. Use the existing logistics Vercel project.
 
 ## Browser
 
-Open the production project URL. The root page is the mobile-friendly Logistics Control Plane. Enter `CONTROL_PLANE_OPERATOR_TOKEN`; it is stored only in the browser's local storage and sent as an Authorization header.
+Open the current production project URL. The root page is the mobile-friendly Logistics Control Plane. Enter `CONTROL_PLANE_OPERATOR_TOKEN`; it is stored only in the browser's local storage and sent as an Authorization header.
 
 ## Security boundary
 
@@ -72,3 +74,4 @@ Open the production project URL. The root page is the mobile-friendly Logistics 
 - Commands are still constrained by the agent allowlist and shell-composition protection.
 - High-risk command patterns are marked `REVIEW` and are not dispatched automatically.
 - V21 business autonomy/approval controls remain independent of this infrastructure control plane.
+- This setup does not bypass provider protections or authorization gates.
