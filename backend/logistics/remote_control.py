@@ -192,11 +192,11 @@ def control_complete(task_id: UUID, req: CompleteRequest, authorization: str | N
 def control_cancel(task_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, str]:
     _require(authorization, _operator_token(), "operator unauthorized")
     with _db() as conn:
-        changed = conn.execute("UPDATE remote_tasks SET cancel_requested=true,status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,lease_expires_at=NULL WHERE id=%s AND status IN ('queued','running')", (task_id,)).rowcount
+        changed = conn.execute("UPDATE remote_tasks SET cancel_requested=true,status='cancelled',lease_expires_at=NULL,finished_at=COALESCE(finished_at,now()) WHERE id=%s AND status IN ('queued','running')", (task_id,)).rowcount
         conn.commit()
     if not changed:
         raise HTTPException(status_code=404, detail="task not found")
-    return {"task_id": str(task_id), "status": "cancel_requested"}
+    return {"task_id": str(task_id), "status": "cancelled"}
 
 
 @app.get("/api/v1/control/tasks")
