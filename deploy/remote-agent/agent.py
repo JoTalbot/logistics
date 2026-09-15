@@ -218,6 +218,36 @@ def control_request(path: str, method: str = "GET", payload: dict[str, Any] | No
         raise
 
 
+async def execute_control_task(item: dict[str, Any]) -> None:
+    """Run a leased task and always attempt to move it to a terminal state."""
+    try:
+        result = await run_command(item["command"], item.get("cwd"))
+    except HTTPException as exc:
+        result = {
+            "returncode": exc.status_code or 1,
+            "stdout": "",
+            "stderr": str(exc.detail),
+        }
+    except Exception as exc:
+        result = {
+            "returncode": 1,
+            "stdout": "",
+            "stderr": f"agent execution error: {type(exc).__name__}: {exc}",
+        }
+
+    try:
+        await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stdout", "message": result.get("stdout", "")})
+        if result.get("stderr"):
+            await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stderr", "message": result["stderr"]})
+    except Exception as exc:
+        print(f"task event reporting error: {type(exc).__name__}: {exc}", flush=True)
+
+    try:
+        await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/complete", "POST", {"returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]})
+    except Exception as exc:
+        print(f"task completion error: {type(exc).__name__}: {exc}", flush=True)
+
+
 async def control_loop() -> None:
     agent_id: str | None = None
     while True:
@@ -228,11 +258,7 @@ async def control_loop() -> None:
                 task = await asyncio.to_thread(control_request, f"/api/v1/control/agents/{agent_id}/tasks/next")
                 item = task.get("task")
                 if item:
-                    result = await run_command(item["command"], item.get("cwd"))
-                    await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stdout", "message": result.get("stdout", "")})
-                    if result.get("stderr"):
-                        await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stderr", "message": result["stderr"]})
-                    await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/complete", "POST", {"returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]})
+                    await execute_control_task(item)
         except Exception as exc:
             print(f"control channel error: {type(exc).__name__}: {exc}", flush=True)
         await asyncio.sleep(HEARTBEAT_SECONDS)
