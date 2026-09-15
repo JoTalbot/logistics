@@ -110,3 +110,40 @@ def test_rejected_ad_does_not_create_canonical_state(db_dsn, tenant_id):
     assert result.load_id is None
     assert result.event_type is None
     assert query_counts(db_dsn, tenant_id, result.source_message_id) == (0, 0, 0, 0)
+
+
+class _FailingCommitConnection:
+    def __init__(self, connection):
+        self._connection = connection
+
+    def __enter__(self):
+        self._connection.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return self._connection.__exit__(exc_type, exc, tb)
+
+    def execute(self, *args, **kwargs):
+        return self._connection.execute(*args, **kwargs)
+
+    def commit(self):
+        raise RuntimeError("injected commit failure")
+
+
+def test_ingestion_rolls_back_all_state_when_commit_fails(db_dsn, tenant_id, monkeypatch):
+    original_connect = psycopg.connect
+
+    def failing_connect(*args, **kwargs):
+        return _FailingCommitConnection(original_connect(*args, **kwargs))
+
+    monkeypatch.setattr("logistics.telegram_store.psycopg.connect", failing_connect)
+    store = TelegramIngestionStore(db_dsn)
+
+    with pytest.raises(RuntimeError, match="injected commit failure"):
+        store.ingest_message(tenant_id, make_message(99), make_ad(99))
+
+    with psycopg.connect(db_dsn) as conn:
+        assert conn.execute("SELECT count(*) FROM telegram_source_messages WHERE tenant_id=%s AND source=%s AND message_id=%s", (tenant_id, "https://t.me/example", 99)).fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM loads WHERE tenant_id=%s", (tenant_id,)).fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM outbox_events WHERE tenant_id=%s", (tenant_id,)).fetchone()[0] == 0
+        assert conn.execute("SELECT last_message_id FROM telegram_sources WHERE tenant_id=%s AND source=%s", (tenant_id, "https://t.me/example")).fetchone() is None
