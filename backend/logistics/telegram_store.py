@@ -60,11 +60,11 @@ class TelegramIngestionStore:
         }
 
     def ingest_message(
-        self, tenant_id: UUID, message: TelegramSourceMessage, parsed: ParsedLoadAd
+        self, tenant_id: UUID, message: TelegramSourceMessage, parsed: ParsedLoadAd, *, min_confidence: float = 0.6
     ) -> IngestionResult:
         """Persist source, parsed ad, canonical state, outbox and checkpoint atomically."""
-        validation = validate_parsed_ad(parsed)
-        canonical = parsed_ad_to_load(parsed, tenant_id=tenant_id) if validation.accepted else None
+        validation = validate_parsed_ad(parsed, min_confidence=min_confidence)
+        canonical = parsed_ad_to_load(parsed, tenant_id=tenant_id, min_confidence=min_confidence) if validation.accepted else None
 
         with psycopg.connect(self.dsn) as conn:
             row = conn.execute(

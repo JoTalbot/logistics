@@ -16,8 +16,8 @@ class FakeStore:
     def get_checkpoints(self, tenant_id, chats):
         return {}
 
-    def ingest_message(self, tenant_id, message, parsed):
-        self.calls.append((tenant_id, message, parsed))
+    def ingest_message(self, tenant_id, message, parsed, *, min_confidence=0.6):
+        self.calls.append((tenant_id, message, parsed, min_confidence))
         return IngestionResult(
             source_message_id=uuid4(),
             load_id=uuid4(),
@@ -56,6 +56,7 @@ def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch):
             [],
             PricingInput(distance_km=Decimal("500")),
             limit=10,
+            min_confidence=0.85,
         )
     )
 
@@ -63,6 +64,7 @@ def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch):
     assert store.calls[0][0] == tenant_id
     assert store.calls[0][1] == message
     assert store.calls[0][2] == parse_load_ad(message)
+    assert store.calls[0][3] == 0.85
     assert len(result.processed) == 1
     assert result.report.accepted_count == 1
     assert len(result.candidates) == 1
