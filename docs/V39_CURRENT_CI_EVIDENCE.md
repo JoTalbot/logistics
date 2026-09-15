@@ -4,17 +4,18 @@ Updated: 2026-09-15
 
 The last application-bearing `main` commit `cfedc933f2704951768a64dce0900340782a62c8` was verified by GitHub Actions CI run #414.
 
-Subsequent `main` commits are documentation-only reconciliation commits. CI runs #415 through #423 completed successfully for those documentation-only commits. The current `main` head is `08d6b0e1655a5458a0c8a19efff1432c64d6c5b6`.
+Subsequent `main` commits are documentation-only reconciliation commits. CI runs #415 through #423 completed successfully for those documentation-only commits. The current `main` head is `815774e285d68882093142e80085a98e1eb0ed03`.
 
 - Workflow: `CI`
 - Event: `push`
 - Head branch: `main`
-- Current `main` head: `08d6b0e1655a5458a0c8a19efff1432c64d6c5b6`
+- Current `main` head: `815774e285d68882093142e80085a98e1eb0ed03`
 - Application-bearing verification SHA: `cfedc933f2704951768a64dce0900340782a62c8`
 - Application-bearing verification run: #414
 - Application-bearing verification conclusion: `success`
 - Documentation-only verification runs: #415, #416, #417, #418, #419, #420, #421, #422, #423
 - Documentation-only verification conclusion: `success`
+- Current external status: GitHub CI evidence remains green; Vercel reports `failure` with account-blocked guidance and the `Vercel Deployments – fgfgggg` check remains `pending`.
 
 CI #414 passed the complete repository verification contour:
 - Dependency consistency
