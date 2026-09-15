@@ -31,8 +31,8 @@ def configured(monkeypatch):
     monkeypatch.setenv("CONTROL_PLANE_OPERATOR_TOKEN", OPERATOR_TOKEN)
 
 
-def _agent(name: str) -> dict[str, object]:
-    return control_heartbeat(AgentHeartbeat(name=name, metadata={"hostname": name, "source": "pytest"}), authorization=f"Bearer {AGENT_TOKEN}")
+def _agent(name: str, tenant_id=None) -> dict[str, object]:
+    return control_heartbeat(AgentHeartbeat(name=name, tenant_id=tenant_id, metadata={"hostname": name, "source": "pytest"}), authorization=f"Bearer {AGENT_TOKEN}")
 
 
 def test_heartbeat_accepts_json_metadata(configured):
@@ -124,3 +124,20 @@ def test_cancelling_running_task_finalizes_it(configured):
         control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=f"Bearer {AGENT_TOKEN}")
     assert excinfo.value.status_code == 404
     assert control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"] is None
+
+
+def test_task_tenant_must_match_agent_tenant(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    tenant_id = uuid4()
+    agent_id = UUID(str(_agent(name, tenant_id=tenant_id)["agent_id"]))
+    with pytest.raises(HTTPException) as excinfo:
+        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=uuid4(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    assert excinfo.value.status_code == 403
+
+
+def test_unscoped_agent_cannot_receive_tenant_task(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    agent_id = UUID(str(_agent(name)["agent_id"]))
+    with pytest.raises(HTTPException) as excinfo:
+        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=uuid4(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    assert excinfo.value.status_code == 403
