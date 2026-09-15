@@ -18,23 +18,27 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 - Application-bearing V39 baseline ранее подтверждён GitHub Actions CI #414.
 - Добавлен отдельный `.github/workflows/compose-e2e.yml` для безопасной CI-проверки полного hardened Compose стека.
 - Compose E2E run `34975509229` успешно завершён: чистый PostgreSQL + API + recurring-demand-scheduler подняты, API `/ready` и `/health` проверены, scheduler подтвердил соединение с PostgreSQL, после теста стек очищен.
-- Основной CI run `34975509243` успешно завершён на текущем application/documentation head: зависимости, audit, миграции, unit/integration tests, V20 baseline replay, Compose contract, release smoke и hardened API image build прошли.
+- Основной CI run `34975509243` успешно завершён на предыдущем application/documentation head: зависимости, audit, миграции, unit/integration tests, V20 baseline replay, Compose contract, release smoke и hardened API image build прошли.
+- Добавлен отдельный `.github/workflows/backup-restore-e2e.yml` для disposable CI backup/restore rehearsal.
+- Backup Restore E2E run `34976673543` успешно завершён после исправления несовместимости клиента PostgreSQL 16 с сервером PostgreSQL 17: backup создан, восстановлен в отдельную БД, schema и rehearsal marker проверены.
+- Основной CI run `34976673729` успешно завершён на commit `e58378c4624a0e794e3a6cd30462c26b7454cde7`: зависимости, audit, миграции, unit/integration tests, V20 baseline replay, Compose contract, release smoke и hardened API image build прошли.
+- Для backup/restore workflow `pg_dump` и `pg_restore` выполняются matching PostgreSQL 17 client из `postgres:17-alpine`, а runner-side `psql/createdb` используются для миграций и проверки.
 - Граница безопасности не изменена: никаких provider protection bypass, autonomous publication, contact/messaging, negotiation, contracting, pricing mutation, booking или financial action.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — application-bearing baseline and full hardened Compose E2E are verified by GitHub Actions. Current head is `4f9e101c6bcd8579cde915437d40d592e2eeb6b5`.
+**SOFTWARE CONTOUR: GREEN** — application-bearing baseline, hardened Compose E2E и disposable backup/restore E2E verified by GitHub Actions. Current head before this documentation-only synchronization is `e58378c4624a0e794e3a6cd30462c26b7454cde7`.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
 ## External production gates
 
-1. Backup/restore rehearsal: **PENDING TARGET INFRASTRUCTURE**.
+1. Backup/restore rehearsal: **GREEN IN CI / PENDING TARGET INFRASTRUCTURE** — disposable PostgreSQL 17 rehearsal passed in GitHub Actions; target production infrastructure rehearsal remains required.
 2. Hardened Compose end-to-end rehearsal: **GREEN IN CI**; target production-infrastructure rehearsal remains pending.
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current head still reports `Vercel` = `failure` with the account-blocked target and `Vercel Deployments – fgfgggg` = `pending`. No successful Vercel deployment is claimed for current head.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current head reports `Vercel` = `failure` with the account-blocked target and `Vercel Deployments – fgfgggg` = `pending`. No successful Vercel deployment is claimed for the current application head.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 
 ## Safety boundary
