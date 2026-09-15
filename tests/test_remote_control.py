@@ -1,7 +1,9 @@
 """Integration tests for the bounded remote control plane."""
 from __future__ import annotations
 
+import ast
 import os
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -12,6 +14,13 @@ from logistics.remote_control import AgentHeartbeat, CompleteRequest, TaskReques
 
 AGENT_TOKEN = "pytest-remote-agent-token"
 OPERATOR_TOKEN = "pytest-operator-token"
+
+
+def _remote_agent_allowed_commands() -> set[str]:
+    source = Path(__file__).parents[1] / "deploy" / "remote-agent" / "agent.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "ALLOWED" for t in node.targets))
+    return set(ast.literal_eval(assignment.value))
 
 
 @pytest.fixture
@@ -84,3 +93,10 @@ def test_operator_listing_reports_last_seen_and_online_status(configured):
     entry = match[0]
     assert entry["status"] == "online"
     assert entry["last_seen"] and entry["last_seen"].endswith("+00:00")
+
+
+def test_auto_policy_commands_are_supported_by_remote_agent():
+    allowed = _remote_agent_allowed_commands()
+    auto_examples = ("pwd", "whoami", "uname", "date", "git status", "git diff", "git log", "python -m pytest", "python -m compileall")
+    assert {command.split()[0] for command in auto_examples} <= allowed
+    assert "date" in allowed
