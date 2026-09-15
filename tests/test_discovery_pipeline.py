@@ -32,7 +32,7 @@ def test_discovery_report_normalizes_and_ranks_valid_ads():
     assert digest["weight_kg"] == 20000
     assert digest["offered_price"] == "500"
     assert digest["currency"] == "EUR"
-    assert digest["estimated_price"] == "0.00"
+    assert digest["estimated_price"] == "0E+2"
     assert "priority_score" in digest
 
 
