@@ -154,6 +154,21 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
     return result
 
 
+@app.post("/api/v1/control/agents/{agent_id}/credential/revoke")
+def control_revoke_agent_credential(agent_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, str]:
+    """Revoke an enrolled agent credential; re-enrollment requires the bootstrap token."""
+    _require(authorization, _operator_token(), "operator unauthorized")
+    with _db() as conn:
+        changed = conn.execute(
+            "UPDATE remote_agents SET credential_hash=NULL,credential_revoked_at=now(),status='offline' WHERE id=%s AND credential_hash IS NOT NULL",
+            (agent_id,),
+        ).rowcount
+        conn.commit()
+    if not changed:
+        raise HTTPException(status_code=404, detail="active agent credential not found")
+    return {"agent_id": str(agent_id), "status": "credential_revoked"}
+
+
 def _require_task_agent(conn, task_id: UUID, authorization: str | None) -> None:
     row = conn.execute("SELECT a.credential_hash FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (task_id,)).fetchone()
     if not row:
