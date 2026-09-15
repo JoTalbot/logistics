@@ -1,8 +1,7 @@
+import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
-
-import pytest
 
 from logistics.market_ops import PricingInput
 from logistics.telegram import TelegramSourceMessage, parse_load_ad
@@ -28,8 +27,7 @@ class FakeStore:
         )
 
 
-@pytest.mark.asyncio
-async def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch):
+def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch):
     message = TelegramSourceMessage(
         chat="https://t.me/test",
         message_id=101,
@@ -49,14 +47,16 @@ async def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch)
         "logistics.telegram_discovery_worker.collect_messages", fake_collect_messages
     )
 
-    result = await run_ingestion_discovery_once(
-        object(),
-        store,
-        tenant_id,
-        ["https://t.me/test"],
-        [],
-        PricingInput(distance_km=Decimal("500")),
-        limit=10,
+    result = asyncio.run(
+        run_ingestion_discovery_once(
+            object(),
+            store,
+            tenant_id,
+            ["https://t.me/test"],
+            [],
+            PricingInput(distance_km=Decimal("500")),
+            limit=10,
+        )
     )
 
     assert len(store.calls) == 1
@@ -69,30 +69,25 @@ async def test_ingestion_discovery_persists_messages_before_ranking(monkeypatch)
     assert result.candidates[0].load.external_ref == "telegram:https://t.me/test:101"
 
 
-@pytest.mark.asyncio
-async def test_ingestion_discovery_returns_empty_evidence_for_empty_batch():
-    class EmptyStore(FakeStore):
-        pass
-
+def test_ingestion_discovery_returns_empty_evidence_for_empty_batch(monkeypatch):
     async def empty_collect_messages(client, chats, *, limit, min_id_by_chat):
         if False:
             yield None
 
-    import logistics.telegram_discovery_worker as worker
+    monkeypatch.setattr(
+        "logistics.telegram_discovery_worker.collect_messages", empty_collect_messages
+    )
 
-    original = worker.collect_messages
-    worker.collect_messages = empty_collect_messages
-    try:
-        result = await run_ingestion_discovery_once(
+    result = asyncio.run(
+        run_ingestion_discovery_once(
             object(),
-            EmptyStore(),
+            FakeStore(),
             uuid4(),
             ["https://t.me/test"],
             [],
             PricingInput(distance_km=Decimal("500")),
         )
-    finally:
-        worker.collect_messages = original
+    )
 
     assert result.processed == ()
     assert result.report.items == ()
