@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import uuid4
 
 from logistics.discovery_pipeline import build_discovery_report, candidate_digest
@@ -16,7 +17,7 @@ def test_discovery_report_normalizes_and_ranks_valid_ads():
             text="Киев → Львов\nГруз: мебель\n20 т\nСтавка: 500 EUR",
         )
     ]
-    pricing = PricingInput()
+    pricing = PricingInput(distance_km=Decimal("500"))
 
     report = build_discovery_report(messages, [], pricing, tenant_id=tenant_id)
 
@@ -31,6 +32,7 @@ def test_discovery_report_normalizes_and_ranks_valid_ads():
     assert digest["weight_kg"] == 20000
     assert digest["offered_price"] == "500"
     assert digest["currency"] == "EUR"
+    assert digest["estimated_price"] == "0.00"
     assert "priority_score" in digest
 
 
@@ -43,7 +45,9 @@ def test_discovery_report_rejects_incomplete_ads_fail_closed():
         text="Киев → Львов\nГруз: мебель",
     )
 
-    report = build_discovery_report([message], [], PricingInput(), tenant_id=tenant_id)
+    report = build_discovery_report(
+        [message], [], PricingInput(distance_km=Decimal("500")), tenant_id=tenant_id
+    )
 
     assert report.accepted_count == 0
     assert report.rejected_count == 1
