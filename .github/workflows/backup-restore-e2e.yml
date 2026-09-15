@@ -1,0 +1,81 @@
+name: Backup Restore E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backup-restore-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: logistics
+          POSTGRES_USER: logistics
+          POSTGRES_PASSWORD: logistics
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U logistics -d logistics"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install package and database client
+        run: |
+          python -m pip install -e .
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Apply SQL migrations
+        env:
+          PGPASSWORD: logistics
+        run: |
+          set -euo pipefail
+          for migration in migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U logistics -d logistics -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+      - name: Seed disposable rehearsal data
+        env:
+          PGPASSWORD: logistics
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U logistics -d logistics -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE IF NOT EXISTS backup_restore_rehearsal_marker (
+            marker text PRIMARY KEY,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          INSERT INTO backup_restore_rehearsal_marker(marker)
+          VALUES ('ci-backup-restore-rehearsal')
+          ON CONFLICT (marker) DO NOTHING;
+          SQL
+      - name: Create logical backup
+        env:
+          PGPASSWORD: logistics
+        run: |
+          set -euo pipefail
+          pg_dump -h 127.0.0.1 -U logistics -d logistics --format=custom --file=logistics-rehearsal.dump
+          test -s logistics-rehearsal.dump
+      - name: Restore into disposable database
+        env:
+          PGPASSWORD: logistics
+        run: |
+          set -euo pipefail
+          createdb -h 127.0.0.1 -U logistics logistics_restore_test
+          pg_restore --clean --if-exists --dbname=postgresql://logistics:logistics@127.0.0.1:5432/logistics_restore_test logistics-rehearsal.dump
+          psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT 1 FROM backup_restore_rehearsal_marker WHERE marker = 'ci-backup-restore-rehearsal';"
+      - name: Verify restored schema and migration marker
+        env:
+          PGPASSWORD: logistics
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM schema_migrations;"
+          psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT marker, created_at FROM backup_restore_rehearsal_marker;"
+          echo "backup/restore end-to-end rehearsal: PASS"
