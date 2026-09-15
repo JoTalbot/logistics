@@ -121,14 +121,16 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
     with _db() as conn:
         credential: str | None = None
         if req.agent_id:
-            row = conn.execute("SELECT id,tenant_id,credential_hash FROM remote_agents WHERE id=%s", (req.agent_id,)).fetchone()
+            row = conn.execute("SELECT id,name,tenant_id,credential_hash FROM remote_agents WHERE id=%s", (req.agent_id,)).fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="agent not found")
-            _require_hash(authorization, row[2])
-            if req.tenant_id and row[1] and row[1] != req.tenant_id:
+            _require_hash(authorization, row[3])
+            if req.name != row[1]:
+                raise HTTPException(status_code=403, detail="agent identity mismatch")
+            if req.tenant_id != row[2]:
                 raise HTTPException(status_code=403, detail="tenant mismatch")
-            agent_id, tenant_id = row[0], req.tenant_id or row[1]
-            conn.execute("UPDATE remote_agents SET name=%s,last_seen=now(),status='online',metadata=%s,tenant_id=%s WHERE id=%s", (req.name, Jsonb(req.metadata), tenant_id, agent_id))
+            agent_id, tenant_id = row[0], row[2]
+            conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s WHERE id=%s", (Jsonb(req.metadata), agent_id))
         else:
             _require(authorization, _agent_token(), "agent bootstrap unauthorized")
             row = conn.execute("SELECT id,tenant_id FROM remote_agents WHERE name=%s", (req.name,)).fetchone()
@@ -138,7 +140,7 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
                 if req.tenant_id and existing_tenant and existing_tenant != req.tenant_id:
                     raise HTTPException(status_code=403, detail="tenant mismatch")
                 tenant_id = req.tenant_id or existing_tenant
-                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,tenant_id=%s,credential_hash=%s,credential_created_at=now() WHERE id=%s", (Jsonb(req.metadata), tenant_id, credential_hash, agent_id))
+                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,tenant_id=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL WHERE id=%s", (Jsonb(req.metadata), tenant_id, credential_hash, agent_id))
             else:
                 agent_id, tenant_id = uuid4(), req.tenant_id
                 conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata,credential_hash,credential_created_at) VALUES(%s,%s,%s,now(),'online',%s,%s,now())", (agent_id, req.name, tenant_id, Jsonb(req.metadata), credential_hash))
