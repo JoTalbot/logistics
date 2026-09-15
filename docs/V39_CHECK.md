@@ -1,3 +1,5 @@
 # V39 Checkpoint
 
-Rollback evidence is committed on `feat/v39-production-closure`. The branch is ready for CI evaluation.
+V39 rollback evidence is merged into `main`. Authoritative CI run #401 passed, including unit/integration tests and the hardened release checks.
+
+No repository-level V39 gate remains open. External production-activation gates remain tracked separately.
