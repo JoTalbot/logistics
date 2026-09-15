@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import psycopg
 import pytest
 from fastapi import HTTPException
 
@@ -29,6 +30,16 @@ def configured(monkeypatch):
         pytest.skip("DATABASE_URL is not configured")
     monkeypatch.setenv("REMOTE_AGENT_TOKEN", AGENT_TOKEN)
     monkeypatch.setenv("CONTROL_PLANE_OPERATOR_TOKEN", OPERATOR_TOKEN)
+
+
+def _tenant() -> UUID:
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        tenant_id = conn.execute(
+            "INSERT INTO tenants(name) VALUES (%s) RETURNING id",
+            (f"pytest-remote-control-{uuid4().hex}",),
+        ).fetchone()[0]
+        conn.commit()
+    return UUID(str(tenant_id))
 
 
 def _agent(name: str, tenant_id=None) -> dict[str, object]:
@@ -114,7 +125,7 @@ def test_auto_policy_is_strict_about_shell_composition_and_arguments():
 
 def test_cancelling_running_task_finalizes_it(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"]))
+    agent_id = UUID(str(_agent(name)["agent_id"])
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
     assert task["id"] == created["task_id"]
@@ -128,7 +139,7 @@ def test_cancelling_running_task_finalizes_it(configured):
 
 def test_cancelled_task_rejects_late_events(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"]))
+    agent_id = UUID(str(_agent(name)["agent_id"])
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"event-cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
     assert task["id"] == created["task_id"]
@@ -140,10 +151,10 @@ def test_cancelled_task_rejects_late_events(configured):
 
 def test_task_tenant_must_match_agent_tenant(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    tenant_id = uuid4()
+    tenant_id = _tenant()
     agent_id = UUID(str(_agent(name, tenant_id=tenant_id)["agent_id"]))
     with pytest.raises(HTTPException) as excinfo:
-        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=uuid4(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
 
 
@@ -151,5 +162,5 @@ def test_unscoped_agent_cannot_receive_tenant_task(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
     agent_id = UUID(str(_agent(name)["agent_id"]))
     with pytest.raises(HTTPException) as excinfo:
-        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=uuid4(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+        control_create_task(TaskRequest(agent_id=agent_id, tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
