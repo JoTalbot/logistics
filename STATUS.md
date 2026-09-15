@@ -2,35 +2,39 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V36 — Telegram commercial discovery integration
-STATUS: v36_implemented_review_fix_pending_ci
-AGENT: logistics-commercial-batch-v36
+CURRENT_STEP: V37 — Telegram ingestion → commercial discovery contour
+STATUS: v37_implemented_pending_ci
+AGENT: logistics-commercial-batch-v37
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
 UPDATED: 2026-09-15
-SCOPE: V36 connects the existing deterministic Telegram parser/validation contour to commercial candidate ranking without enabling autonomous external actions.
+SCOPE: V37 composes authenticated Telegram collection, transactional persistence, and deterministic commercial discovery into one bounded evidence-only batch operation.
 
-## V36 delivered
+## V37 delivered
 
-- Added safe orchestration: Telegram source messages → deterministic parsing → fail-closed validation → canonical `Load` → commercial candidate ranking.
-- Added `candidate_digest()` with stable business evidence fields for API/dashboard use.
-- Added focused acceptance/rejection tests.
-- Added the V36 agent-skill documentation and explicit safety boundary.
-- Review found a real test-fixture defect: `PricingInput.distance_km` is required. Fixed both fixtures to provide deterministic distance input.
-- Review also exposed an incorrect `PriceEstimate` field reference in the digest. Fixed `candidate.price.amount` to the existing `target_price` field.
-- No autonomous publication, negotiation, contracting, pricing mutation or financial action was enabled.
+- Added `run_ingestion_discovery_once()` for bounded Telegram collection → deterministic parsing → `TelegramIngestionStore` persistence → commercial discovery.
+- Preserved PostgreSQL as the durable authority for source messages, canonical loads, outbox events, and checkpoints.
+- Added structured `IngestionDiscoveryResult` exposing ingestion outcomes and the deterministic discovery report.
+- Added orchestration tests for persisted-message ordering, ranking, and empty-batch behavior.
+- Added V37 agent-skill documentation and explicit production activation boundary.
+- No autonomous publication, negotiation, contracting, pricing mutation, booking, or financial action was enabled.
 
-## V36 verification state
+## V36 completion
 
-- PR #14: open, currently mergeable after the review fixes.
-- Latest V36 head: `ea910042436d6cec10a9dde803f60fb7d08804bb`.
-- Repository workflow-run lookup currently exposes no PR-triggered run for the latest head through the connected GitHub interface.
-- Combined commit status currently reports only the existing Vercel integration failure; this is an external account/provider gate, not evidence of a Python test failure.
-- The focused tests were corrected from review findings but have not been independently executed in this connector session; CI must remain the authoritative execution gate before merge.
+- V36 Telegram commercial discovery integration is merged to `main` in PR #14.
+- The review-found fixture defect around required `PricingInput.distance_km` was corrected.
+- The digest uses the existing `PriceEstimate.target_price` field.
+- The external Vercel account/integration block remains separate from Python correctness.
+
+## V37 verification state
+
+- V37 branch: `feat/v37-telegram-ingestion-discovery`.
+- Focused tests were added but have not yet been independently executed in this connector session; CI remains the authoritative execution gate.
+- Live Telegram execution is not claimed: authorized credentials and source access are external prerequisites.
 
 ## Safety boundary
 
-V36 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability. Lardi/Cloudflare protections are not bypassed.
+V37 remains evidence-only. It does not enable autonomous publication, negotiation, contracting, pricing mutation or financial actions. Provider telemetry is not treated as proof of authorization or availability. Lardi/Cloudflare protections are not bypassed.
 
 ## External production gates
 
@@ -43,9 +47,9 @@ V36 remains evidence-only. It does not enable autonomous publication, negotiatio
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration.
-IN_PROGRESS: PR #14 CI verification and merge gate.
-NEXT: obtain a green authoritative CI result for PR #14, merge V36, then execute the authorized Telegram ingestion/persistence contour when credentials and target access are available.
-PENDING: PR #14 CI; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent rollout only after security review; real outcome telemetry; Vercel account/integration remediation.
-REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, explicit publication/contact authorization, and Vercel account remediation remain external blockers.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour.
+IN_PROGRESS: V37 CI verification and review gate.
+NEXT: obtain a green authoritative CI result for V37, merge the contour, then activate live ingestion only when authorized Telegram credentials/source access are available.
+PENDING: V37 CI; target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; broader remote-agent rollout only after security review; real outcome telemetry; Vercel account/integration remediation.
+REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
 OPEN_ISSUES: provider access/mapping, Vercel account/integration block, duplicate identity evidence, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
