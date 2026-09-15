@@ -13,7 +13,8 @@ from fastapi import HTTPException
 from logistics import remote_control  # noqa: F401
 from logistics.remote_control import AgentHeartbeat, CompleteRequest, EventRequest, TaskRequest, _approval, control_agents, control_cancel, control_complete, control_create_task, control_event, control_heartbeat, control_next_task
 
-AGENT_TOKEN = "pytest-remote-agent-token"
+BOOTSTRAP_TOKEN = "pytest-remote-agent-token"
+AGENT_TOKEN = BOOTSTRAP_TOKEN
 OPERATOR_TOKEN = "pytest-operator-token"
 
 
@@ -28,8 +29,10 @@ def _remote_agent_allowed_commands() -> set[str]:
 def configured(monkeypatch):
     if not os.getenv("DATABASE_URL"):
         pytest.skip("DATABASE_URL is not configured")
-    monkeypatch.setenv("REMOTE_AGENT_TOKEN", AGENT_TOKEN)
+    monkeypatch.setenv("REMOTE_AGENT_TOKEN", BOOTSTRAP_TOKEN)
     monkeypatch.setenv("CONTROL_PLANE_OPERATOR_TOKEN", OPERATOR_TOKEN)
+    global AGENT_TOKEN
+    AGENT_TOKEN = BOOTSTRAP_TOKEN
 
 
 def _tenant() -> UUID:
@@ -43,7 +46,10 @@ def _tenant() -> UUID:
 
 
 def _agent(name: str, tenant_id=None) -> dict[str, object]:
-    return control_heartbeat(AgentHeartbeat(name=name, tenant_id=tenant_id, metadata={"hostname": name, "source": "pytest"}), authorization=f"Bearer {AGENT_TOKEN}")
+    global AGENT_TOKEN
+    result = control_heartbeat(AgentHeartbeat(name=name, tenant_id=tenant_id, metadata={"hostname": name, "source": "pytest"}), authorization=f"Bearer {BOOTSTRAP_TOKEN}")
+    AGENT_TOKEN = str(result["control_token"])
+    return result
 
 
 def test_heartbeat_accepts_json_metadata(configured):
@@ -53,6 +59,8 @@ def test_heartbeat_accepts_json_metadata(configured):
     agent_id = UUID(str(first["agent_id"]))
     second = control_heartbeat(AgentHeartbeat(agent_id=agent_id, name=name, metadata={"nested": {"ok": True}}), authorization=f"Bearer {AGENT_TOKEN}")
     assert second["agent_id"] == str(agent_id)
+    assert second["credential_mode"] == "per_agent"
+    assert "control_token" not in second
 
 
 def test_operator_authentication_is_enforced(configured):
@@ -66,7 +74,9 @@ def test_operator_authentication_is_enforced(configured):
 
 def test_safe_task_lifecycle(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"]))
+    _agent(name)
+    agent_id = UUID(str(remote_control.control_heartbeat(AgentHeartbeat(name=name), authorization=f"Bearer {BOOTSTRAP_TOKEN}")["agent_id"]))
+    # Re-bootstrap above rotates the credential, so use the current module token.
     created = control_create_task(TaskRequest(agent_id=agent_id, command="uname -a", idempotency_key=f"k-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert created["approval"] == "AUTO"
     next_task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")
@@ -77,6 +87,7 @@ def test_safe_task_lifecycle(configured):
 
 def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
+    _agent(name)
     agent_id = UUID(str(_agent(name)["agent_id"]))
     review = control_create_task(TaskRequest(agent_id=agent_id, command="python -c 'print(1)'"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert review["approval"] == "REVIEW"
@@ -87,6 +98,7 @@ def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
 
 def test_idempotency_returns_same_task(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
+    _agent(name)
     agent_id = UUID(str(_agent(name)["agent_id"]))
     key = f"idem-{uuid4().hex}"
     first = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
@@ -125,6 +137,7 @@ def test_auto_policy_is_strict_about_shell_composition_and_arguments():
 
 def test_cancelling_running_task_finalizes_it(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
+    _agent(name)
     agent_id = UUID(str(_agent(name)["agent_id"]))
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
@@ -139,6 +152,7 @@ def test_cancelling_running_task_finalizes_it(configured):
 
 def test_cancelled_task_rejects_late_events(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
+    _agent(name)
     agent_id = UUID(str(_agent(name)["agent_id"]))
     created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=f"event-cancel-{uuid4().hex}"), authorization=f"Bearer {OPERATOR_TOKEN}")
     task = control_next_task(agent_id, authorization=f"Bearer {AGENT_TOKEN}")["task"]
@@ -152,7 +166,8 @@ def test_cancelled_task_rejects_late_events(configured):
 def test_task_tenant_must_match_agent_tenant(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
     tenant_id = _tenant()
-    agent_id = UUID(str(_agent(name, tenant_id=tenant_id)["agent_id"]))
+    agent = _agent(name, tenant_id=tenant_id)
+    agent_id = UUID(str(agent["agent_id"]))
     with pytest.raises(HTTPException) as excinfo:
         control_create_task(TaskRequest(agent_id=agent_id, tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
@@ -160,7 +175,28 @@ def test_task_tenant_must_match_agent_tenant(configured):
 
 def test_unscoped_agent_cannot_receive_tenant_task(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"]))
+    agent = _agent(name)
+    agent_id = UUID(str(agent["agent_id"]))
     with pytest.raises(HTTPException) as excinfo:
         control_create_task(TaskRequest(agent_id=agent_id, tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
+
+
+def test_global_token_cannot_operate_enrolled_agent(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    agent = _agent(name)
+    agent_id = UUID(str(agent["agent_id"]))
+    with pytest.raises(HTTPException) as excinfo:
+        control_next_task(agent_id, authorization=f"Bearer {BOOTSTRAP_TOKEN}")
+    assert excinfo.value.status_code == 401
+
+
+def test_credential_is_stored_as_hash_not_plaintext(configured):
+    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
+    token = str(agent["control_token"])
+    agent_id = UUID(str(agent["agent_id"]))
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        row = conn.execute("SELECT credential_hash,credential_created_at FROM remote_agents WHERE id=%s", (agent_id,)).fetchone()
+    assert row[0]
+    assert token not in row[0]
+    assert row[1] is not None
