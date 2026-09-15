@@ -13,11 +13,11 @@ from uuid import UUID
 
 from .commercial_pipeline import CommercialCandidate
 from .discovery_pipeline import DiscoveryReport, build_discovery_report
+from .domain import Vehicle
 from .market_ops import PricingInput
 from .observability import IngestionObserver
 from .telegram import TelegramSourceMessage, collect_messages, parse_load_ad
 from .telegram_store import IngestionResult, TelegramIngestionStore
-from .domain import Vehicle
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,12 @@ async def run_ingestion_discovery_once(
     ):
         try:
             parsed = parse_load_ad(message)
-            result = store.ingest_message(tenant_id, message, parsed)
+            result = store.ingest_message(
+                tenant_id,
+                message,
+                parsed,
+                min_confidence=min_confidence,
+            )
             source_messages.append(message)
             processed.append(result)
             observer.message_processed(
