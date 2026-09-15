@@ -77,7 +77,7 @@ def test_safe_task_lifecycle(configured):
 
 def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
-    agent_id = UUID(str(_agent(name)["agent_id"])
+    agent_id = UUID(str(_agent(name)["agent_id"]))
     review = control_create_task(TaskRequest(agent_id=agent_id, command="python -c 'print(1)'"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert review["approval"] == "REVIEW"
     blocked = control_create_task(TaskRequest(agent_id=agent_id, command="rm -rf /tmp/pytest-example"), authorization=f"Bearer {OPERATOR_TOKEN}")
