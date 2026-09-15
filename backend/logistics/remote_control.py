@@ -137,10 +137,10 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
             credential, credential_hash = _new_credential()
             if row:
                 agent_id, existing_tenant = row[0], row[1]
-                if req.tenant_id and existing_tenant and existing_tenant != req.tenant_id:
+                if req.tenant_id != existing_tenant:
                     raise HTTPException(status_code=403, detail="tenant mismatch")
-                tenant_id = req.tenant_id or existing_tenant
-                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,tenant_id=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL WHERE id=%s", (Jsonb(req.metadata), tenant_id, credential_hash, agent_id))
+                tenant_id = existing_tenant
+                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL WHERE id=%s", (Jsonb(req.metadata), credential_hash, agent_id))
             else:
                 agent_id, tenant_id = uuid4(), req.tenant_id
                 conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata,credential_hash,credential_created_at) VALUES(%s,%s,%s,now(),'online',%s,%s,now())", (agent_id, req.name, tenant_id, Jsonb(req.metadata), credential_hash))
