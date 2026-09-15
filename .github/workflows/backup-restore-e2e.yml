@@ -57,11 +57,15 @@ jobs:
           ON CONFLICT (marker) DO NOTHING;
           SQL
       - name: Create logical backup
-        env:
-          PGPASSWORD: logistics
         run: |
           set -euo pipefail
-          pg_dump -h 127.0.0.1 -U logistics -d logistics --format=custom --file=logistics-rehearsal.dump
+          # Use the matching PostgreSQL 17 client from the same image family as the service.
+          # The runner's distro package is PostgreSQL 16 and pg_dump refuses newer servers.
+          docker run --rm --network host \
+            -e PGPASSWORD=logistics \
+            -v "$PWD:/work" -w /work \
+            postgres:17-alpine \
+            pg_dump -h 127.0.0.1 -U logistics -d logistics --format=custom --file=/work/logistics-rehearsal.dump
           test -s logistics-rehearsal.dump
       - name: Restore into disposable database
         env:
@@ -69,7 +73,11 @@ jobs:
         run: |
           set -euo pipefail
           createdb -h 127.0.0.1 -U logistics logistics_restore_test
-          pg_restore --clean --if-exists --dbname=postgresql://logistics:logistics@127.0.0.1:5432/logistics_restore_test logistics-rehearsal.dump
+          docker run --rm --network host \
+            -e PGPASSWORD=logistics \
+            -v "$PWD:/work" -w /work \
+            postgres:17-alpine \
+            pg_restore --clean --if-exists --dbname=postgresql://logistics:logistics@127.0.0.1:5432/logistics_restore_test /work/logistics-rehearsal.dump
           psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT 1 FROM backup_restore_rehearsal_marker WHERE marker = 'ci-backup-restore-rehearsal';"
       - name: Verify restored schema and rehearsal marker
         env:
