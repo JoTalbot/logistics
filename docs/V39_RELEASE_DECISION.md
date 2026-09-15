@@ -2,12 +2,14 @@
 
 ## Software contour
 
-Repository-level transactional and replay evidence is implemented. The V39 branch must pass the authoritative CI workflow before the software contour is marked green.
+Repository-level transactional, replay, idempotency, rejection, and failure-rollback evidence is implemented and verified by authoritative CI. V39 software verification is complete.
 
 ## Production activation
 
-Production activation remains blocked until the applicable external gates are completed: target infrastructure backup/restore rehearsal, provider authorization/access mapping, Vercel account remediation, authorized Telegram source access, explicit publication/contact authorization, and real booked/delivered outcome telemetry.
+Production activation remains blocked until the applicable external gates are completed: target infrastructure backup/restore rehearsal, hardened Compose end-to-end rehearsal, provider authorization/access mapping, Vercel account remediation, authorized Telegram source access, explicit publication/contact authorization, and real booked/delivered outcome telemetry.
 
 ## Decision
 
-Do not declare full production readiness yet. The correct current state is: **software verification in progress, production activation externally blocked**.
+**Software contour: GREEN. Production activation: EXTERNALLY BLOCKED.**
+
+Do not declare full production readiness until the external gates above have independently passed. Repository CI success is software evidence only and is not evidence of provider authorization, infrastructure readiness, publication/contact permission, or real commercial outcomes.
