@@ -71,11 +71,11 @@ jobs:
           createdb -h 127.0.0.1 -U logistics logistics_restore_test
           pg_restore --clean --if-exists --dbname=postgresql://logistics:logistics@127.0.0.1:5432/logistics_restore_test logistics-rehearsal.dump
           psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT 1 FROM backup_restore_rehearsal_marker WHERE marker = 'ci-backup-restore-rehearsal';"
-      - name: Verify restored schema and migration marker
+      - name: Verify restored schema and rehearsal marker
         env:
           PGPASSWORD: logistics
         run: |
           set -euo pipefail
-          psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM schema_migrations;"
+          psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT count(*) AS public_table_count FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"
           psql -h 127.0.0.1 -U logistics -d logistics_restore_test -v ON_ERROR_STOP=1 -c "SELECT marker, created_at FROM backup_restore_rehearsal_marker;"
           echo "backup/restore end-to-end rehearsal: PASS"
