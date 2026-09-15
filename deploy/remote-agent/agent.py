@@ -201,9 +201,15 @@ async def chat(req: ChatRequest, authorization: str | None = Header(default=None
         raise HTTPException(status_code=502, detail=f"AI Gateway request failed: {exc}")
 
 
-def control_request(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def control_request(
+    path: str,
+    method: str = "GET",
+    payload: dict[str, Any] | None = None,
+    *,
+    bootstrap: bool = False,
+) -> dict[str, Any]:
     data = json.dumps(payload).encode() if payload is not None else None
-    token = CONTROL_AGENT_TOKEN or CONTROL_TOKEN
+    token = CONTROL_TOKEN if bootstrap else (CONTROL_AGENT_TOKEN or CONTROL_TOKEN)
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -254,13 +260,26 @@ async def execute_control_task(item: dict[str, Any]) -> None:
 async def control_loop() -> None:
     global CONTROL_AGENT_TOKEN
     agent_id: str | None = None
+    tenant_id: str | None = None
     while True:
         try:
-            heartbeat_payload: dict[str, Any] = {"name": AGENT_NAME, "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL_RAW}}
+            bootstrapping = agent_id is None
+            heartbeat_payload: dict[str, Any] = {
+                "name": AGENT_NAME,
+                "metadata": {"hostname": os.uname().nodename, "workspace": str(WORKSPACE), "model": MODEL_RAW},
+            }
             if agent_id:
                 heartbeat_payload["agent_id"] = agent_id
-            heartbeat = await asyncio.to_thread(control_request, "/api/v1/control/agents/heartbeat", "POST", heartbeat_payload)
+                heartbeat_payload["tenant_id"] = tenant_id
+            heartbeat = await asyncio.to_thread(
+                control_request,
+                "/api/v1/control/agents/heartbeat",
+                "POST",
+                heartbeat_payload,
+                bootstrap=bootstrapping,
+            )
             agent_id = heartbeat.get("agent_id") or agent_id
+            tenant_id = heartbeat.get("tenant_id") if "tenant_id" in heartbeat else tenant_id
             issued = heartbeat.get("control_token")
             if issued:
                 CONTROL_AGENT_TOKEN = str(issued)
@@ -269,6 +288,14 @@ async def control_loop() -> None:
                 item = task.get("task")
                 if item:
                     await execute_control_task(item)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                print("control credential rejected; resetting enrollment state", flush=True)
+                agent_id = None
+                tenant_id = None
+                CONTROL_AGENT_TOKEN = ""
+            else:
+                print(f"control channel error: HTTP {exc.code}", flush=True)
         except Exception as exc:
             print(f"control channel error: {type(exc).__name__}: {exc}", flush=True)
         await asyncio.sleep(HEARTBEAT_SECONDS)
