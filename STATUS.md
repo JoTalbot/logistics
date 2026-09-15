@@ -16,14 +16,14 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 - При сбое транзакции подтверждено отсутствие частично сохранённых source message, canonical load, outbox event и Telegram checkpoint.
 - Существующие replay/rejection/idempotency проверки сохранены.
 - Последний application-bearing `main` commit `cfedc933f2704951768a64dce0900340782a62c8` подтверждён GitHub Actions CI #414: тесты, миграции, replay, Compose contract, release smoke и hardened API image build завершились успешно.
-- Последующие documentation-only commits `60850ee796b81e33b7fea6d9447274a9791de26c`, `6bcc65980f9866f35804c70a4f4b117a8380d028`, `0198f25db0734e79ca081d8c2ce5458177e82dae`, `b4b6a2773fbce09f6b495901067ff6399ba0343b`, `13d19d01d5652df28efa79ace2ac435b333e1b0c`, `9d6e7c1002e85fad5ef8e48ce96ab972b10a28d8` и `7c811e311dc2fb03d59ae78a902168322b2f2d74` подтверждены CI #415/#416/#417/#418/#419/#420/#421/#422 успешно.
+- Последующие documentation-only commits `60850ee796b81e33b7fea6d9447274a9791de26c`, `6bcc65980f9866f35804c70a4f4b117a8380d028`, `0198f25db0734e79ca081d8c2ce5458177e82dae`, `b4b6a2773fbce09f6b495901067ff6399ba0343b`, `13d19d01d5652df28efa79ace2ac435b333e1b0c`, `9d6e7c1002e85fad5ef8e48ce96ab972b10a28d8`, `7c811e311dc2fb03d59ae78a902168322b2f2d74`, `aa78bccaa229c8e97ce288620de2cbd21ef9a891` и `09722f47ab94ecf18c9c9be690328320cfc7d800` подтверждены CI #415–#423 успешно.
 - PR #17 `test(v39): prove Telegram ingestion rollback boundary` ранее объединён в `main` squash-коммитом `6f6cd81210edeb18345a57f7474db80c6d0ef011`.
 - Актуальная CI-доказательная запись сохранена в `docs/V39_CURRENT_CI_EVIDENCE.md`.
 - Граница безопасности не изменена: никаких provider protection bypass, autonomous publication, contact/messaging, negotiation, contracting, pricing mutation, booking или financial action.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — application-bearing V39 baseline is verified by CI #414; all subsequent documentation-only commits through current `main` head are also verified successfully by CI #415/#416/#417/#418/#419/#420/#421/#422.
+**SOFTWARE CONTOUR: GREEN** — application-bearing V39 baseline is verified by CI #414; all subsequent documentation-only commits through current `main` head are also verified successfully by CI #415–#423.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -31,10 +31,10 @@ SCOPE: V39 завершён на уровне репозитория; прогр
 
 1. Backup/restore rehearsal: **PENDING TARGET INFRASTRUCTURE**.
 2. Hardened Compose end-to-end rehearsal: **PENDING TARGET INFRASTRUCTURE**.
-3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`.
+3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current main commit `09722f47ab94ecf18c9c9be690328320cfc7d800` has Vercel status `Account is blocked` and deployment check pending.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 
 ## Safety boundary
@@ -44,8 +44,8 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 ## Handoff
 
 DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness.
-IN_PROGRESS: documentation synchronization only; latest `main` head `7c811e311dc2fb03d59ae78a902168322b2f2d74` has CI #422 success. No application code changes are currently justified by repository evidence.
-NEXT: external production-readiness/activation gates. Further code changes only when new evidence, an actual failure, or an authorized production prerequisite requires them.
+IN_PROGRESS: external production-readiness/activation gates; no application code changes are currently justified by repository evidence.
+NEXT: resolve external production gates, then rerun the affected verification contours. Documentation synchronization should follow verified external state rather than create repeated no-op commits.
 PENDING: target infrastructure rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout only after security review.
 REQUIRED HUMAN ACTION: target infrastructure rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
 OPEN_GATES: provider access/mapping, Vercel account/integration block, contact adapters, external publication permissions, production-infrastructure rehearsal, real commercial outcome telemetry, calibration sample size.
