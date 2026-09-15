@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
+import secrets
 import shlex
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
@@ -27,6 +29,19 @@ def _operator_token() -> str:
 def _require(value: str | None, expected: str, detail: str) -> None:
     if not expected or not value or not hmac.compare_digest(value, f"Bearer {expected}"):
         raise HTTPException(status_code=401, detail=detail)
+
+
+def _require_hash(value: str | None, credential_hash: str | None) -> None:
+    if not value or not credential_hash:
+        raise HTTPException(status_code=401, detail="agent credential required")
+    presented = value.removeprefix("Bearer ")
+    if not hmac.compare_digest(hashlib.sha256(presented.encode()).hexdigest(), credential_hash):
+        raise HTTPException(status_code=401, detail="agent credential invalid")
+
+
+def _new_credential() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hashlib.sha256(token.encode()).hexdigest()
 
 
 def _db():
@@ -102,28 +117,46 @@ def control_agents(authorization: str | None = Header(default=None)) -> list[dic
 
 @app.post("/api/v1/control/agents/heartbeat")
 def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(default=None)) -> dict[str, object]:
-    _require(authorization, _agent_token(), "agent unauthorized")
+    """Bootstrap with the global enrollment token, then require a per-agent token."""
     with _db() as conn:
+        credential: str | None = None
         if req.agent_id:
-            row = conn.execute("SELECT id,tenant_id FROM remote_agents WHERE id=%s", (req.agent_id,)).fetchone()
+            row = conn.execute("SELECT id,tenant_id,credential_hash FROM remote_agents WHERE id=%s", (req.agent_id,)).fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="agent not found")
+            _require_hash(authorization, row[2])
             if req.tenant_id and row[1] and row[1] != req.tenant_id:
                 raise HTTPException(status_code=403, detail="tenant mismatch")
             agent_id, tenant_id = row[0], req.tenant_id or row[1]
             conn.execute("UPDATE remote_agents SET name=%s,last_seen=now(),status='online',metadata=%s,tenant_id=%s WHERE id=%s", (req.name, Jsonb(req.metadata), tenant_id, agent_id))
         else:
+            _require(authorization, _agent_token(), "agent bootstrap unauthorized")
             row = conn.execute("SELECT id,tenant_id FROM remote_agents WHERE name=%s", (req.name,)).fetchone()
+            credential, credential_hash = _new_credential()
             if row:
-                if req.tenant_id and row[1] and row[1] != req.tenant_id:
+                agent_id, existing_tenant = row[0], row[1]
+                if req.tenant_id and existing_tenant and existing_tenant != req.tenant_id:
                     raise HTTPException(status_code=403, detail="tenant mismatch")
-                agent_id, tenant_id = row[0], req.tenant_id or row[1]
-                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,tenant_id=%s WHERE id=%s", (Jsonb(req.metadata), tenant_id, agent_id))
+                tenant_id = req.tenant_id or existing_tenant
+                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,tenant_id=%s,credential_hash=%s,credential_created_at=now() WHERE id=%s", (Jsonb(req.metadata), tenant_id, credential_hash, agent_id))
             else:
                 agent_id, tenant_id = uuid4(), req.tenant_id
-                conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata) VALUES(%s,%s,%s,now(),'online',%s)", (agent_id, req.name, tenant_id, Jsonb(req.metadata)))
+                conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata,credential_hash,credential_created_at) VALUES(%s,%s,%s,now(),'online',%s,%s,now())", (agent_id, req.name, tenant_id, Jsonb(req.metadata), credential_hash))
         conn.commit()
-    return {"agent_id": str(agent_id), "tenant_id": str(tenant_id) if tenant_id else None, "status": "online", "server_time": datetime.now(timezone.utc).isoformat()}
+    result = {"agent_id": str(agent_id), "tenant_id": str(tenant_id) if tenant_id else None, "status": "online", "server_time": datetime.now(timezone.utc).isoformat()}
+    if credential:
+        result["control_token"] = credential
+        result["credential_mode"] = "per_agent"
+    else:
+        result["credential_mode"] = "per_agent"
+    return result
+
+
+def _require_task_agent(conn, task_id: UUID, authorization: str | None) -> None:
+    row = conn.execute("SELECT a.credential_hash FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (task_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="task not found")
+    _require_hash(authorization, row[0])
 
 
 @app.post("/api/v1/control/tasks")
@@ -149,8 +182,11 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
 
 @app.get("/api/v1/control/agents/{agent_id}/tasks/next")
 def control_next_task(agent_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, object]:
-    _require(authorization, _agent_token(), "agent unauthorized")
     with _db() as conn:
+        agent = conn.execute("SELECT credential_hash FROM remote_agents WHERE id=%s", (agent_id,)).fetchone()
+        if not agent:
+            raise HTTPException(status_code=404, detail="agent not found")
+        _require_hash(authorization, agent[0])
         now = datetime.now(timezone.utc)
         conn.execute("UPDATE remote_tasks SET status='queued',lease_expires_at=NULL WHERE agent_id=%s AND status='running' AND lease_expires_at < %s", (agent_id, now))
         row = conn.execute("SELECT id,command,cwd,approval,tenant_id FROM remote_tasks WHERE agent_id=%s AND status='queued' AND approval='AUTO' AND NOT cancel_requested ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED", (agent_id,)).fetchone()
@@ -165,8 +201,8 @@ def control_next_task(agent_id: UUID, authorization: str | None = Header(default
 
 @app.post("/api/v1/control/tasks/{task_id}/events")
 def control_event(task_id: UUID, req: EventRequest, authorization: str | None = Header(default=None)) -> dict[str, str]:
-    _require(authorization, _agent_token(), "agent unauthorized")
     with _db() as conn:
+        _require_task_agent(conn, task_id, authorization)
         changed = conn.execute("UPDATE remote_tasks SET heartbeat_at=now(),lease_expires_at=now()+interval '120 seconds' WHERE id=%s AND status='running' AND lease_expires_at > now()", (task_id,)).rowcount
         if not changed:
             conn.rollback()
@@ -178,9 +214,9 @@ def control_event(task_id: UUID, req: EventRequest, authorization: str | None = 
 
 @app.post("/api/v1/control/tasks/{task_id}/complete")
 def control_complete(task_id: UUID, req: CompleteRequest, authorization: str | None = Header(default=None)) -> dict[str, object]:
-    _require(authorization, _agent_token(), "agent unauthorized")
     status = "succeeded" if req.returncode == 0 else "failed"
     with _db() as conn:
+        _require_task_agent(conn, task_id, authorization)
         changed = conn.execute("UPDATE remote_tasks SET status=%s,returncode=%s,stdout=%s,stderr=%s,finished_at=now(),lease_expires_at=NULL WHERE id=%s AND status='running' AND lease_expires_at > now()", (status, req.returncode, req.stdout, req.stderr, task_id)).rowcount
         conn.commit()
     if not changed:
