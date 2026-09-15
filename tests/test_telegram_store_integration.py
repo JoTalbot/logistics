@@ -142,7 +142,7 @@ def test_ingestion_rolls_back_all_state_when_commit_fails(db_dsn, tenant_id, mon
     with pytest.raises(RuntimeError, match="injected commit failure"):
         store.ingest_message(tenant_id, make_message(99), make_ad(99))
 
-    with psycopg.connect(db_dsn) as conn:
+    with original_connect(db_dsn) as conn:
         assert conn.execute("SELECT count(*) FROM telegram_source_messages WHERE tenant_id=%s AND source=%s AND message_id=%s", (tenant_id, "https://t.me/example", 99)).fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM loads WHERE tenant_id=%s", (tenant_id,)).fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM outbox_events WHERE tenant_id=%s", (tenant_id,)).fetchone()[0] == 0
