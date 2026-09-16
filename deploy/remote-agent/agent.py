@@ -167,6 +167,7 @@ async def run_command(command: str, cwd: str | None = None) -> dict[str, Any]:
     argv = validate_command(command)
     if not target.exists():
         raise HTTPException(status_code=404, detail="cwd does not exist")
+    proc: asyncio.subprocess.Process | None = None
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv,
@@ -174,11 +175,13 @@ async def run_command(command: str, cwd: str | None = None) -> dict[str, Any]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env={"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(Path.home())},
+            start_new_session=(os.name == "posix"),
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=MAX_SECONDS)
     except asyncio.TimeoutError:
-        proc.kill()
-        await proc.wait()
+        if proc is not None:
+            terminate_process(proc)
+            await proc.wait()
         raise HTTPException(status_code=408, detail="command timed out")
     return {"ok": proc.returncode == 0, "returncode": proc.returncode, "stdout": stdout.decode(errors="replace"), "stderr": stderr.decode(errors="replace"), "command": command, "cwd": str(target)}
 
