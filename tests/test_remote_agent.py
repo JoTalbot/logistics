@@ -39,6 +39,33 @@ def test_execution_error_is_reported_and_task_is_completed(monkeypatch):
     }
 
 
+def test_execute_control_task_skips_completion_after_lifecycle_fence(monkeypatch):
+    calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+    async def fake_run_leased_command(item):
+        return {
+            "ok": True,
+            "returncode": 0,
+            "stdout": "output",
+            "stderr": "",
+            "lease_lost": False,
+        }
+
+    def fake_control_request(path: str, method: str = "GET", payload: dict[str, object] | None = None) -> dict[str, object]:
+        calls.append((path, method, payload))
+        if path.endswith("/events"):
+            return {"error": 409}
+        return {"status": "accepted"}
+
+    monkeypatch.setattr(agent, "run_leased_command", fake_run_leased_command)
+    monkeypatch.setattr(agent, "control_request", fake_control_request)
+
+    asyncio.run(agent.execute_control_task({"id": "task-2", "command": "pwd", "cwd": "/opt/logistics"}))
+
+    assert any(path.endswith("/events") for path, _, _ in calls)
+    assert not any(path.endswith("/complete") for path, _, _ in calls)
+
+
 def test_remote_agent_does_not_configure_vercel_protection_bypass():
     text = _AGENT_PATH.read_text(encoding="utf-8")
 
