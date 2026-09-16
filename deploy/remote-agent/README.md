@@ -40,6 +40,8 @@ The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgr
 - `BLOCKED` means the host exposes the expected Linux/cgroup-v2/systemd contour but the current identity lacks a required capability, such as writable cgroup-parent access.
 - `UNSUPPORTED` means the required Linux/cgroup-v2/systemd backend is not present.
 
+The readiness gate explicitly requires both `cgroup_kill_available=true` and `cgroup_kill_writable=true`. A present but non-writable `cgroup.kill` therefore produces `task_cgroup_creation_ready=false` and `target_host_readiness=BLOCKED`. `cgroup_procs_writable` and `subtree_control_writable` remain reported evidence fields, but they are not sufficient by themselves to declare the current systemd-scope candidate ready.
+
 `target_host_profile=linux_cgroup_v2_systemd` and `task_scope_backend_candidate=systemd-run-scope` identify the current implementation candidate only. They do not authorize mutation or prove that a transient scope can actually be created under the installed service policy.
 
 ## Target-host cgroup rehearsal
