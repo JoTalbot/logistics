@@ -227,10 +227,10 @@ async def run_leased_command(item: dict[str, Any]) -> dict[str, Any]:
                     "POST",
                     {"stream": "heartbeat", "message": ""},
                 )
-                if response.get("error") in (401, 409):
+                if response.get("error") in (401, 404, 409):
                     return "task lease lost; local process terminated"
             except urllib.error.HTTPError as exc:
-                if exc.code in (401, 409):
+                if exc.code in (401, 404, 409):
                     return "task lease lost; local process terminated"
                 print(f"task lease heartbeat error: HTTP {exc.code}", flush=True)
             except Exception as exc:
@@ -361,11 +361,28 @@ async def execute_control_task(item: dict[str, Any]) -> None:
         return
 
     try:
-        await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stdout", "message": result.get("stdout", "")})
+        event_response = await asyncio.to_thread(
+            control_request,
+            f"/api/v1/control/tasks/{item['id']}/events",
+            "POST",
+            {"stream": "stdout", "message": result.get("stdout", "")},
+        )
+        if event_response.get("error") in (401, 404, 409):
+            print(f"task {item['id']} lease rejected during lifecycle reporting; skipping completion", flush=True)
+            return
         if result.get("stderr"):
-            await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stderr", "message": result["stderr"]})
+            stderr_response = await asyncio.to_thread(
+                control_request,
+                f"/api/v1/control/tasks/{item['id']}/events",
+                "POST",
+                {"stream": "stderr", "message": result["stderr"]},
+            )
+            if stderr_response.get("error") in (401, 404, 409):
+                print(f"task {item['id']} lease rejected during lifecycle reporting; skipping completion", flush=True)
+                return
     except Exception as exc:
         print(f"task event reporting error: {type(exc).__name__}: {exc}", flush=True)
+        return
 
     try:
         await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/complete", "POST", {"returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]})
