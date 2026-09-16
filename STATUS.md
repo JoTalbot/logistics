@@ -6,13 +6,13 @@ UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed CI run `35118696732` / job `104870629652` (#554), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The current status-only documentation commits preserve that tested implementation contour.
+**SOFTWARE CONTOUR: GREEN** — current implementation head `820d5c9b72ff4e9911a21caab6dbe9dcaf04c715` passed CI run `35122651998` / job `104883973258` (#565), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe.
 
-**COMPOSE E2E: GREEN** — current head `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` passed Compose E2E run `35119270479` / job `104872581426` (#128), `success`.
+**COMPOSE E2E: GREEN** — current implementation head `820d5c9b72ff4e9911a21caab6dbe9dcaf04c715` passed Compose E2E run `35122651971` / job `104883972082` (#137), `success`.
 
-**BACKUP RESTORE E2E: GREEN** — current head `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` passed Backup Restore E2E run `35119270507` / job `104872581116` (#126), `success`.
+**BACKUP RESTORE E2E: GREEN** — current implementation head `820d5c9b72ff4e9911a21caab6dbe9dcaf04c715` passed Backup Restore E2E run `35122652020` / job `104883972885` (#135), `success`.
 
-**CURRENT CODE HEAD:** `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` — `docs: correct V43.3 verification run metadata`.
+**CURRENT CODE HEAD:** `820d5c9b72ff4e9911a21caab6dbe9dcaf04c715` — `test(remote-agent): fix control request URL fixture`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
@@ -25,7 +25,7 @@ UPDATED: 2026-09-16
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status for `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` reports `Vercel=failure` with the account-blocked condition and `Vercel Deployments – fgfgggg=pending`; no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
