@@ -152,7 +152,7 @@ def test_revoke_fences_running_lease(configured):
         control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=_auth(agent))
     assert excinfo.value.status_code == 401
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-        row = conn.execute("SELECT status,lease_credential_generation,credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (UUID(str(task["id"])),)).fetchone()
+        row = conn.execute("SELECT t.status,t.lease_credential_generation,a.credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (UUID(str(task["id"])),)).fetchone()
     assert row[0] == "cancelled"
     assert row[1] != row[2]
 
