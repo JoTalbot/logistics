@@ -61,6 +61,14 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
+# Keep the whole agent subtree together on service stop/restart. This is a
+# service-level safety net; per-task lease fencing remains agent-controlled.
+KillMode=control-group
+# Delegate a private cgroup subtree so a future per-task supervisor can fence
+# descendants that deliberately create independent sessions/process groups.
+Delegate=yes
+TasksMax=512
+LimitNOFILE=8192
 ReadWritePaths=$AGENT_DIR /var/lib/logistics-agent $REPO_DIR
 
 [Install]
