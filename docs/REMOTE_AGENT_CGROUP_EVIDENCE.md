@@ -57,7 +57,7 @@ A rehearsal is accepted only when all of the following are true:
 - the temporary scope is cleaned up;
 - the evidence artifact is internally consistent.
 
-`READY` without a successful destructive rehearsal is not sufficient evidence of containment.
+`READY` without a successful destructive rehearsal is not sufficient evidence of containment. A capability probe that reports `READY` is only a prerequisite and cannot be used as standalone containment evidence.
 
 ## Failure handling
 
