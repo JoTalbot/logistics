@@ -32,4 +32,4 @@ def test_documentation_does_not_overclaim_per_task_cgroup_isolation() -> None:
 
     assert "future per-task supervisor" in text
     assert "true per-task cgroup containment remains a separate hardening step" in text
-    assert "not an absolute guarantee" in text
+    assert "Do not claim lease fencing as an absolute guarantee" in text
