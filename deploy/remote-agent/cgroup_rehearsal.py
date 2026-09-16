@@ -42,39 +42,6 @@ def _wait_for_file(path: Path, timeout: float) -> bool:
     return path.is_file()
 
 
-def _descendant_pids(root_pid: int) -> set[int]:
-    children: dict[int, set[int]] = {}
-    for proc in Path("/proc").glob("[0-9]*"):
-        try:
-            status = (proc / "status").read_text(encoding="utf-8")
-        except OSError:
-            continue
-        ppid = None
-        for line in status.splitlines():
-            if line.startswith("PPid:"):
-                try:
-                    ppid = int(line.split()[1])
-                except (IndexError, ValueError):
-                    ppid = None
-                break
-        if ppid is not None:
-            try:
-                pid = int(proc.name)
-            except ValueError:
-                continue
-            children.setdefault(ppid, set()).add(pid)
-
-    result: set[int] = set()
-    queue = list(children.get(root_pid, set()))
-    while queue:
-        pid = queue.pop()
-        if pid in result:
-            continue
-        result.add(pid)
-        queue.extend(children.get(pid, set()))
-    return result
-
-
 def _alive(pid: int) -> bool:
     return Path(f"/proc/{pid}").exists()
 
@@ -161,7 +128,12 @@ def main() -> int:
                 print("REFUSE: task cgroup.kill is unavailable", file=sys.stderr)
                 return 3
 
-            (task_cgroup / "cgroup.kill").write_text("1", encoding="utf-8")
+            try:
+                (task_cgroup / "cgroup.kill").write_text("1", encoding="utf-8")
+            except OSError as exc:
+                print(f"REFUSE: task cgroup.kill is not writable by this identity: {exc}", file=sys.stderr)
+                return 4
+
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline and (_alive(task_pid) or _alive(detached)):
                 time.sleep(POLL_SECONDS)
