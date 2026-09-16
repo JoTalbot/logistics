@@ -316,7 +316,14 @@ def control_request(
     bootstrap: bool = False,
 ) -> dict[str, Any]:
     data = json.dumps(payload).encode() if payload is not None else None
-    token = CONTROL_TOKEN if bootstrap else (CONTROL_AGENT_TOKEN or CONTROL_TOKEN)
+    if bootstrap:
+        token = CONTROL_TOKEN
+        if not token:
+            raise HTTPException(status_code=503, detail="bootstrap control credential is not configured")
+    else:
+        token = CONTROL_AGENT_TOKEN
+        if not token:
+            raise HTTPException(status_code=503, detail="per-agent control credential is not configured")
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -405,6 +412,17 @@ async def control_loop() -> None:
                 CONTROL_AGENT_TOKEN = ""
             else:
                 print(f"control channel error: HTTP {exc.code}", flush=True)
+        except HTTPException as exc:
+            if exc.status_code == 503 and "per-agent" in str(exc.detail):
+                print("control channel blocked: per-agent credential is unavailable", flush=True)
+            else:
+                print(f"control channel error: HTTP {exc.status_code}: {exc.detail}", flush=True)
         except Exception as exc:
             print(f"control channel error: {type(exc).__name__}: {exc}", flush=True)
         await asyncio.sleep(HEARTBEAT_SECONDS)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(APP, host="127.0.0.1", port=8787)
