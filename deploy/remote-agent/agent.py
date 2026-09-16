@@ -394,6 +394,13 @@ async def control_loop() -> None:
                 heartbeat_payload,
                 bootstrap=bootstrapping,
             )
+            if heartbeat.get("error") in (401, 404, 409):
+                print(f"control enrollment rejected ({heartbeat['error']}); resetting enrollment state", flush=True)
+                agent_id = None
+                tenant_id = None
+                CONTROL_AGENT_TOKEN = ""
+                await asyncio.sleep(HEARTBEAT_SECONDS)
+                continue
             agent_id = heartbeat.get("agent_id") or agent_id
             tenant_id = heartbeat.get("tenant_id") if "tenant_id" in heartbeat else tenant_id
             issued = heartbeat.get("control_token")
@@ -401,6 +408,13 @@ async def control_loop() -> None:
                 CONTROL_AGENT_TOKEN = str(issued)
             if agent_id and CONTROL_AGENT_TOKEN:
                 task = await asyncio.to_thread(control_request, f"/api/v1/control/agents/{agent_id}/tasks/next")
+                if task.get("error") in (401, 404, 409):
+                    print(f"control task poll rejected ({task['error']}); resetting enrollment state", flush=True)
+                    agent_id = None
+                    tenant_id = None
+                    CONTROL_AGENT_TOKEN = ""
+                    await asyncio.sleep(HEARTBEAT_SECONDS)
+                    continue
                 item = task.get("task")
                 if item:
                     await execute_control_task(item)
