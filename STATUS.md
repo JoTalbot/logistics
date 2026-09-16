@@ -6,13 +6,13 @@ UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — implementation head `4a201d61b3874a2efb7abe5071d9ab04b2159b34` passed CI run `35123261623` / job `104886016528` (#568), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe.
+**SOFTWARE CONTOUR: GREEN** — implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` passed CI run `35127838683` / job `104901178059` (#577), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed.
 
-**COMPOSE E2E: GREEN** — implementation head `4a201d61b3874a2efb7abe5071d9ab04b2159b34` passed Compose E2E run `35123264819` / job `104886018559` (#140), `success`.
+**COMPOSE E2E: GREEN** — last verified Compose E2E remains run `35123264819` / job `104886018559` (#140) on implementation head `4a201d61b3874a2efb7abe5071d9ab04b2159b34`, `success`; no newer Compose E2E run is currently associated with `0d18f75f484b90ef1ff4549c664dc8ecc438a959`.
 
-**BACKUP RESTORE E2E: GREEN** — implementation head `4a201d61b3874a2efb7abe5071d9ab04b2159b34` passed Backup Restore E2E run `35123261636` / job `104886016133` (#138), `success`.
+**BACKUP RESTORE E2E: GREEN** — last verified Backup Restore E2E remains run `35127838634` / job `104901177915` (#147), `success`.
 
-**CURRENT CODE HEAD:** `4a201d61b3874a2efb7abe5071d9ab04b2159b34` — `test(remote-agent): cover stale lifecycle reporting fence`.
+**CURRENT CODE HEAD:** `0d18f75f484b90ef1ff4549c664dc8ecc438a959` — `test(remote-control): qualify lock fencing verification columns`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
