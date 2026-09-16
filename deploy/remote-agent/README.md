@@ -32,9 +32,22 @@ The POSIX process-group boundary is intentionally not described as a complete co
 sudo -u logistics-agent /opt/logistics-agent/.venv/bin/python /opt/logistics/deploy/remote-agent/cgroup_probe.py
 ```
 
-The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgroup files, relevant write access, available controllers, enabled subtree controllers, and a conservative `task_cgroup_creation_ready` gate. The probe never creates or modifies cgroups and never moves or kills processes.
+The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgroup files, relevant write access, available controllers, enabled subtree controllers, and a conservative `task_cgroup_creation_ready` gate. It also records UID/GID and effective UID/GID so capability results can be interpreted against the actual service identity. The probe never creates or modifies cgroups and never moves or kills processes.
 
 `task_cgroup_creation_ready=true` is only a host capability signal. It is **not** proof that runtime per-task containment has been implemented or that detached descendants have been successfully fenced. A real Linux integration rehearsal is still required before enforcement.
+
+## Target-host cgroup rehearsal
+
+`cgroup_rehearsal.py` is the next, deliberately opt-in verification step. It is **not** run by normal CI and is not invoked by the remote agent. Run it only on an authorized Linux target host as the dedicated non-root `logistics-agent` identity:
+
+```bash
+sudo -u logistics-agent env LOGISTICS_CGROUP_REHEARSAL=1 \
+  /opt/logistics-agent/.venv/bin/python /opt/logistics/deploy/remote-agent/cgroup_rehearsal.py
+```
+
+The rehearsal asks systemd for a transient scope, starts a real task, creates a deliberately detached session child, verifies that both processes resolve to the same task cgroup, writes `1` to that cgroup's `cgroup.kill`, and verifies that both processes disappear. It refuses to run as root and never falls back to the unsafe `fork/exec -> write PID to cgroup.procs` pattern. Failure to obtain an authorized scope, resolve the task cgroup, observe the detached descendant, or fence both processes is treated as a failed gate rather than silently falling back to weaker behavior.
+
+This rehearsal is destructive only to its own temporary test processes. It does not alter controllers or persistent cgroup configuration. A successful rehearsal is evidence for the target host and identity only; it does not by itself enable runtime per-task containment in `agent.py`.
 
 See `docs/REMOTE_AGENT_CGROUP_DESIGN.md` for the implementation decision gate and verification requirements.
 
