@@ -8,7 +8,7 @@ AGENT: logistics-commercial-batch-v42
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
 UPDATED: 2026-09-16
-SCOPE: V42 усиливает две выявленные границы Control Plane: idempotency теперь scoped по agent identity, а активные task leases получают credential generation и немедленно fencing-ятся при revoke/re-enrollment.
+SCOPE: V42 усиливает две выявленные границы Control Plane: idempotency теперь scoped по agent identity, а активные task leases получают credential generation и немедленно fencing-ятся при revoke/re-enrollment. Дополнительно lease assignment сериализован с изменениями состояния агента через row lock.
 
 ## V42 implementation
 
@@ -20,6 +20,7 @@ SCOPE: V42 усиливает две выявленные границы Control
 - При выдаче lease в `tasks/next` в task сохраняется текущая credential generation.
 - `events` и `complete` требуют совпадения lease generation с текущей generation агента; stale lease после revoke/re-enrollment не может продлить lease или завершить task.
 - Expired running leases очищают `lease_credential_generation` при возврате в queue.
+- Перед snapshot credential generation при `tasks/next` agent row блокируется `FOR UPDATE`, поэтому lease assignment сериализован с revoke/re-enrollment и не получает устаревший fencing token.
 
 ## Security semantics
 
@@ -31,11 +32,13 @@ Global `REMOTE_AGENT_TOKEN` остаётся enrollment trust boundary. Изме
 
 ## Verification state
 
-**SOFTWARE CONTOUR: VERIFIED GREEN** — V42 application/schema changes on `db61e37bed8ba61c4469bde9c562ca580fe9f950` прошли основной CI run `35101338522` / job `104811255393`: 282 tests passed, dependency/security/replay/Compose/release-smoke/image-build stages completed successfully.
+**SOFTWARE CONTOUR: VERIFIED GREEN** — текущий V42 head `ca56a6194bc9502bb29cdaf1b449c985d31338db` прошёл CI run `35101996527` / job `104813460388` (run #488): dependency consistency, pip-audit, migrations, unit/integration tests, V20 replay, hardened Compose contract, release smoke и hardened API image build завершены успешно.
 
-**BACKUP RESTORE E2E: VERIFIED GREEN** — run `35101338414` / job `104811254906` успешно применил SQL migrations, создал disposable rehearsal backup, восстановил его и проверил restored schema и rehearsal marker.
+**COMPOSE E2E: VERIFIED GREEN** — текущий V42 head прошёл Compose E2E run `35101996458` / job `104813460076` (run #60), включая hardened Compose stack rehearsal.
 
-Previous verified baseline: V41 application head `835746bfdac888c3c76763329a5f11861df245a8` прошёл Backup Restore E2E #42 и Compose E2E #44.
+**BACKUP RESTORE E2E: VERIFIED GREEN** — текущий V42 head прошёл run `35101996351` / job `104813458764` (run #58): migrations, disposable seed, logical backup, restore и restored schema/rehearsal marker verification завершены успешно.
+
+Previous verified application baseline: V41 `835746bfdac888c3c76763329a5f11861df245a8` прошёл Backup Restore E2E #42 и Compose E2E #44.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
