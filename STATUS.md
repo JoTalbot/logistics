@@ -2,43 +2,43 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V42 — Agent-scoped idempotency and credential-generation lease fencing
-STATUS: v42_verified_external_gates_blocked
-AGENT: logistics-commercial-batch-v42
+CURRENT_STEP: V43 — Remote-agent local lease watchdog and process fencing
+STATUS: v43_verified_external_gates_blocked
+AGENT: logistics-commercial-batch-v43
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
 UPDATED: 2026-09-16
-SCOPE: V42 усиливает две выявленные границы Control Plane: idempotency теперь scoped по agent identity, а активные task leases получают credential generation и немедленно fencing-ятся при revoke/re-enrollment. Дополнительно lease assignment сериализован с изменениями состояния агента через row lock.
+SCOPE: V43 закрывает локальный пробел V42: server-side credential-generation fencing дополнен watchdog на remote agent, который периодически подтверждает lease через control plane и завершает локальный subprocess при потере lease authority.
 
-## V42 implementation
+## V43 implementation
 
-- Task idempotency lookup выполняется по `(agent_id, idempotency_key)`, а не только по tenant; одинаковый ключ у разных agents больше не возвращает чужой `task_id`.
-- Добавлена миграция `0028_remote_task_idempotency_agent_scope.sql` с agent-scoped уникальностью idempotency key.
-- Добавлена миграция `0029_remote_agent_credential_generation.sql`: `remote_agents.credential_generation` и `remote_tasks.lease_credential_generation`.
-- При re-enrollment credential generation увеличивается, поэтому новый credential не наследует generation старого credential.
-- При operator revoke generation увеличивается, credential очищается, агент переводится offline, а все его текущие running leases переводятся в `cancelled`.
-- При выдаче lease в `tasks/next` в task сохраняется текущая credential generation.
-- `events` и `complete` требуют совпадения lease generation с текущей generation агента; stale lease после revoke/re-enrollment не может продлить lease или завершить task.
-- Expired running leases очищают `lease_credential_generation` при возврате в queue.
-- Перед snapshot credential generation при `tasks/next` agent row блокируется `FOR UPDATE`, поэтому lease assignment сериализован с revoke/re-enrollment и не получает устаревший fencing token.
+- Remote agent поднят до версии `0.3.0`.
+- `execute_control_task()` использует lease-aware execution path вместо прямого `run_command()`.
+- Во время выполнения leased task агент периодически отправляет heartbeat event в control plane.
+- Потеря lease authority по HTTP 401/409 считается fencing-событием, после чего локальный subprocess принудительно завершается.
+- Результат выполнения содержит `lease_lost`, что позволяет отличать нормальное завершение от локального fencing.
+- Watchdog имеет bounded polling interval: не чаще заданного heartbeat и не реже одного раза в 30 секунд для контроля длительного процесса.
+- Ошибочный execution path покрыт тестом через актуальный `run_leased_command()`, а watchdog fencing покрыт отдельным unit-тестом без зависимости от `pytest-asyncio`.
 
 ## Security semantics
 
-Credential generation является server-side fencing token. Он не убивает уже запущенный локальный процесс на remote machine, но исключает его дальнейшее server-authoritative продвижение task lifecycle после revoke. Process-level termination по-прежнему требует локального cancellation/watchdog механизма на самом агенте.
+Credential generation остаётся server-side fencing token: stale credential/lease не может продвигать lifecycle task после revoke или re-enrollment. V43 добавляет локальную реакцию агента на потерю server authority, поэтому уже запущенный subprocess больше не обязан ждать естественного завершения команды.
 
-Queued tasks не уничтожаются при credential revoke автоматически: revoke фехтует только уже выданные running leases. Это позволяет после легитимного re-enrollment продолжить безопасную обработку очереди без переноса старого lease authority.
+Watchdog не является механизмом обхода provider protections и не расширяет operator permissions. Он действует только внутри уже выданного task lease и реагирует на server-authoritative 401/409.
 
-Global `REMOTE_AGENT_TOKEN` остаётся enrollment trust boundary. Изменение этой модели требует отдельного operator-issued bootstrap policy и не должно смешиваться с lease fencing.
+Локальное завершение ограничено непосредственным subprocess: descendants, запущенные самим subprocess, не получают отдельной process-tree гарантии в текущем V43 контуре и требуют отдельного operational hardening, если такой сценарий станет обязательным для production.
+
+Queued tasks не уничтожаются при credential revoke автоматически: revoke фехтует уже выданные running leases, после чего легитимный re-enrollment может продолжить очередь.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: VERIFIED GREEN** — текущий V42 head `ca56a6194bc9502bb29cdaf1b449c985d31338db` прошёл CI run `35101996527` / job `104813460388` (run #488): dependency consistency, pip-audit, migrations, unit/integration tests, V20 replay, hardened Compose contract, release smoke и hardened API image build завершены успешно.
+**SOFTWARE CONTOUR: VERIFIED GREEN** — V43 head `dd8036ce6f5a2b1b852714ef91522dac9fdd1184` прошёл CI run `35103423207` / job `104818361658` (run #495): dependency consistency, pip-audit, migrations, unit/integration tests, V20 replay, hardened Compose contract, release smoke и hardened API image build завершены успешно.
 
-**COMPOSE E2E: VERIFIED GREEN** — текущий V42 head прошёл Compose E2E run `35101996458` / job `104813460076` (run #60), включая hardened Compose stack rehearsal.
+**COMPOSE E2E: VERIFIED GREEN** — V43 head прошёл Compose E2E run `35103409174` / job `104818315682` (run #66), включая hardened Compose stack rehearsal.
 
-**BACKUP RESTORE E2E: VERIFIED GREEN** — текущий V42 head прошёл run `35101996351` / job `104813458764` (run #58): migrations, disposable seed, logical backup, restore и restored schema/rehearsal marker verification завершены успешно.
+**BACKUP RESTORE E2E: VERIFIED GREEN** — V43 head прошёл run `35103423264` / job `104818361267` (run #65): migrations, disposable seed, logical backup, restore и restored schema/rehearsal marker verification завершены успешно.
 
-Previous verified application baseline: V41 `835746bfdac888c3c76763329a5f11861df245a8` прошёл Backup Restore E2E #42 и Compose E2E #44.
+Previous verified application baseline: V42 `ca56a6194bc9502bb29cdaf1b449c985d31338db` прошёл CI, Compose E2E и Backup Restore E2E.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -58,9 +58,9 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening, V42 agent-scoped idempotency and credential-generation lease fencing implementation and CI verification.
-IN_PROGRESS: external production-readiness/activation gates.
-NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, real booked/delivered outcome telemetry, and broader remote-agent rollout.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening, V42 agent-scoped idempotency and credential-generation lease fencing, V43 remote-agent local lease watchdog and process fencing implementation and CI verification.
+IN_PROGRESS: external production-readiness/activation gates and broader remote-agent operational hardening.
+NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, real booked/delivered outcome telemetry, process-tree cancellation policy if required, and broader remote-agent rollout.
 PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout.
 REQUIRED HUMAN ACTION: target infrastructure backup/restore rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
-OPEN_GATES: provider access/mapping; Vercel account/integration block; contact adapters; external publication permissions; production backup/restore rehearsal; real commercial outcome telemetry; calibration sample size; local process-level cancellation if required operationally.
+OPEN_GATES: provider access/mapping; Vercel account/integration block; contact adapters; external publication permissions; production backup/restore rehearsal; real commercial outcome telemetry; calibration sample size; process-tree cancellation policy if required operationally; broader remote-agent rollout.
