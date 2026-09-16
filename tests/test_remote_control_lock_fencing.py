@@ -8,9 +8,8 @@ from uuid import UUID
 import psycopg
 import pytest
 
-from backend.logistics.api import app
-from backend.logistics.remote_control import _dsn, control_heartbeat, control_create_task, control_next_task
-from backend.logistics.remote_control import AgentHeartbeat, TaskRequest
+from backend.logistics.remote_control import AgentHeartbeat, TaskRequest, _dsn
+from backend.logistics.remote_control import control_create_task, control_heartbeat, control_next_task
 
 
 @pytest.mark.integration
@@ -59,8 +58,9 @@ def test_next_task_rechecks_credential_after_agent_row_lock(
                     """
                     SELECT EXISTS (
                         SELECT 1 FROM pg_stat_activity
-                        WHERE query ILIKE '%FROM remote_agents WHERE id=% FOR UPDATE%'
-                          AND wait_event_type = 'Lock'
+                        WHERE wait_event_type = 'Lock'
+                          AND query ILIKE '%FROM remote_agents%'
+                          AND query ILIKE '%FOR UPDATE%'
                     )
                     """
                 ).fetchone()
