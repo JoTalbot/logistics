@@ -64,8 +64,10 @@ def test_gate_runs_rehearsal_only_after_ready(monkeypatch, capsys):
 
     assert gate.main() == gate.EXIT_PASS
     assert len(calls) == 1
-    assert calls[0][0][0][0] == gate.sys.executable
-    assert str(gate.REHEARSAL_PATH) in calls[0][0][0]
+    command = calls[0][0]
+    assert command[0] == gate.sys.executable
+    assert command[1] == str(gate.REHEARSAL_PATH)
+    assert calls[0][1]["env"]["LOGISTICS_CGROUP_REHEARSAL"] == "1"
     assert "PASS: target-host cgroup rehearsal completed" in capsys.readouterr().out
 
 
