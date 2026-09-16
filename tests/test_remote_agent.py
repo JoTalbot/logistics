@@ -36,3 +36,10 @@ def test_execution_error_is_reported_and_task_is_completed(monkeypatch):
         "stdout": "",
         "stderr": "command not allowed",
     }
+
+
+def test_remote_agent_does_not_configure_vercel_protection_bypass():
+    text = _AGENT_PATH.read_text(encoding="utf-8")
+
+    assert "VERCEL_AUTOMATION_BYPASS_SECRET" not in text
+    assert "x-vercel-protection-bypass" not in text
