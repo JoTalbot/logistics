@@ -1,50 +1,18 @@
 # Project Status — AI Logistics OS
 
-> Общая точка синхронизации для параллельно работающих людей и AI-агентов.
-
 CURRENT_STEP: V43.3 — Remote-agent target-host cgroup readiness contract and gated rehearsal
 STATUS: v43.3_verified_external_gates_blocked
-AGENT: logistics-commercial-batch-v43.3
-MACHINE: ChatGPT/GitHub connector
-STARTED: 2026-09-15
 UPDATED: 2026-09-16
-SCOPE: V43.3 формализует machine-readable target-host readiness contract (`READY` / `BLOCKED` / `UNSUPPORTED`), добавляет read-only systemd capability evidence и gated opt-in rehearsal; runtime per-task cgroup isolation по-прежнему не объявляется реализованным.
-
-## V43.3 implementation
-
-- Remote agent остаётся на версии `0.3.0`.
-- V43/V43.1/V43.2 process-boundary механизмы сохранены без изменения runtime semantics.
-- `deploy/remote-agent/cgroup_probe.py` является read-only capability probe: он определяет Linux/cgroup-v2/systemd contour, execution identity, доступность `systemd-run`, версию systemd и необходимые cgroup access flags без изменения host state.
-- `target_host_readiness=READY` означает только наличие prerequisites для opt-in target-host rehearsal; это не означает, что runtime per-task cgroup isolation уже внедрена.
-- `target_host_readiness=BLOCKED` означает поддерживаемый Linux/cgroup-v2/systemd contour с недостаточными правами/делегацией текущей identity.
-- `target_host_readiness=UNSUPPORTED` означает отсутствие требуемого Linux/cgroup-v2/systemd backend.
-- Readiness contract отдельно требует доступности и записи в `cgroup.kill`; отсутствие права kill переводит capability result в `BLOCKED`, даже если остальные cgroup files доступны.
-- `deploy/remote-agent/cgroup_gate.py` запускает destructive rehearsal только при явном `LOGISTICS_CGROUP_REHEARSAL=1`, non-root identity и `READY` probe result.
-- `deploy/remote-agent/cgroup_rehearsal.py` остаётся отдельной target-host проверкой: реальный task, detached-session descendant, общая task cgroup и fencing через `cgroup.kill`.
-- Нормальный CI не выполняет destructive target-host rehearsal.
-- `tests/test_remote_agent_cgroup_probe.py` и `tests/test_remote_agent_cgroup_gate.py` регрессируют readiness contract, fail-closed поведение, identity/permission semantics и отсутствие destructive systemd actions в probe.
-
-## Security semantics
-
-Credential generation остаётся server-side fencing token: stale credential/lease не может продвигать lifecycle task после revoke или re-enrollment. V43 добавляет локальную реакцию агента на потерю server authority, V43.1 исключает stale lifecycle writes, а V43.2 добавляет service-level containment.
-
-`KillMode=control-group` является дополнительной operational boundary для всего remote-agent systemd service. Это не заменяет server-side lease fencing и не является доказательством фактического production deployment.
-
-`Delegate=yes` не означает, что каждый task уже помещён в отдельный cgroup. Независимая session/process-group внутри task остаётся отдельным сценарным риском; его можно закрыть только отдельным per-task cgroup/systemd-scope механизмом после прохождения target-host decision gate.
-
-Watchdog не является механизмом обхода provider protections и не расширяет operator permissions. Он действует только внутри уже выданного task lease и реагирует на server-authoritative 401/409.
-
-Queued tasks не уничтожаются при credential revoke автоматически: revoke фехтует уже выданные running leases, после чего легитимный re-enrollment может продолжить очередь.
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed CI run `35118696732` / job `104870629652` (#554), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe.
+**SOFTWARE CONTOUR: GREEN** — implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed CI run `35118696732` / job `104870629652` (#554), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The current status-only documentation commits preserve that tested implementation contour.
 
-**COMPOSE E2E: GREEN** — implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed Compose E2E run `35118696702` / job `104870629105` (#126), `success`.
+**COMPOSE E2E: GREEN** — current head `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` passed Compose E2E run `35119270479` / job `104872581426` (#128), `success`.
 
-**BACKUP RESTORE E2E: GREEN** — implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed Backup Restore E2E run `35118696724` / job `104870629473` (#124), `success`.
+**BACKUP RESTORE E2E: GREEN** — current head `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` passed Backup Restore E2E run `35119270507` / job `104872581116` (#126), `success`.
 
-**CURRENT CODE HEAD:** `0984618a89ede4feeeec48fb138314f1aa1594a1` — `docs: correct V43.3 verification run metadata`.
+**CURRENT CODE HEAD:** `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` — `docs: correct V43.3 verification run metadata`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
@@ -57,7 +25,7 @@ Queued tasks не уничтожаются при credential revoke автома
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status for `0984618a89ede4feeeec48fb138314f1aa1594a1` reports the Vercel check as `failure` with the account-blocked condition; no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status for `83fbab3d4f0f5ce42cdfd13fee770d3acd7ab205` reports `Vercel=failure` with the account-blocked condition and `Vercel Deployments – fgfgggg=pending`; no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
@@ -67,7 +35,6 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening, V42 agent-scoped idempotency and credential-generation lease fencing, V43 remote-agent local lease watchdog and process-tree fencing, V43.1 stale lifecycle-write fencing and CI verification, V43.2 systemd service-level process boundary hardening and regression verification, V43.2.1 cgroup documentation regression alignment and CI verification, V43.2.2 cgroup capability/design invariant verification and CI verification, V43.3 target-host readiness contract and gated rehearsal verification.
 IN_PROGRESS: external production-readiness/activation gates and broader remote-agent operational hardening.
 NEXT: authorized target-host cgroup rehearsal; target production backup/restore rehearsal; provider access/mapping; explicit publication/contact authorization; authorized Telegram source access; Vercel account remediation; real booked/delivered outcome telemetry; per-task cgroup runtime implementation only after architecture and target-host rehearsal gates pass; broader remote-agent rollout.
 PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; target-host cgroup rehearsal; per-task cgroup isolation decision and runtime implementation; broader remote-agent rollout.
