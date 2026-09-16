@@ -6,13 +6,13 @@ UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` passed CI run `35127838683` / job `104901178059` (#577), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed.
+**SOFTWARE CONTOUR: GREEN** — implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` passed CI run `35127838683` / job `104901178059` (#577), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed. The current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` subsequently passed CI #580 (`35129737194`) successfully.
 
-**COMPOSE E2E: GREEN** — last verified Compose E2E remains run `35123264819` / job `104886018559` (#140) on implementation head `4a201d61b3874a2efb7abe5071d9ab04b2159b34`, `success`; no newer Compose E2E run is currently associated with `0d18f75f484b90ef1ff4549c664dc8ecc438a959`.
+**COMPOSE E2E: GREEN** — current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` passed Compose E2E #152 (`35129737137`) successfully.
 
-**BACKUP RESTORE E2E: GREEN** — last verified Backup Restore E2E remains run `35127838634` / job `104901177915` (#147), `success`.
+**BACKUP RESTORE E2E: GREEN** — current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` passed Backup Restore E2E #150 (`35129737135`) successfully.
 
-**CURRENT CODE HEAD:** `0d18f75f484b90ef1ff4549c664dc8ecc438a959` — `test(remote-control): qualify lock fencing verification columns`.
+**CURRENT CODE HEAD:** `9a92ef149f20d490e7c688442743ff61d419e757` — `docs(remote-agent): restore README content and fix rehearsal paths`. The last functional implementation head remains `0d18f75f484b90ef1ff4549c664dc8ecc438a959`; `9a92ef1` is documentation-only and does not change runtime behavior.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
