@@ -16,10 +16,27 @@ The rehearsal is deliberately destructive **only inside its disposable transient
   - `deploy/remote-agent/cgroup_rehearsal.py`
 - The host is authorized for a destructive rehearsal of a disposable transient systemd scope.
 - No production task should depend on the host during the rehearsal window.
+- An evidence directory has been prepared by an authorized operator and is writable by `logistics-agent`.
 
 The rehearsal must not be run as root. Root execution would validate a different privilege model and therefore would not prove the deployment contract.
 
-## Step 1 — Capture read-only capability evidence
+## Step 1 — Prepare the evidence destination
+
+The persistent evidence directory must be created by an authorized operator, not by the non-root agent account. For example, an operator with the required host privileges can run:
+
+```bash
+install -d -o logistics-agent -g logistics-agent -m 0750 /var/lib/logistics-agent/evidence
+```
+
+Then verify that `logistics-agent` can write there before starting the rehearsal:
+
+```bash
+sudo -u logistics-agent test -w /var/lib/logistics-agent/evidence
+```
+
+If the deployment uses a different approved evidence store, use that location instead and preserve the same ownership/write contract.
+
+## Step 2 — Capture read-only capability evidence
 
 Run as `logistics-agent`:
 
@@ -33,15 +50,9 @@ Record the machine-readable output. The expected target-host state for the selec
 
 `READY` is only a capability gate. It is not proof that a real task boundary works.
 
-## Step 2 — Execute the destructive rehearsal
+## Step 3 — Execute the destructive rehearsal
 
-Create an evidence destination writable by `logistics-agent`, for example:
-
-```bash
-mkdir -p /var/lib/logistics-agent/evidence
-```
-
-Then run:
+Run as `logistics-agent`:
 
 ```bash
 cd /opt/logistics
@@ -54,7 +65,7 @@ The script creates a disposable transient systemd scope containing a task proces
 
 The expected process exit status is `0` and the terminal result is `PASS`.
 
-## Step 3 — Validate evidence
+## Step 4 — Validate evidence
 
 The JSON artifact must contain, at minimum:
 
@@ -78,7 +89,7 @@ The JSON artifact must contain, at minimum:
 
 The acceptance condition is **all required properties**, not merely a successful command exit or `READY` probe.
 
-## Step 4 — Preserve provenance
+## Step 5 — Preserve provenance
 
 Copy the evidence artifact into the approved operational evidence store together with:
 
