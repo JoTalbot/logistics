@@ -13,6 +13,7 @@ The current agent already creates a POSIX session/process group and kills that p
 - `Delegate=yes` is preparation for a child cgroup hierarchy; it does not itself create one cgroup per task.
 - `deploy/remote-agent/agent.py` starts commands in a new POSIX session and terminates the process group on lease loss or timeout.
 - No `systemd-run`/scope implementation or direct cgroup filesystem task lifecycle was found in the repository search.
+- `deploy/remote-agent/cgroup_probe.py` now provides a read-only host capability probe; it reports cgroup-v2 files, controller visibility, and relevant write access without mutating the host.
 - `tests/test_remote_agent_systemd.py` deliberately checks that documentation does not overclaim per-task cgroup isolation.
 
 ## Required semantics
@@ -54,7 +55,7 @@ Do **not** select Model A or B solely from static configuration. Before runtime 
 - descendants remain in the boundary across fork/exec and intentional session detachment;
 - failure of creation or cleanup has a deterministic fail-closed behavior.
 
-A small host capability probe should be added to the installer or a dedicated diagnostic command before enabling enforcement. The probe must report facts only and must not weaken the existing process-group fencing when a stronger boundary is unavailable.
+The read-only `deploy/remote-agent/cgroup_probe.py` can be run on a target host before enforcement is enabled. It reports facts only; it does not create cgroups, move processes, enable controllers, or kill anything. Its output is therefore diagnostic evidence rather than proof that the full containment lifecycle works.
 
 ## Verification plan
 
@@ -80,6 +81,6 @@ This hardening does not grant the remote agent new business permissions. It does
 
 ## Status
 
-Current state: **design/audit complete; runtime per-task cgroup isolation not yet implemented**.
+Current state: **capability-probe implemented; runtime per-task cgroup isolation not yet implemented**.
 
 The existing POSIX process-group fencing and systemd service-level containment remain the active mechanisms until a target-host capability check and a real Linux integration rehearsal justify promotion to runtime enforcement.
