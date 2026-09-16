@@ -1,22 +1,22 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.3 — Remote-agent target-host cgroup readiness contract and gated rehearsal
-STATUS: v43.3_verified_external_gates_blocked
+CURRENT_STEP: V43.4 — Remote-agent lifecycle context-manager correctness and regression verification
+STATUS: v43.4_verified_external_gates_blocked
 UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed CI #582 (`35131552215`) successfully, including dependency consistency, dependency audit, SQL migrations, unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed with 10 warnings; the pytest integration marker warning is resolved, while the remaining warnings are the FastAPI `on_event("startup")` deprecation. The previous implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` and documentation head `9a92ef149f20d490e7c688442743ff61d419e757` remain validated by earlier green CI runs.
+**SOFTWARE CONTOUR: GREEN** — repository head `fe7245079d37c17cba69bd9ce5a56986c76faa43` passed CI #586 (`35133519992`) successfully. The runtime fix registers the remote-agent `lifespan` function with `@asynccontextmanager`, matching the direct lifecycle regression contract. CI completed dependency consistency, dependency audit, SQL migrations, unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, and hardened API image build. The suite reported **315 tests passed in 3.84s** with no pytest warning summary.
 
-**COMPOSE E2E: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed Compose E2E #154 (`35131552162`) successfully.
+**COMPOSE E2E: GREEN** — repository head `fe7245079d37c17cba69bd9ce5a56986c76faa43` passed Compose E2E #158 (`35133520193`) successfully.
 
-**BACKUP RESTORE E2E: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed Backup Restore E2E #152 (`35131552208`) successfully.
+**BACKUP RESTORE E2E: GREEN** — repository head `fe7245079d37c17cba69bd9ce5a56986c76faa43` passed Backup Restore E2E #156 (`35133519869`) successfully.
 
-**REPOSITORY HEAD:** `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` — `test: register integration pytest marker`. This is test/CI configuration only and does not change application runtime behavior.
+**REPOSITORY HEAD:** `fe7245079d37c17cba69bd9ce5a56986c76faa43` — `fix(remote-agent): register async lifespan context manager`, followed by this status-only documentation update.
 
-**CURRENT FUNCTIONAL IMPLEMENTATION HEAD:** `0d18f75f484b90ef1ff4549c664dc8ecc438a959` — credential-generation lease fencing and deterministic lock regression coverage remain the latest functional runtime contour.
+**CURRENT FUNCTIONAL IMPLEMENTATION HEAD:** `fe7245079d37c17cba69bd9ce5a56986c76faa43` — remote-agent lifecycle context management is now runtime-correct and covered by the lifecycle regression test, while credential-generation lease fencing and deterministic lock regression coverage remain validated.
 
-**CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
+**CURRENT DESIGN STATE:** readiness contract, capability probe and opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -27,7 +27,7 @@ UPDATED: 2026-09-16
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current commit status still reports Vercel failure and no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current commit status reports Vercel failure and no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
