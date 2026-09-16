@@ -38,13 +38,13 @@ Queued tasks не уничтожаются при credential revoke автома
 
 ## Verification state
 
-**SOFTWARE CONTOUR: PENDING POST-DOC-SYNC CI** — latest implementation commit `ab9a07737b444068d421c648cc4b803d7dcba258` (`docs(remote-agent): make cgroup kill gate explicit`) updates only the remote-agent documentation. The immediately preceding implementation/test head `877f6e16fe232fb2934fe6e351974471119bb03a` was verified green by CI, Compose E2E and Backup Restore E2E; those results remain valid for the unchanged runtime/test contour while the new documentation commit is revalidated.
+**SOFTWARE CONTOUR: GREEN** — current implementation/documentation head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed CI run `35118696732` / job `104870629652` (#554), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe.
 
-**COMPOSE E2E: PENDING POST-DOC-SYNC CI** — the preceding implementation/test head `877f6e16fe232fb2934fe6e351974471119bb03a` passed Compose E2E run `35115862995` / job `104860991003` with `success`.
+**COMPOSE E2E: GREEN** — current head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed Compose E2E run `35118696702` / job to be retained by workflow record (#126), `success`.
 
-**BACKUP RESTORE E2E: PENDING POST-DOC-SYNC CI** — the preceding implementation/test head `877f6e16fe232fb2934fe6e351974471119bb03a` passed Backup Restore E2E run `35115863047` / job `104860991875` with `success`.
+**BACKUP RESTORE E2E: GREEN** — current head `69310c6ba1818e883bd1281e13c97e971d263f6d` passed Backup Restore E2E run `35118696724` / job `104870629473` (#124), `success`.
 
-**CURRENT CODE HEAD:** `ab9a07737b444068d421c648cc4b803d7dcba258` — `docs(remote-agent): make cgroup kill gate explicit`.
+**CURRENT CODE HEAD:** `69310c6ba1818e883bd1281e13c97e971d263f6d` — `docs(remote-agent): make evidence readiness wording regression-safe`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
@@ -57,7 +57,7 @@ Queued tasks не уничтожаются при credential revoke автома
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status on `47aeda6511d66995085585ce414e5ae7880b8a05` reported `Vercel=failure` and `Vercel Deployments=pending`; no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status for `69310c6ba1818e883bd1281e13c97e971d263f6d` reports the Vercel check as `failure` with `Account is blocked.` and the affected Vercel deployment check as `pending`; no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
