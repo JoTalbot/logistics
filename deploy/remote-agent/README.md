@@ -24,6 +24,20 @@ Leased control tasks use a bounded heartbeat watchdog. A 401/409 lease rejection
 
 The POSIX process-group boundary is intentionally not described as a complete containment boundary: a command that deliberately creates an independent session/process group can escape `killpg`. The systemd service cgroup is therefore retained as the service-level safety net, while true per-task cgroup containment remains a separate hardening step. Do not claim lease fencing as an absolute guarantee against arbitrary daemonization until per-task cgroup supervision is deployed and tested.
 
+## cgroup capability probe
+
+`cgroup_probe.py` is a read-only diagnostic for the target host. Run it as the same `logistics-agent` identity used by the service:
+
+```bash
+sudo -u logistics-agent /opt/logistics-agent/.venv/bin/python /opt/logistics/deploy/remote-agent/cgroup_probe.py
+```
+
+The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgroup files, relevant write access, available controllers, enabled subtree controllers, and a conservative `task_cgroup_creation_ready` gate. The probe never creates or modifies cgroups and never moves or kills processes.
+
+`task_cgroup_creation_ready=true` is only a host capability signal. It is **not** proof that runtime per-task containment has been implemented or that detached descendants have been successfully fenced. A real Linux integration rehearsal is still required before enforcement.
+
+See `docs/REMOTE_AGENT_CGROUP_DESIGN.md` for the implementation decision gate and verification requirements.
+
 ## Required capabilities
 
 - outbound HTTPS/WSS to the Vercel control plane;
