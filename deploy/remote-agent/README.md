@@ -55,6 +55,21 @@ sudo -u logistics-agent env LOGISTICS_CGROUP_REHEARSAL=1 \
 
 The rehearsal asks systemd for a transient scope, starts a real task, creates a deliberately detached session child, verifies that both processes resolve to the same task cgroup, writes `1` to that cgroup's `cgroup.kill`, and verifies that both processes disappear. It refuses to run as root and never falls back to the unsafe `fork/exec -> write PID to cgroup.procs` pattern. Failure to obtain an authorized scope, resolve the task cgroup, observe the detached descendant, or fence both processes is treated as a failed gate rather than silently falling back to weaker behavior.
 
+### Machine-readable evidence
+
+The rehearsal can emit a JSON evidence artifact when the caller supplies an explicit destination:
+
+```bash
+sudo -u logistics-agent env \
+  LOGISTICS_CGROUP_REHEARSAL=1 \
+  LOGISTICS_CGROUP_EVIDENCE_PATH=/var/lib/logistics-agent/cgroup-rehearsal.json \
+  /opt/logistics-agent/.venv/bin/python /opt/logistics-agent/deploy/remote-agent/cgroup_rehearsal.py
+```
+
+The artifact uses schema version `1` and records the execution identity, read-only readiness result, transient unit, real task and detached descendant PIDs, both cgroup paths, pre/post fence liveness, whether `cgroup.kill` was successfully written, cleanup verification, and a structured `result`. It contains no credentials. Evidence is written only when an explicit path is supplied, so ordinary rehearsal output and normal CI behavior remain unchanged.
+
+`PASS` is emitted only after both processes are fenced and the transient scope is confirmed collected. A failure remains non-pass and never enables runtime per-task containment. The evidence contract is defined in `docs/REMOTE_AGENT_CGROUP_EVIDENCE.md`.
+
 This rehearsal is destructive only to its own temporary test processes. It does not alter controllers or persistent cgroup configuration. A successful rehearsal is evidence for the target host and identity only; it does not by itself enable runtime per-task containment in `agent.py`.
 
 See `docs/REMOTE_AGENT_CGROUP_DESIGN.md` for the implementation decision gate and verification requirements.
