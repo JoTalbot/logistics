@@ -2,28 +2,20 @@
 
 > Общая точка синхронизации для параллельно работающих людей и AI-агентов.
 
-CURRENT_STEP: V43.2 — Remote-agent systemd process boundary hardening
-STATUS: v43.2_verified_external_gates_blocked
-AGENT: logistics-commercial-batch-v43.2
+CURRENT_STEP: V43.2.1 — Remote-agent cgroup-boundary regression verification
+STATUS: v43.2.1_verified_external_gates_blocked
+AGENT: logistics-commercial-batch-v43.2.1
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
 UPDATED: 2026-09-16
-SCOPE: V43.2 усиливает локальную process boundary remote agent через systemd service-level containment поверх V43/V43.1 process-group fencing.
+SCOPE: V43.2.1 синхронизирует regression coverage с фактической семантикой systemd/cgroup документации; runtime per-task cgroup isolation по-прежнему не объявляется реализованным.
 
-## V43.2 implementation
+## V43.2.1 implementation
 
 - Remote agent остаётся на версии `0.3.0`.
-- `execute_control_task()` использует lease-aware execution path с heartbeat watchdog.
-- HTTP 401/409 от heartbeat трактуется как server-authoritative fencing-событие.
-- При fencing локальный subprocess завершается вместе с POSIX process group непосредственного leased subprocess.
-- После `lease_lost=true` agent не отправляет stale stdout/stderr events или `/complete`.
-- Обычный `/v1/exec` timeout также завершает POSIX process group перед возвратом HTTP 408.
-- systemd installer запускает агент под выделенным `logistics-agent` user.
-- systemd unit использует `KillMode=control-group`, чтобы service stop/restart/failure охватывал весь service cgroup, включая descendants.
-- `Delegate=yes` оставлен как явная граница для дальнейшего cgroup-aware task isolation, но per-task cgroup lifecycle ещё не объявляется реализованным.
-- `TasksMax=512` ограничивает размер service-level process tree.
-- `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=true` и loopback-only listener сохранены.
-- Регрессии systemd process boundary покрыты unit-тестами.
+- V43/V43.1/V43.2 process-boundary механизмы сохранены без изменения runtime semantics.
+- Regression test теперь проверяет именно фактические формулировки README о будущем per-task supervisor и отсутствии абсолютной гарантии без такого механизма.
+- Это test/documentation alignment, а не расширение operator permissions и не обход provider protections.
 
 ## Security semantics
 
@@ -39,15 +31,15 @@ Queued tasks не уничтожаются при credential revoke автома
 
 ## Verification state
 
-**SOFTWARE CONTOUR: VERIFIED GREEN** — V43.2 commit `c9ba564239e22d6b763a4a8693bb977a514c40aa` прошёл CI run `35107551160` / job `104832573670` (run #508): dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build завершены успешно. Systemd regression commit `455c2b9c2bf189d627923469499a2d2efb356232` также прошёл тот же CI contour.
+**SOFTWARE CONTOUR: VERIFIED GREEN** — cgroup documentation regression fix commit `bc9be7b57d30802ee55b6684642acd067678479c` прошёл CI run `35108572827` / job `104836051316` (run #512): dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build завершены успешно.
 
-**COMPOSE E2E: VERIFIED GREEN** — systemd regression commit `455c2b9c2bf189d627923469499a2d2efb356232` прошёл Compose E2E run `35107564794` / job `104832618350` (run #81), включая hardened Compose stack rehearsal. Documentation follow-up `c9ba564239e22d6b763a4a8693bb977a514c40aa` также прошёл Compose E2E run `35107551476` / job `104832574648` (run #80).
+**COMPOSE E2E: VERIFIED GREEN** — commit `bc9be7b57d30802ee55b6684642acd067678479c` прошёл Compose E2E run `35108572823` / job `104836050716` (run #84), включая hardened Compose stack rehearsal.
 
-**BACKUP RESTORE E2E: VERIFIED GREEN** — systemd regression commit `455c2b9c2bf189d627923469499a2d2efb356232` прошёл Backup Restore E2E run `35107564806` / job `104832619071` (run #79): migrations, disposable seed, logical backup, restore и restored schema/rehearsal marker verification завершены успешно.
+**BACKUP RESTORE E2E: VERIFIED GREEN** — commit `bc9be7b57d30802ee55b6684642acd067678479c` прошёл Backup Restore E2E run `35108572889` / job `104836051150`: migrations, disposable seed, logical backup, restore и restored schema/rehearsal marker verification завершены успешно.
 
-**CURRENT CODE HEAD:** `455c2b9c2bf189d627923469499a2d2efb356232` — systemd process-boundary regression coverage.
+**CURRENT CODE HEAD:** `bc9be7b57d30802ee55b6684642acd067678479c` — cgroup documentation regression alignment.
 
-**CURRENT DOC HEAD:** status synchronization commit is generated after the verified systemd code/test commits.
+**CURRENT TEST FILE:** `tests/test_remote_agent_systemd.py` содержит отдельную проверку, что документация не выдаёт `Delegate=yes` за уже реализованную per-task cgroup isolation. fileciteturn437file0
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
@@ -67,7 +59,7 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 
 ## Handoff
 
-DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening, V42 agent-scoped idempotency and credential-generation lease fencing, V43 remote-agent local lease watchdog and process-tree fencing, V43.1 stale lifecycle-write fencing and CI verification, V43.2 systemd service-level process boundary hardening and regression verification.
+DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening, V42 agent-scoped idempotency and credential-generation lease fencing, V43 remote-agent local lease watchdog and process-tree fencing, V43.1 stale lifecycle-write fencing and CI verification, V43.2 systemd service-level process boundary hardening and regression verification, V43.2.1 cgroup documentation regression alignment and CI verification.
 IN_PROGRESS: external production-readiness/activation gates and broader remote-agent operational hardening.
 NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, real booked/delivered outcome telemetry, per-task cgroup termination policy if required operationally, and broader remote-agent rollout.
 PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; per-task cgroup isolation decision; broader remote-agent rollout.
