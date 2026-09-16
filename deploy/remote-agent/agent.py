@@ -337,7 +337,7 @@ def control_request(
 
 
 async def execute_control_task(item: dict[str, Any]) -> None:
-    """Run a leased task and always attempt to move it to a terminal state."""
+    """Run a leased task and avoid stale lifecycle writes after local fencing."""
     try:
         result = await run_leased_command(item)
     except HTTPException as exc:
@@ -352,6 +352,10 @@ async def execute_control_task(item: dict[str, Any]) -> None:
             "stdout": "",
             "stderr": f"agent execution error: {type(exc).__name__}: {exc}",
         }
+
+    if result.get("lease_lost"):
+        print(f"task {item['id']} fenced locally; skipping stale event/completion writes", flush=True)
+        return
 
     try:
         await asyncio.to_thread(control_request, f"/api/v1/control/tasks/{item['id']}/events", "POST", {"stream": "stdout", "message": result.get("stdout", "")})
