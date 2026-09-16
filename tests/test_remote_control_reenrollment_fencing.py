@@ -108,3 +108,46 @@ def test_reenrollment_gets_new_lease_generation_after_revoke(configured):
         CompleteRequest(returncode=0),
         authorization=_auth(second),
     )["status"] == "succeeded"
+
+
+def test_direct_reenrollment_cancels_active_lease(configured):
+    """Credential rotation directly through bootstrap also terminates the old lease state."""
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    first = control_heartbeat(
+        AgentHeartbeat(name=name),
+        authorization=f"Bearer {BOOTSTRAP_TOKEN}",
+    )
+    agent_id = UUID(str(first["agent_id"]))
+
+    created = control_create_task(
+        TaskRequest(agent_id=agent_id, command="pwd"),
+        authorization=f"Bearer {OPERATOR_TOKEN}",
+    )
+    leased = control_next_task(agent_id, authorization=_auth(first))["task"]
+    assert leased["id"] == created["task_id"]
+
+    second = control_heartbeat(
+        AgentHeartbeat(name=name),
+        authorization=f"Bearer {BOOTSTRAP_TOKEN}",
+    )
+    assert second["control_token"] != first["control_token"]
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        row = conn.execute(
+            "SELECT status,lease_credential_generation,"
+            "(SELECT credential_generation FROM remote_agents WHERE id=%s) "
+            "FROM remote_tasks WHERE id=%s",
+            (agent_id, UUID(str(leased["id"]))),
+        ).fetchone()
+
+    assert row[0] == "cancelled"
+    assert row[1] is not None
+    assert row[1] != row[2]
+
+    with pytest.raises(HTTPException) as excinfo:
+        control_complete(
+            UUID(str(leased["id"])),
+            CompleteRequest(returncode=0),
+            authorization=_auth(first),
+        )
+    assert excinfo.value.status_code == 401
