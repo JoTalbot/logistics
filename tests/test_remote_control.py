@@ -144,8 +144,7 @@ def test_safe_task_lifecycle(configured):
 def test_wrong_agent_credential_is_rejected(configured):
     first = _agent(f"pytest-agent-{uuid4().hex[:12]}")
     second = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    first_id = UUID(str(first["agent_id"])
-    )
+    first_id = UUID(str(first["agent_id"]))
     with pytest.raises(HTTPException) as excinfo:
         control_next_task(first_id, authorization=_auth(second))
     assert excinfo.value.status_code == 401
@@ -176,8 +175,7 @@ def test_unknown_and_destructive_commands_are_not_auto_dispatched(configured):
 
 def test_idempotency_returns_same_task(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"])
-    )
+    agent_id = UUID(str(agent["agent_id"]))
     key = f"idem-{uuid4().hex}"
     first = control_create_task(
         TaskRequest(agent_id=agent_id, command="pwd", idempotency_key=key),
@@ -188,6 +186,39 @@ def test_idempotency_returns_same_task(configured):
         authorization=f"Bearer {OPERATOR_TOKEN}",
     )
     assert second["task_id"] == first["task_id"] and second["idempotent_replay"] is True
+
+
+def test_idempotency_is_scoped_to_agent(configured):
+    first = _agent(f"pytest-agent-{uuid4().hex[:12]}")
+    second = _agent(f"pytest-agent-{uuid4().hex[:12]}")
+    first_id = UUID(str(first["agent_id"]))
+    second_id = UUID(str(second["agent_id"]))
+    key = f"shared-{uuid4().hex}"
+
+    first_created = control_create_task(
+        TaskRequest(agent_id=first_id, command="pwd", idempotency_key=key),
+        authorization=f"Bearer {OPERATOR_TOKEN}",
+    )
+    second_created = control_create_task(
+        TaskRequest(agent_id=second_id, command="pwd", idempotency_key=key),
+        authorization=f"Bearer {OPERATOR_TOKEN}",
+    )
+
+    assert second_created["task_id"] != first_created["task_id"]
+    assert second_created["idempotent_replay"] is False
+
+    first_replay = control_create_task(
+        TaskRequest(agent_id=first_id, command="pwd", idempotency_key=key),
+        authorization=f"Bearer {OPERATOR_TOKEN}",
+    )
+    second_replay = control_create_task(
+        TaskRequest(agent_id=second_id, command="pwd", idempotency_key=key),
+        authorization=f"Bearer {OPERATOR_TOKEN}",
+    )
+    assert first_replay["task_id"] == first_created["task_id"]
+    assert second_replay["task_id"] == second_created["task_id"]
+    assert first_replay["idempotent_replay"] is True
+    assert second_replay["idempotent_replay"] is True
 
 
 def test_operator_listing_reports_online(configured):
