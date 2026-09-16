@@ -36,8 +36,7 @@ class _FakeProcess:
         self._finished.set()
 
 
-@pytest.mark.asyncio
-async def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch):
+def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch):
     agent = _load_agent()
     process = _FakeProcess()
     real_sleep = asyncio.sleep
@@ -54,7 +53,7 @@ async def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch
     monkeypatch.setattr(agent, "validate_command", lambda command: ["pwd"])
     monkeypatch.setattr(agent, "control_request", lambda *args, **kwargs: {"error": 409})
 
-    result = await agent.run_leased_command({"id": "task-1", "command": "pwd", "cwd": str(ROOT)})
+    result = asyncio.run(agent.run_leased_command({"id": "task-1", "command": "pwd", "cwd": str(ROOT)}))
 
     assert process.killed is True
     assert result["lease_lost"] is True
