@@ -43,7 +43,12 @@ def _wait_for_file(path: Path, timeout: float) -> bool:
 
 
 def _alive(pid: int) -> bool:
-    return Path(f"/proc/{pid}").exists()
+    stat = Path(f"/proc/{pid}/stat")
+    try:
+        fields = stat.read_text(encoding="utf-8").split()
+    except OSError:
+        return False
+    return len(fields) > 2 and fields[2] != "Z"
 
 
 def main() -> int:
