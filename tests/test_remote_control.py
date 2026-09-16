@@ -25,6 +25,7 @@ from logistics.remote_control import (
     control_event,
     control_heartbeat,
     control_next_task,
+    control_revoke_agent_credential,
 )
 
 BOOTSTRAP_TOKEN = "pytest-remote-agent-token"
@@ -81,7 +82,7 @@ def test_heartbeat_cannot_change_enrolled_agent_tenant(configured):
 def test_bootstrap_cannot_change_enrolled_agent_tenant(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
     tenant_id = _tenant()
-    agent = _agent(name, tenant_id=tenant_id)
+    _agent(name, tenant_id=tenant_id)
     with pytest.raises(HTTPException) as excinfo:
         control_heartbeat(AgentHeartbeat(name=name), authorization=f"Bearer {BOOTSTRAP_TOKEN}")
     assert excinfo.value.status_code == 403
@@ -132,19 +133,39 @@ def test_idempotency_returns_same_task(configured):
 def test_idempotency_is_scoped_to_agent(configured):
     first = _agent(f"pytest-agent-{uuid4().hex[:12]}")
     second = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    first_id = UUID(str(first["agent_id"]))
-    second_id = UUID(str(second["agent_id"]))
+    first_id = UUID(str(first["agent_id"])); second_id = UUID(str(second["agent_id"]))
     key = f"shared-{uuid4().hex}"
     first_created = control_create_task(TaskRequest(agent_id=first_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
     second_created = control_create_task(TaskRequest(agent_id=second_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
-    assert second_created["task_id"] != first_created["task_id"]
-    assert second_created["idempotent_replay"] is False
-    first_replay = control_create_task(TaskRequest(agent_id=first_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
-    second_replay = control_create_task(TaskRequest(agent_id=second_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")
-    assert first_replay["task_id"] == first_created["task_id"]
-    assert second_replay["task_id"] == second_created["task_id"]
-    assert first_replay["idempotent_replay"] is True
-    assert second_replay["idempotent_replay"] is True
+    assert second_created["task_id"] != first_created["task_id"] and second_created["idempotent_replay"] is False
+    assert control_create_task(TaskRequest(agent_id=first_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")["task_id"] == first_created["task_id"]
+    assert control_create_task(TaskRequest(agent_id=second_id, command="pwd", idempotency_key=key), authorization=f"Bearer {OPERATOR_TOKEN}")["task_id"] == second_created["task_id"]
+
+def test_revoke_fences_running_lease(configured):
+    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
+    agent_id = UUID(str(agent["agent_id"]))
+    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    task = control_next_task(agent_id, authorization=_auth(agent))["task"]
+    assert task["id"] == created["task_id"]
+    assert control_revoke_agent_credential(agent_id, authorization=f"Bearer {OPERATOR_TOKEN}")["status"] == "credential_revoked"
+    with pytest.raises(HTTPException) as excinfo:
+        control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=_auth(agent))
+    assert excinfo.value.status_code == 401
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        row = conn.execute("SELECT status,lease_credential_generation,credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (UUID(str(task["id"])),)).fetchone()
+    assert row[0] == "cancelled"
+    assert row[1] != row[2]
+
+def test_reenrollment_fences_previous_credential_generation(configured):
+    name = f"pytest-agent-{uuid4().hex[:12]}"
+    first = _agent(name)
+    agent_id = UUID(str(first["agent_id"]))
+    second = control_heartbeat(AgentHeartbeat(name=name, tenant_id=None), authorization=f"Bearer {BOOTSTRAP_TOKEN}")
+    assert second["agent_id"] == str(agent_id)
+    assert second["control_token"] != first["control_token"]
+    with pytest.raises(HTTPException) as excinfo:
+        control_next_task(agent_id, authorization=_auth(first))
+    assert excinfo.value.status_code == 401
 
 def test_operator_listing_reports_online(configured):
     name = f"pytest-agent-{uuid4().hex[:12]}"
@@ -156,52 +177,34 @@ def test_auto_policy_commands_are_supported_by_remote_agent():
     assert {"pwd", "whoami", "uname", "date", "git", "python"} <= _allowed()
 
 def test_auto_policy_is_strict_about_shell_composition_and_arguments():
-    assert _approval("git status") == "AUTO"
-    assert _approval("uname -a") == "AUTO"
-    assert _approval("git status; rm -rf /tmp/example") == "REVIEW"
-    assert _approval("git status && whoami") == "REVIEW"
-    assert _approval("git status --output=/tmp/task") == "REVIEW"
-    assert _approval("python -c 'print(1)'") == "REVIEW"
-    assert _approval("python -m pytest -q") == "AUTO"
+    assert _approval("git status") == "AUTO"; assert _approval("uname -a") == "AUTO"
+    assert _approval("git status; rm -rf /tmp/example") == "REVIEW"; assert _approval("git status && whoami") == "REVIEW"
+    assert _approval("git status --output=/tmp/task") == "REVIEW"; assert _approval("python -c 'print(1)'") == "REVIEW"; assert _approval("python -m pytest -q") == "AUTO"
 
 def test_cancelling_running_task_finalizes_it(configured):
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"]))
-    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
-    task = control_next_task(agent_id, authorization=_auth(agent))["task"]
-    assert task["id"] == created["task_id"]
-    assert control_cancel(UUID(str(task["id"])), authorization=f"Bearer {OPERATOR_TOKEN}")["status"] == "cancelled"
-    with pytest.raises(HTTPException) as excinfo:
-        control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=_auth(agent))
+    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}"); agent_id = UUID(str(agent["agent_id"]))
+    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}"); task = control_next_task(agent_id, authorization=_auth(agent))["task"]
+    assert task["id"] == created["task_id"]; assert control_cancel(UUID(str(task["id"])), authorization=f"Bearer {OPERATOR_TOKEN}")["status"] == "cancelled"
+    with pytest.raises(HTTPException) as excinfo: control_complete(UUID(str(task["id"])), CompleteRequest(returncode=0), authorization=_auth(agent))
     assert excinfo.value.status_code == 404
 
 def test_cancelled_task_rejects_late_events(configured):
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    agent_id = UUID(str(agent["agent_id"]))
-    created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
-    task = control_next_task(agent_id, authorization=_auth(agent))["task"]
+    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}"); agent_id = UUID(str(agent["agent_id"])); created = control_create_task(TaskRequest(agent_id=agent_id, command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}"); task = control_next_task(agent_id, authorization=_auth(agent))["task"]
     control_cancel(UUID(str(created["task_id"])), authorization=f"Bearer {OPERATOR_TOKEN}")
-    with pytest.raises(HTTPException) as excinfo:
-        control_event(UUID(str(task["id"])), EventRequest(message="late"), authorization=_auth(agent))
+    with pytest.raises(HTTPException) as excinfo: control_event(UUID(str(task["id"])), EventRequest(message="late"), authorization=_auth(agent))
     assert excinfo.value.status_code == 404
 
 def test_task_tenant_must_match_agent_tenant(configured):
-    tenant_id = _tenant()
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}", tenant_id=tenant_id)
-    with pytest.raises(HTTPException) as excinfo:
-        control_create_task(TaskRequest(agent_id=UUID(str(agent["agent_id"])), tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    tenant_id = _tenant(); agent = _agent(f"pytest-agent-{uuid4().hex[:12]}", tenant_id=tenant_id)
+    with pytest.raises(HTTPException) as excinfo: control_create_task(TaskRequest(agent_id=UUID(str(agent["agent_id"])), tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
 
 def test_unscoped_agent_cannot_receive_tenant_task(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    with pytest.raises(HTTPException) as excinfo:
-        control_create_task(TaskRequest(agent_id=UUID(str(agent["agent_id"])), tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
+    with pytest.raises(HTTPException) as excinfo: control_create_task(TaskRequest(agent_id=UUID(str(agent["agent_id"])), tenant_id=_tenant(), command="pwd"), authorization=f"Bearer {OPERATOR_TOKEN}")
     assert excinfo.value.status_code == 403
 
 def test_credential_is_stored_as_hash_not_plaintext(configured):
-    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}")
-    token = str(agent["control_token"])
-    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-        row = conn.execute("SELECT credential_hash,credential_created_at FROM remote_agents WHERE id=%s", (UUID(str(agent["agent_id"])),)).fetchone()
-    assert row[0] == hashlib.sha256(token.encode()).hexdigest()
-    assert token not in row[0] and row[1] is not None
+    agent = _agent(f"pytest-agent-{uuid4().hex[:12]}"); token = str(agent["control_token"])
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn: row = conn.execute("SELECT credential_hash,credential_created_at FROM remote_agents WHERE id=%s", (UUID(str(agent["agent_id"])),)).fetchone()
+    assert row[0] == hashlib.sha256(token.encode()).hexdigest(); assert token not in row[0] and row[1] is not None
