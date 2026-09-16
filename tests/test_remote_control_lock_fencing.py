@@ -88,7 +88,7 @@ def test_next_task_rechecks_credential_after_agent_row_lock(
 
     with psycopg.connect(_dsn()) as verify:
         row = verify.execute(
-            "SELECT status,lease_credential_generation,credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s",
+            "SELECT t.status,t.lease_credential_generation,a.credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s",
             (task_id,),
         ).fetchone()
         assert row is not None
