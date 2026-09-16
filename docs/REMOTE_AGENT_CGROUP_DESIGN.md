@@ -13,7 +13,8 @@ The current agent already creates a POSIX session/process group and kills that p
 - `Delegate=yes` is preparation for a child cgroup hierarchy; it does not itself create one cgroup per task.
 - `deploy/remote-agent/agent.py` starts commands in a new POSIX session and terminates the process group on lease loss or timeout.
 - No `systemd-run`/scope implementation or direct cgroup filesystem task lifecycle was found in the repository search.
-- `deploy/remote-agent/cgroup_probe.py` now provides a read-only host capability probe; it reports cgroup-v2 files, controller visibility, and relevant write access without mutating the host.
+- `deploy/remote-agent/cgroup_probe.py` provides a read-only host capability probe; it reports cgroup-v2 files, controller visibility, relevant write access, and execution identity without mutating the host.
+- `deploy/remote-agent/cgroup_rehearsal.py` is an opt-in target-host rehearsal. It exercises a systemd transient scope and real detached descendant fencing, but it does not enable runtime enforcement in the agent.
 - `tests/test_remote_agent_systemd.py` deliberately checks that documentation does not overclaim per-task cgroup isolation.
 
 ## Required semantics
@@ -59,6 +60,8 @@ Do **not** select Model A or B solely from static configuration. Before runtime 
 
 The read-only `deploy/remote-agent/cgroup_probe.py` can be run on a target host before enforcement is enabled. It reports facts only; it does not create cgroups, move processes, enable controllers, or kill anything. Its output is therefore diagnostic evidence rather than proof that the full containment lifecycle works.
 
+The opt-in `deploy/remote-agent/cgroup_rehearsal.py` is the first executable target-host gate for Model A. It must be run explicitly as `logistics-agent`; it requests a transient systemd scope, creates a real detached descendant, verifies shared cgroup membership, and fences the entire scope through `cgroup.kill`. A successful rehearsal is target-host evidence, not runtime enforcement. If the service identity cannot create the scope or access the resulting cgroup as required, the rehearsal fails rather than falling back to a weaker spawn model.
+
 ## Verification plan
 
 The implementation should add deterministic tests for:
@@ -75,7 +78,7 @@ The implementation should add deterministic tests for:
 - prevention of stale lifecycle writes after cgroup fencing;
 - preservation of the service-level `KillMode=control-group` boundary.
 
-At least one Linux integration rehearsal must create a real descendant process, deliberately detach it from the task's POSIX session, fence the task, and verify that the descendant is gone before the task lifecycle is considered fenced. A mocked `killpg()` test alone cannot prove this property.
+At least one Linux integration rehearsal must create a real descendant process, deliberately detach it from the task's POSIX session, fence the task, and verify that the descendant is gone before the task lifecycle is considered fenced. A mocked `killpg()` test alone cannot prove this property. The new opt-in rehearsal provides this check for the systemd-scope model, but it still requires execution on the actual target host under the actual service identity.
 
 ## Non-goals
 
@@ -83,6 +86,6 @@ This hardening does not grant the remote agent new business permissions. It does
 
 ## Status
 
-Current state: **capability-probe implemented; runtime per-task cgroup isolation not yet implemented**.
+Current state: **capability probe and opt-in target-host rehearsal implemented; runtime per-task cgroup isolation not yet implemented**.
 
-The existing POSIX process-group fencing and systemd service-level containment remain the active mechanisms until a target-host capability check and a real Linux integration rehearsal justify promotion to runtime enforcement.
+The existing POSIX process-group fencing and systemd service-level containment remain the active mechanisms until the target-host rehearsal passes and the selected lifecycle model is promoted through a separate runtime-enforcement change with cleanup, restart, failure, and stale-write coverage.
