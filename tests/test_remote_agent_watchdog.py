@@ -69,7 +69,8 @@ def test_run_command_kills_process_tree_on_timeout(monkeypatch):
         assert kwargs["start_new_session"] is True
         return process
 
-    async def timeout_wait(_awaitable, timeout):
+    async def timeout_wait(awaitable, timeout):
+        awaitable.close()
         assert timeout == agent.MAX_SECONDS
         raise asyncio.TimeoutError
 
