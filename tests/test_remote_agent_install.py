@@ -23,3 +23,12 @@ def test_install_script_preserves_read_write_path_for_evidence_store():
     text = INSTALL.read_text(encoding="utf-8")
 
     assert "ReadWritePaths=$AGENT_DIR /var/lib/logistics-agent $REPO_DIR" in text
+
+
+def test_install_script_keeps_credentials_out_of_repository_paths():
+    text = INSTALL.read_text(encoding="utf-8")
+
+    assert "EnvironmentFile=$ENV_DIR/agent.env" in text
+    assert "0600" in text
+    assert "AGENT_AUTH_TOKEN" in text
+    assert "AI_GATEWAY_API_KEY" in text
