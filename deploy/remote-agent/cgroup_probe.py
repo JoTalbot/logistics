@@ -31,6 +31,10 @@ def probe() -> dict[str, object]:
     own_exists = bool(own and own.is_dir())
     result: dict[str, object] = {
         "linux": os.name == "posix" and Path("/proc/version").exists(),
+        "uid": os.getuid(),
+        "euid": os.geteuid(),
+        "gid": os.getgid(),
+        "egid": os.getegid(),
         "cgroup_root": str(root),
         "cgroup_v2_mount": (root / "cgroup.controllers").is_file(),
         "self_cgroup": str(own) if own else None,
