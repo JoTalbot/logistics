@@ -16,7 +16,13 @@ sudo install -d -o logistics-agent -g logistics-agent /opt/logistics-agent
 sudo install -d -o logistics-agent -g logistics-agent /var/lib/logistics-agent
 ```
 
-The actual service implementation must be added before enabling a systemd unit. Do not run a placeholder service in production.
+Use `install.sh` to create the systemd service. The generated unit runs as the dedicated `logistics-agent` user, uses `NoNewPrivileges`, `ProtectSystem`, `ProtectHome`, and a service-level `KillMode=control-group` boundary. The unit also enables cgroup delegation for a future per-task supervisor.
+
+## Lease/process fencing
+
+Leased control tasks use a bounded heartbeat watchdog. A 401/409 lease rejection fences the local task, terminates its POSIX process group, waits for the subprocess, and suppresses stale event/completion writes. Normal `/v1/exec` timeouts use the same process-group termination path.
+
+The POSIX process-group boundary is intentionally not described as a complete containment boundary: a command that deliberately creates an independent session/process group can escape `killpg`. The systemd service cgroup is therefore retained as the service-level safety net, while true per-task cgroup containment remains a separate hardening step. Do not claim lease fencing as an absolute guarantee against arbitrary daemonization until per-task cgroup supervision is deployed and tested.
 
 ## Required capabilities
 
