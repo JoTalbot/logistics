@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 INSTALL = ROOT / "deploy" / "remote-agent" / "install.sh"
+README = ROOT / "deploy" / "remote-agent" / "README.md"
 
 
 def test_remote_agent_service_delegates_and_contains_process_tree() -> None:
@@ -24,3 +25,11 @@ def test_remote_agent_service_does_not_expose_public_listener() -> None:
 
     assert "--host 127.0.0.1" in text
     assert "--port 8787" in text
+
+
+def test_documentation_does_not_overclaim_per_task_cgroup_isolation() -> None:
+    text = README.read_text(encoding="utf-8")
+
+    assert "future per-task supervisor" in text
+    assert "true per-task cgroup containment remains a separate hardening step" in text
+    assert "not an absolute guarantee" in text
