@@ -27,6 +27,9 @@ class _FakeProcess:
         await self._finished.wait()
         return b"partial-output", b""
 
+    async def wait(self):
+        return self.returncode
+
     def kill(self) -> None:
         self.killed = True
         self.returncode = -9
@@ -56,3 +59,31 @@ def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch):
     assert result["lease_lost"] is True
     assert result["returncode"] == -9
     assert "task lease lost" in result["stderr"]
+
+
+def test_run_command_kills_process_tree_on_timeout(monkeypatch):
+    agent = _load_agent()
+    process = _FakeProcess()
+
+    async def fake_create(*args, **kwargs):
+        assert kwargs["start_new_session"] is True
+        return process
+
+    async def timeout_wait(_awaitable, timeout):
+        assert timeout == agent.MAX_SECONDS
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(agent.asyncio, "create_subprocess_exec", fake_create)
+    monkeypatch.setattr(agent.asyncio, "wait_for", timeout_wait)
+    monkeypatch.setattr(agent, "safe_cwd", lambda value: ROOT)
+    monkeypatch.setattr(agent, "validate_command", lambda command: ["pwd"])
+
+    try:
+        asyncio.run(agent.run_command("pwd", str(ROOT)))
+    except agent.HTTPException as exc:
+        assert exc.status_code == 408
+        assert exc.detail == "command timed out"
+    else:
+        raise AssertionError("run_command must reject a timed-out process")
+
+    assert process.killed is True
