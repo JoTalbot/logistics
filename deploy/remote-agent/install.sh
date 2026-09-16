@@ -25,6 +25,10 @@ fi
 id -u logistics-agent >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin logistics-agent
 install -d -o logistics-agent -g logistics-agent "$AGENT_DIR"
 install -d -o logistics-agent -g logistics-agent /var/lib/logistics-agent
+# The cgroup rehearsal is non-root and writes machine-readable evidence as the
+# service identity. Prepare the persistent evidence directory at install time
+# so the agent never needs to create a system-owned path itself.
+install -d -o logistics-agent -g logistics-agent -m 0750 /var/lib/logistics-agent/evidence
 install -d -m 0750 "$ENV_DIR"
 
 python3 -m venv "$AGENT_DIR/.venv"
