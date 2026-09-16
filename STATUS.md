@@ -37,13 +37,13 @@ Queued tasks не уничтожаются при credential revoke автома
 
 ## Verification state
 
-**SOFTWARE CONTOUR: VERIFIED GREEN** — current code head `da3f9d838f0344b317201beb5def6b94ae6c56f5` прошёл CI run `35114381963` / job `104855948355` с результатом `success`. Включая read-only cgroup capability probe, dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build.
+**SOFTWARE CONTOUR: VERIFIED GREEN** — current code head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл CI run `35114968033` / job `104857943877` с результатом `success`. Включая read-only cgroup capability probe, dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build.
 
-**COMPOSE E2E: VERIFIED GREEN** — current head `da3f9d838f0344b317201beb5def6b94ae6c56f5` прошёл Compose E2E run `35114381911` / job `104855945159` с результатом `success`.
+**COMPOSE E2E: VERIFIED GREEN** — current head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл Compose E2E run `35114968036` / job `104857943691` с результатом `success`.
 
-**BACKUP RESTORE E2E: VERIFIED GREEN** — current head `da3f9d838f0344b317201beb5def6b94ae6c56f5` прошёл Backup Restore E2E run `35114382078` / job `104855946682` с результатом `success`.
+**BACKUP RESTORE E2E: VERIFIED GREEN** — current head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл Backup Restore E2E run `35114968060` / job `104857943476` с результатом `success`.
 
-**CURRENT CODE HEAD:** `da3f9d838f0344b317201beb5def6b94ae6c56f5` — `test(remote-agent): correct subprocess call shape`.
+**CURRENT CODE HEAD:** `68ed136ff4081fe38ab0a2a26929c8313c26ed73` — `docs: advance remote-agent readiness status to V43.3`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
@@ -56,7 +56,7 @@ Queued tasks не уничтожаются при credential revoke автома
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status on `da3f9d838f0344b317201beb5def6b94ae6c56f5` reports `Vercel=failure` and `Vercel Deployments=pending`; no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status on `68ed136ff4081fe38ab0a2a26929c8313c26ed73` reports `Vercel=failure` and `Vercel Deployments=pending`; no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
