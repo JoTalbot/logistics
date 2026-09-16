@@ -5,6 +5,7 @@ import asyncio
 import importlib.util
 from pathlib import Path
 
+import pytest
 from fastapi import HTTPException
 
 _AGENT_PATH = Path(__file__).parents[1] / "deploy" / "remote-agent" / "agent.py"
@@ -43,3 +44,54 @@ def test_remote_agent_does_not_configure_vercel_protection_bypass():
 
     assert "VERCEL_AUTOMATION_BYPASS_SECRET" not in text
     assert "x-vercel-protection-bypass" not in text
+
+
+def test_control_request_requires_per_agent_credential(monkeypatch):
+    monkeypatch.setattr(agent, "CONTROL_TOKEN", "bootstrap-secret")
+    monkeypatch.setattr(agent, "CONTROL_AGENT_TOKEN", "")
+
+    with pytest.raises(HTTPException) as exc:
+        agent.control_request("/api/v1/control/agents/agent-1/tasks/next")
+
+    assert exc.value.status_code == 503
+    assert "per-agent" in str(exc.value.detail)
+
+
+def test_control_request_uses_bootstrap_only_when_explicitly_requested(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"ok": true}'
+
+    def fake_urlopen(request, timeout):
+        captured["authorization"] = request.headers["Authorization"]
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(agent, "CONTROL_TOKEN", "bootstrap-secret")
+    monkeypatch.setattr(agent, "CONTROL_AGENT_TOKEN", "agent-secret")
+    monkeypatch.setattr(agent.urllib.request, "urlopen", fake_urlopen)
+
+    agent.control_request("/api/v1/control/agents/heartbeat", method="POST", payload={}, bootstrap=True)
+    assert captured["authorization"] == "Bearer bootstrap-secret"
+
+    agent.control_request("/api/v1/control/agents/agent-1/tasks/next")
+    assert captured["authorization"] == "Bearer agent-secret"
+
+
+def test_control_request_never_falls_back_to_bootstrap_for_lifecycle(monkeypatch):
+    monkeypatch.setattr(agent, "CONTROL_TOKEN", "bootstrap-secret")
+    monkeypatch.setattr(agent, "CONTROL_AGENT_TOKEN", "")
+
+    with pytest.raises(HTTPException):
+        agent.control_request("/api/v1/control/tasks/task-1/events", method="POST", payload={"stream": "heartbeat", "message": ""})
+
+    with pytest.raises(HTTPException):
+        agent.control_request("/api/v1/control/tasks/task-1/complete", method="POST", payload={"returncode": 0, "stdout": "", "stderr": ""})
