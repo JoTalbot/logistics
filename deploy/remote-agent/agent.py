@@ -134,6 +134,7 @@ def resolve_model() -> str:
     raise HTTPException(status_code=502, detail="no AI Gateway model is available for the configured key")
 
 
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     control_task = None
     if CONTROL_URL and CONTROL_TOKEN:
