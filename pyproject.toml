@@ -37,6 +37,9 @@ where = ["backend"]
 testpaths = ["tests"]
 pythonpath = ["backend"]
 addopts = "-q"
+markers = [
+  "integration: tests that require external services or database infrastructure",
+]
 
 [tool.vercel]
 entrypoint = "app:app"
