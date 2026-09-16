@@ -61,14 +61,20 @@ def probe() -> dict[str, object]:
     own_exists = bool(own and own.is_dir())
     systemd_run = shutil.which("systemd-run")
     systemd_version = _command_version("systemctl")
+    cgroup_kill = bool(own and (own / "cgroup.kill").is_file())
+    cgroup_kill_writable = bool(own and os.access(own / "cgroup.kill", os.W_OK))
+    cgroup_procs = bool(own and (own / "cgroup.procs").is_file())
+    cgroup_procs_writable = bool(own and os.access(own / "cgroup.procs", os.W_OK))
+    parent_writable = bool(own and os.access(own, os.W_OK | os.X_OK))
     cgroup_ready = all(
         (
             os.name == "posix" and Path("/proc/version").exists(),
             (root / "cgroup.controllers").is_file(),
             own_exists,
-            bool(own and (own / "cgroup.kill").is_file()),
-            bool(own and (own / "cgroup.procs").is_file()),
-            bool(own and os.access(own, os.W_OK | os.X_OK)),
+            cgroup_kill,
+            cgroup_kill_writable,
+            cgroup_procs,
+            parent_writable,
         )
     )
     result: dict[str, object] = {
@@ -82,12 +88,13 @@ def probe() -> dict[str, object]:
         "cgroup_v2_mount": (root / "cgroup.controllers").is_file(),
         "self_cgroup": str(own) if own else None,
         "self_cgroup_exists": own_exists,
-        "cgroup_kill_available": bool(own and (own / "cgroup.kill").is_file()),
-        "cgroup_procs_available": bool(own and (own / "cgroup.procs").is_file()),
+        "cgroup_kill_available": cgroup_kill,
+        "cgroup_kill_writable": cgroup_kill_writable,
+        "cgroup_procs_available": cgroup_procs,
         "subtree_control_available": bool(own and (own / "cgroup.subtree_control").is_file()),
         "subtree_control_writable": bool(own and os.access(own / "cgroup.subtree_control", os.W_OK)),
-        "cgroup_procs_writable": bool(own and os.access(own / "cgroup.procs", os.W_OK)),
-        "task_cgroup_parent_writable": bool(own and os.access(own, os.W_OK | os.X_OK)),
+        "cgroup_procs_writable": cgroup_procs_writable,
+        "task_cgroup_parent_writable": parent_writable,
         "systemd_run_available": bool(systemd_run),
         "systemd_run_path": systemd_run,
         "systemd_version": systemd_version,
