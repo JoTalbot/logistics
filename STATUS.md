@@ -7,7 +7,7 @@ STATUS: v41_verified_external_gates_blocked
 AGENT: logistics-commercial-batch-v41
 MACHINE: ChatGPT/GitHub connector
 STARTED: 2026-09-15
-UPDATED: 2026-09-15
+UPDATED: 2026-09-16
 SCOPE: V41 завершён на уровне репозитория; per-agent credentials, immutable agent identity, tenant binding, credential revocation и recovery remote-agent после отзыва усилены и проверены.
 
 ## V41 completion
@@ -25,9 +25,16 @@ SCOPE: V41 завершён на уровне репозитория; per-agent 
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — текущий application head `3ebb08f9312d83ad92a79a08fba85248e8ee638b` прошёл GitHub Actions CI #468 и Backup Restore E2E #38. Последний Compose E2E для application head `bde17c4a3beebe3c1dd616129b9ff25e91821912` также завершился успешно (#39). Кодовые изменения V41 не имеют незакрытой ошибки CI.
+**SOFTWARE CONTOUR: GREEN** — текущий application head `835746bfdac888c3c76763329a5f11861df245a8` прошёл Backup Restore E2E #42 и Compose E2E #44. Последний Compose E2E содержит параметризованную проверку наличия `remote_agents.credential_revoked_at`, а Backup Restore E2E подтверждает применение полного набора миграций и восстановление disposable PostgreSQL rehearsal. Кодовые изменения V41 не имеют незакрытой ошибки CI.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
+
+## Post-V41 security review
+
+- Credential revocation корректно блокирует новые agent-auth операции: после отзыва `credential_hash` очищается, `credential_revoked_at` фиксируется, агент переводится в `offline`, а старый credential отклоняется.
+- Revocation не является механизмом принудительного убийства уже выполняющейся локальной команды: если агент уже получил lease и начал процесс до отзыва credential, сервер блокирует последующие event/complete вызовы, но не может ретроактивно остановить процесс на удалённой машине. Это ограничение текущей модели, а не подтверждение немедленного process-level revocation.
+- Re-enrollment сохраняет тот же `agent_id`; поэтому ранее выданные этому identity задачи остаются связанными с тем же агентом. Для строгого security boundary следующего этапа потребуется отдельная credential-generation/lease fencing semantics, если бизнес-требование предполагает недействительность уже выданных leases после revocation.
+- Bootstrap остаётся глобальным секретом enrollment: держатель `REMOTE_AGENT_TOKEN` может инициировать enrollment/re-enrollment в пределах серверной модели. Это ожидаемая trust boundary текущего протокола; перенос enrollment на operator-issued per-agent bootstrap policy остаётся отдельным усилением, а не доказанным дефектом V41.
 
 ## External production gates
 
@@ -47,7 +54,7 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 
 DONE: V17 reliability/replay, V18 integration/deployment hardening, V19 security/compliance/release-gate hardening, V20 KPI/replay/Compose implementation and CI verification, V21 deterministic autonomy policy, V22 bounded remote control, V23 commercial opportunity queue, V24 operator opportunity workflow, V25 commercial outcomes, V26 commercial calibration, V27 controlled calibration operations, V28 calibration learning loop, V29 recommendation replay/evaluation, V30 deterministic readiness-gate evaluation, V31 readiness evidence integration, V32 operational observability, V33 observability/KPI integration, V34 production evidence hardening, V35 final production-readiness audit, V36 Telegram commercial discovery integration, V37 Telegram ingestion → commercial discovery contour, V38 production verification confidence-gate fix, V39 production closure and external-gate readiness, V40 Control Plane AUTO-policy hardening, V41 per-agent credential lifecycle hardening.
 IN_PROGRESS: external production-readiness/activation gates only.
-NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, and real booked/delivered outcome telemetry. Avoid decorative application changes while these external blockers remain unchanged.
-PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout after security review.
+NEXT: target production backup/restore rehearsal, provider access/mapping, explicit publication/contact authorization, authorized Telegram source access, Vercel account remediation, real booked/delivered outcome telemetry, and optional V42 credential-generation/lease-fencing hardening if immediate revocation semantics are required. Avoid decorative application changes while these external blockers remain unchanged.
+PENDING: target production backup/restore rehearsal; Lardi provider access/mapping; contact adapters; external publication permissions; real commercial outcome telemetry; Vercel account/integration remediation; authorized Telegram credentials/source access; broader remote-agent rollout after security review; optional credential-generation/lease-fencing hardening.
 REQUIRED HUMAN ACTION: target infrastructure backup/restore rehearsal, Lardi provider/support action, explicit publication/contact authorization, authorized Telegram credentials/source access, and Vercel account remediation remain external blockers.
-OPEN_GATES: provider access/mapping, Vercel account/integration block, contact adapters, external publication permissions, production backup/restore rehearsal, real commercial outcome telemetry, calibration sample size.
+OPEN_GATES: provider access/mapping, Vercel account/integration block, contact adapters, external publication permissions, production backup/restore rehearsal, real commercial outcome telemetry, calibration sample size, and any requirement for immediate process-level credential revocation.
