@@ -40,12 +40,13 @@ class _FakeProcess:
 async def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch):
     agent = _load_agent()
     process = _FakeProcess()
+    real_sleep = asyncio.sleep
 
     async def fake_create(*args, **kwargs):
         return process
 
     async def immediate_sleep(_seconds):
-        await asyncio.Event().wait()
+        await real_sleep(0)
 
     monkeypatch.setattr(agent.asyncio, "create_subprocess_exec", fake_create)
     monkeypatch.setattr(agent.asyncio, "sleep", immediate_sleep)
@@ -53,14 +54,9 @@ async def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch
     monkeypatch.setattr(agent, "validate_command", lambda command: ["pwd"])
     monkeypatch.setattr(agent, "control_request", lambda *args, **kwargs: {"error": 409})
 
-    watchdog_sleep = asyncio.create_task(asyncio.sleep(0))
-    watchdog_sleep.cancel()
-    await asyncio.gather(watchdog_sleep, return_exceptions=True)
+    result = await agent.run_leased_command({"id": "task-1", "command": "pwd", "cwd": str(ROOT)})
 
-    async def trigger_watchdog(_seconds):
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr(agent.asyncio, "sleep", trigger_watchdog)
-
-    with pytest.raises(asyncio.CancelledError):
-        await agent.run_leased_command({"id": "task-1", "command": "pwd", "cwd": str(ROOT)})
+    assert process.killed is True
+    assert result["lease_lost"] is True
+    assert result["returncode"] == -9
+    assert "task lease lost" in result["stderr"]
