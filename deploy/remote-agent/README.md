@@ -32,9 +32,15 @@ The POSIX process-group boundary is intentionally not described as a complete co
 sudo -u logistics-agent /opt/logistics-agent/.venv/bin/python /opt/logistics/deploy/remote-agent/cgroup_probe.py
 ```
 
-The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgroup files, relevant write access, available controllers, enabled subtree controllers, and a conservative `task_cgroup_creation_ready` gate. It also records UID/GID and effective UID/GID so capability results can be interpreted against the actual service identity. The probe never creates or modifies cgroups and never moves or kills processes.
+The JSON report records cgroup-v2 presence, the agent's own cgroup, required cgroup files, relevant write access, available controllers, enabled subtree controllers, execution identity, systemd/systemd-run availability, and a conservative `task_cgroup_creation_ready` gate. The probe only executes `--version` for local systemd tooling when present. It never creates transient units, modifies cgroups, moves processes, or kills processes.
 
-`task_cgroup_creation_ready=true` is only a host capability signal. It is **not** proof that runtime per-task containment has been implemented or that detached descendants have been successfully fenced. A real Linux integration rehearsal is still required before enforcement.
+`target_host_readiness` is a machine-readable prerequisite contract:
+
+- `READY` means cgroup-v2 and `systemd-run` are present and the current identity can access the required cgroup parent. It means **rehearsal prerequisites are present**, not that runtime per-task isolation is implemented.
+- `BLOCKED` means the host exposes the expected Linux/cgroup-v2/systemd contour but the current identity lacks a required capability, such as writable cgroup-parent access.
+- `UNSUPPORTED` means the required Linux/cgroup-v2/systemd backend is not present.
+
+`target_host_profile=linux_cgroup_v2_systemd` and `task_scope_backend_candidate=systemd-run-scope` identify the current implementation candidate only. They do not authorize mutation or prove that a transient scope can actually be created under the installed service policy.
 
 ## Target-host cgroup rehearsal
 
