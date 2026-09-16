@@ -188,7 +188,7 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
             raise HTTPException(status_code=403, detail="tenant mismatch")
         tenant_id = agent[0]
         if req.idempotency_key:
-            existing = conn.execute("SELECT id,status,approval FROM remote_tasks WHERE tenant_id IS NOT DISTINCT FROM %s AND idempotency_key=%s", (tenant_id, req.idempotency_key)).fetchone()
+            existing = conn.execute("SELECT id,status,approval FROM remote_tasks WHERE agent_id=%s AND idempotency_key=%s", (req.agent_id, req.idempotency_key)).fetchone()
             if existing:
                 return {"task_id": str(existing[0]), "status": existing[1], "approval": existing[2], "idempotent_replay": True}
         task_id = uuid4()
