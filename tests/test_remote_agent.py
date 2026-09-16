@@ -73,17 +73,21 @@ def test_control_request_uses_bootstrap_only_when_explicitly_requested(monkeypat
     def fake_urlopen(request, timeout):
         captured["authorization"] = request.headers["Authorization"]
         captured["timeout"] = timeout
+        captured["url"] = request.full_url
         return FakeResponse()
 
+    monkeypatch.setattr(agent, "CONTROL_URL", "https://control.example.test")
     monkeypatch.setattr(agent, "CONTROL_TOKEN", "bootstrap-secret")
     monkeypatch.setattr(agent, "CONTROL_AGENT_TOKEN", "agent-secret")
     monkeypatch.setattr(agent.urllib.request, "urlopen", fake_urlopen)
 
     agent.control_request("/api/v1/control/agents/heartbeat", method="POST", payload={}, bootstrap=True)
     assert captured["authorization"] == "Bearer bootstrap-secret"
+    assert captured["url"] == "https://control.example.test/api/v1/control/agents/heartbeat"
 
     agent.control_request("/api/v1/control/agents/agent-1/tasks/next")
     assert captured["authorization"] == "Bearer agent-secret"
+    assert captured["url"] == "https://control.example.test/api/v1/control/agents/agent-1/tasks/next"
 
 
 def test_control_request_never_falls_back_to_bootstrap_for_lifecycle(monkeypatch):
