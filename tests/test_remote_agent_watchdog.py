@@ -36,6 +36,24 @@ class _FakeProcess:
         self._finished.set()
 
 
+def test_terminate_process_kills_posix_process_group(monkeypatch):
+    agent = _load_agent()
+    process = _FakeProcess()
+    process.pid = 4242
+    calls: list[tuple[int, int]] = []
+
+    def fake_killpg(pid, sig):
+        calls.append((pid, sig))
+
+    monkeypatch.setattr(agent.os, "killpg", fake_killpg)
+    monkeypatch.setattr(agent.os, "name", "posix")
+
+    agent.terminate_process(process)
+
+    assert calls == [(4242, agent.signal.SIGKILL)]
+    assert process.killed is False
+
+
 def test_run_leased_command_kills_process_when_lease_is_fenced(monkeypatch):
     agent = _load_agent()
     process = _FakeProcess()
