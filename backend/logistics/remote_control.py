@@ -140,7 +140,7 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
                 if req.tenant_id != existing_tenant:
                     raise HTTPException(status_code=403, detail="tenant mismatch")
                 tenant_id = existing_tenant
-                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL WHERE id=%s", (Jsonb(req.metadata), credential_hash, agent_id))
+                conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL,credential_generation=credential_generation+1 WHERE id=%s", (Jsonb(req.metadata), credential_hash, agent_id))
             else:
                 agent_id, tenant_id = uuid4(), req.tenant_id
                 conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata,credential_hash,credential_created_at) VALUES(%s,%s,%s,now(),'online',%s,%s,now())", (agent_id, req.name, tenant_id, Jsonb(req.metadata), credential_hash))
@@ -156,24 +156,32 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
 
 @app.post("/api/v1/control/agents/{agent_id}/credential/revoke")
 def control_revoke_agent_credential(agent_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, str]:
-    """Revoke an enrolled agent credential; re-enrollment requires the bootstrap token."""
+    """Revoke an enrolled agent credential and fence its active leases."""
     _require(authorization, _operator_token(), "operator unauthorized")
     with _db() as conn:
         changed = conn.execute(
-            "UPDATE remote_agents SET credential_hash=NULL,credential_revoked_at=now(),status='offline' WHERE id=%s AND credential_hash IS NOT NULL",
+            "UPDATE remote_agents SET credential_hash=NULL,credential_revoked_at=now(),credential_generation=credential_generation+1,status='offline' WHERE id=%s AND credential_hash IS NOT NULL",
             (agent_id,),
         ).rowcount
+        if changed:
+            conn.execute(
+                "UPDATE remote_tasks SET status='cancelled',cancel_requested=true,lease_expires_at=NULL,finished_at=COALESCE(finished_at,now()) WHERE agent_id=%s AND status='running'",
+                (agent_id,),
+            )
         conn.commit()
     if not changed:
         raise HTTPException(status_code=404, detail="active agent credential not found")
     return {"agent_id": str(agent_id), "status": "credential_revoked"}
 
 
-def _require_task_agent(conn, task_id: UUID, authorization: str | None) -> None:
-    row = conn.execute("SELECT a.credential_hash FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (task_id,)).fetchone()
+def _require_task_agent(conn, task_id: UUID, authorization: str | None) -> int:
+    row = conn.execute("SELECT a.credential_hash,a.credential_generation,t.lease_credential_generation FROM remote_tasks t JOIN remote_agents a ON a.id=t.agent_id WHERE t.id=%s", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="task not found")
     _require_hash(authorization, row[0])
+    if row[2] is None or row[2] != row[1]:
+        raise HTTPException(status_code=409, detail="task credential generation fenced")
+    return row[1]
 
 
 @app.post("/api/v1/control/tasks")
@@ -200,18 +208,19 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
 @app.get("/api/v1/control/agents/{agent_id}/tasks/next")
 def control_next_task(agent_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, object]:
     with _db() as conn:
-        agent = conn.execute("SELECT credential_hash FROM remote_agents WHERE id=%s", (agent_id,)).fetchone()
+        agent = conn.execute("SELECT credential_hash,credential_generation FROM remote_agents WHERE id=%s", (agent_id,)).fetchone()
         if not agent:
             raise HTTPException(status_code=404, detail="agent not found")
         _require_hash(authorization, agent[0])
+        generation = agent[1]
         now = datetime.now(timezone.utc)
-        conn.execute("UPDATE remote_tasks SET status='queued',lease_expires_at=NULL WHERE agent_id=%s AND status='running' AND lease_expires_at < %s", (agent_id, now))
+        conn.execute("UPDATE remote_tasks SET status='queued',lease_expires_at=NULL,lease_credential_generation=NULL WHERE agent_id=%s AND status='running' AND lease_expires_at < %s", (agent_id, now))
         row = conn.execute("SELECT id,command,cwd,approval,tenant_id FROM remote_tasks WHERE agent_id=%s AND status='queued' AND approval='AUTO' AND NOT cancel_requested ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED", (agent_id,)).fetchone()
         if not row:
             conn.commit()
             return {"task": None}
         expires = now + timedelta(seconds=LEASE_SECONDS)
-        conn.execute("UPDATE remote_tasks SET status='running',started_at=COALESCE(started_at,now()),heartbeat_at=now(),lease_expires_at=%s WHERE id=%s", (expires, row[0]))
+        conn.execute("UPDATE remote_tasks SET status='running',started_at=COALESCE(started_at,now()),heartbeat_at=now(),lease_expires_at=%s,lease_credential_generation=%s WHERE id=%s", (expires, generation, row[0]))
         conn.commit()
     return {"task": {"id": str(row[0]), "command": row[1], "cwd": row[2], "approval": row[3], "tenant_id": str(row[4]) if row[4] else None, "lease_expires_at": expires.isoformat()}}
 
@@ -220,7 +229,7 @@ def control_next_task(agent_id: UUID, authorization: str | None = Header(default
 def control_event(task_id: UUID, req: EventRequest, authorization: str | None = Header(default=None)) -> dict[str, str]:
     with _db() as conn:
         _require_task_agent(conn, task_id, authorization)
-        changed = conn.execute("UPDATE remote_tasks SET heartbeat_at=now(),lease_expires_at=now()+interval '120 seconds' WHERE id=%s AND status='running' AND lease_expires_at > now()", (task_id,)).rowcount
+        changed = conn.execute("UPDATE remote_tasks t SET heartbeat_at=now(),lease_expires_at=now()+interval '120 seconds' FROM remote_agents a WHERE t.id=%s AND t.agent_id=a.id AND t.status='running' AND t.lease_expires_at > now() AND t.lease_credential_generation=a.credential_generation", (task_id,)).rowcount
         if not changed:
             conn.rollback()
             raise HTTPException(status_code=404, detail="active task not found")
@@ -234,7 +243,7 @@ def control_complete(task_id: UUID, req: CompleteRequest, authorization: str | N
     status = "succeeded" if req.returncode == 0 else "failed"
     with _db() as conn:
         _require_task_agent(conn, task_id, authorization)
-        changed = conn.execute("UPDATE remote_tasks SET status=%s,returncode=%s,stdout=%s,stderr=%s,finished_at=now(),lease_expires_at=NULL WHERE id=%s AND status='running' AND lease_expires_at > now()", (status, req.returncode, req.stdout, req.stderr, task_id)).rowcount
+        changed = conn.execute("UPDATE remote_tasks t SET status=%s,returncode=%s,stdout=%s,stderr=%s,finished_at=now(),lease_expires_at=NULL WHERE t.id=%s AND t.status='running' AND t.lease_expires_at > now() AND t.lease_credential_generation=(SELECT credential_generation FROM remote_agents WHERE id=t.agent_id)", (status, req.returncode, req.stdout, req.stderr, task_id)).rowcount
         conn.commit()
     if not changed:
         raise HTTPException(status_code=404, detail="active task not found")
