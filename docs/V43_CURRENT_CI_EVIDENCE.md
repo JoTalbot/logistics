@@ -13,6 +13,8 @@ The latest application-bearing software head covered by the current verification
 
 The subsequent test-only `main` commit `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` changes only `tests/test_remote_agent_install.py`: it strengthens the regression so the installer is explicitly asserted not to invoke or opt into the destructive cgroup rehearsal. This does not change application behavior.
 
+The following documentation-only commits `bed12953cd005cb4a107d9a96675efc2ddebc145`, `0d9085a87201badf484748f9bcf74a76dd094135`, and `19b406d4688394fa3e7d04222e6c759b76a7ca05` change verification records only.
+
 ## GitHub Actions verification
 
 For software head `362968477c368f4efd1b263715f86109c957bb37`:
@@ -29,17 +31,19 @@ The Backup Restore E2E run completed migrations, disposable seed, PostgreSQL 17 
 
 The Compose E2E run verifies the remote-control credential-generation/idempotency schema after explicitly applying migrations `0028` and `0029` on the clean test database. This explicit migration ordering fixes the earlier clean-database verification failure.
 
-## Current `main` test-head verification
+## Current `main` verification
 
-The current `main` test head `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` was exercised by fresh GitHub Actions checks:
+The current `main` head is `19b406d4688394fa3e7d04222e6c759b76a7ca05` (`docs(status): reconcile current documentation head`). It is documentation-only and does not alter application or test behavior.
+
+The immediately preceding documentation head `0d9085a87201badf484748f9bcf74a76dd094135` was exercised by fresh GitHub Actions checks:
 
 | Workflow | Run | Result |
 |---|---:|---|
-| CI | `35145045520` (#593) | success |
-| Compose E2E | `35145045527` (#165) | success |
-| Backup Restore E2E | `35145045536` (#163) | success |
+| CI | `35147015884` (#594) | success |
+| Compose E2E | `35147015810` (#166) | success |
+| Backup Restore E2E | `35147015835` (#164) | success |
 
-The CI job's `Run unit and integration tests` step completed successfully, so the repository pytest suite covered the test-only change. The same run also completed cgroup probing, dependency consistency/audit, migrations, V20 baseline replay, hardened Compose validation, release smoke checks, API image build, and cleanup successfully.
+The preceding test-only head `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` was also exercised successfully by CI run `35145045520`, Compose E2E run `35145045527`, and Backup Restore E2E run `35145045536`. This establishes that the test-only installer regression and the current documentation changes are covered by the verification chain without claiming that documentation commits themselves constitute new application changes.
 
 ## External status boundary
 
