@@ -201,7 +201,20 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
             if existing:
                 return {"task_id": str(existing[0]), "status": existing[1], "approval": existing[2], "idempotent_replay": True}
         task_id = uuid4()
-        conn.execute("INSERT INTO remote_tasks(id,agent_id,tenant_id,command,cwd,approval,requested_by,idempotency_key) VALUES(%s,%s,%s,%s,%s,%s,%s,%s)", (task_id, req.agent_id, tenant_id, req.command, req.cwd, approval, req.requested_by, req.idempotency_key))
+        inserted = conn.execute(
+            "INSERT INTO remote_tasks(id,agent_id,tenant_id,command,cwd,approval,requested_by,idempotency_key) "
+            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s) "
+            "ON CONFLICT (agent_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING "
+            "RETURNING id,status,approval",
+            (task_id, req.agent_id, tenant_id, req.command, req.cwd, approval, req.requested_by, req.idempotency_key),
+        ).fetchone()
+        if req.idempotency_key and not inserted:
+            existing = conn.execute("SELECT id,status,approval FROM remote_tasks WHERE agent_id=%s AND idempotency_key=%s", (req.agent_id, req.idempotency_key)).fetchone()
+            if not existing:
+                conn.rollback()
+                raise HTTPException(status_code=409, detail="idempotency conflict")
+            conn.commit()
+            return {"task_id": str(existing[0]), "status": existing[1], "approval": existing[2], "idempotent_replay": True}
         conn.commit()
     return {"task_id": str(task_id), "status": "queued", "approval": approval, "idempotent_replay": False}
 
