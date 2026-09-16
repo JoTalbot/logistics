@@ -45,6 +45,8 @@ jobs:
 
           curl --fail --silent --show-error http://127.0.0.1:18000/health
           echo
+          docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < migrations/0028_remote_task_idempotency_agent_scope.sql
+          docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < migrations/0029_remote_agent_credential_generation.sql
           docker compose exec -T recurring-demand-scheduler python -c 'import psycopg, os; conn=psycopg.connect(os.environ["DATABASE_URL"]); assert conn.execute("SELECT 1").fetchone() == (1,); assert conn.execute("SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s", ("remote_agents", "credential_revoked_at")).fetchone() == (1,); assert conn.execute("SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s", ("remote_agents", "credential_generation")).fetchone() == (1,); assert conn.execute("SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s", ("remote_tasks", "lease_credential_generation")).fetchone() == (1,); assert conn.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", ("remote_tasks_agent_idempotency_idx",)).fetchone() == (1,); print("remote-control migrations 0027-0029: PASS"); conn.close()'
           docker compose ps
           echo "hardened Compose end-to-end rehearsal: PASS"
