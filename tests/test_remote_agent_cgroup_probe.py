@@ -29,6 +29,8 @@ def test_probe_is_read_only_and_reports_missing_cgroup_v2(monkeypatch):
     assert result["cgroup_kill_available"] is False
     assert result["cgroup_procs_writable"] is False
     assert result["subtree_control_writable"] is False
+    assert result["task_cgroup_parent_writable"] is False
+    assert result["task_cgroup_creation_ready"] is False
 
 
 def test_probe_reports_v2_files_and_permissions_without_writing(monkeypatch, tmp_path):
@@ -44,7 +46,7 @@ def test_probe_reports_v2_files_and_permissions_without_writing(monkeypatch, tmp
 
     monkeypatch.setattr(probe, "CGROUP_ROOT", root)
     monkeypatch.setattr(probe, "_self_cgroup_path", lambda: own)
-    monkeypatch.setattr(probe.os, "access", lambda path, mode: mode == probe.os.W_OK)
+    monkeypatch.setattr(probe.os, "access", lambda path, mode: mode & probe.os.W_OK != 0)
 
     result = probe.probe()
 
@@ -55,5 +57,29 @@ def test_probe_reports_v2_files_and_permissions_without_writing(monkeypatch, tmp
     assert result["subtree_control_available"] is True
     assert result["subtree_control_writable"] is True
     assert result["cgroup_procs_writable"] is True
+    assert result["task_cgroup_parent_writable"] is True
+    assert result["task_cgroup_creation_ready"] is True
     assert result["controllers"] == ["cpu", "memory", "pids"]
     assert result["enabled_subtree_controllers"] == ["cpu"]
+
+
+def test_probe_does_not_claim_creation_ready_without_parent_write_access(monkeypatch, tmp_path):
+    probe = _load_probe()
+    root = tmp_path / "cgroup"
+    root.mkdir()
+    (root / "cgroup.controllers").write_text("cpu memory pids", encoding="utf-8")
+    own = root / "agent"
+    own.mkdir()
+    (own / "cgroup.kill").write_text("", encoding="utf-8")
+    (own / "cgroup.procs").write_text("123", encoding="utf-8")
+    (own / "cgroup.subtree_control").write_text("cpu", encoding="utf-8")
+
+    monkeypatch.setattr(probe, "CGROUP_ROOT", root)
+    monkeypatch.setattr(probe, "_self_cgroup_path", lambda: own)
+    monkeypatch.setattr(probe.os, "access", lambda path, mode: path != own or mode == probe.os.W_OK)
+
+    result = probe.probe()
+
+    assert result["cgroup_procs_writable"] is True
+    assert result["task_cgroup_parent_writable"] is False
+    assert result["task_cgroup_creation_ready"] is False
