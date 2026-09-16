@@ -11,7 +11,7 @@ The latest application-bearing software head covered by the current verification
 - SHA: `362968477c368f4efd1b263715f86109c957bb37`
 - Change: `fix(compose-e2e): apply remote-control migrations before verification`
 
-The subsequent `main` commit `68bba460a80e99243289e04d4b70b28265e804c6` is documentation-only and records the verified software head without changing the application implementation.
+The subsequent test-only `main` commit `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` changes only `tests/test_remote_agent_install.py`: it strengthens the regression so the installer is explicitly asserted not to invoke or opt into the destructive cgroup rehearsal. This does not change application behavior.
 
 ## GitHub Actions verification
 
@@ -29,17 +29,17 @@ The Backup Restore E2E run completed migrations, disposable seed, PostgreSQL 17 
 
 The Compose E2E run verifies the remote-control credential-generation/idempotency schema after explicitly applying migrations `0028` and `0029` on the clean test database. This explicit migration ordering fixes the earlier clean-database verification failure.
 
-## Current `main` verification
+## Current `main` test-head verification
 
-The documentation head `68bba460a80e99243289e04d4b70b28265e804c6` was also exercised by fresh GitHub Actions runs:
+The current `main` test head `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` was exercised by fresh GitHub Actions checks:
 
 | Workflow | Run | Result |
 |---|---:|---|
-| CI | `35140553576` (#592) | success |
-| Compose E2E | `35140553628` (#164) | success |
-| Backup Restore E2E | `35140553548` (#162) | success |
+| CI | `35145045520` (#593) | success |
+| Compose E2E | `35145045527` (#165) | success |
+| Backup Restore E2E | `35145045536` (#163) | success |
 
-These runs confirm that the documentation reconciliation did not break the repository verification contour.
+The CI job's `Run unit and integration tests` step completed successfully, so the repository pytest suite covered the test-only change. The same run also completed cgroup probing, dependency consistency/audit, migrations, V20 baseline replay, hardened Compose validation, release smoke checks, API image build, and cleanup successfully.
 
 ## External status boundary
 
