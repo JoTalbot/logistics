@@ -7,7 +7,6 @@ Set these in Project Settings → Environment Variables for Production:
 - `DATABASE_URL` — PostgreSQL connection string for the logistics database.
 - `REMOTE_AGENT_TOKEN` — bootstrap/enrollment credential used only when an agent starts without a per-agent credential. It is not accepted for task polling, events, or completion after enrollment.
 - `CONTROL_PLANE_OPERATOR_TOKEN` — separate long random token used only by the Android/browser console.
-- `VERCEL_AUTOMATION_BYPASS_SECRET` — the 32-character secret generated under Deployment Protection → Protection Bypass for Automation. It allows the remote agent to reach protected Vercel deployments using the `x-vercel-protection-bypass` header.
 
 Redeploy after changing environment variables.
 
@@ -23,11 +22,9 @@ Do not treat `REMOTE_AGENT_TOKEN` as a per-agent secret. Protect it like an enro
 
 ## Vercel Deployment Protection
 
-Keep Deployment Protection enabled. Do not disable SSO for the whole project just to support the Ubuntu agent.
+Keep Deployment Protection enabled. The remote agent does not disable, bypass, or inject a Deployment Protection bypass header. If the protected control-plane endpoint cannot be reached by the authorized agent, treat that as an external deployment/integration gate and resolve it through the provider's supported configuration and authorization flow.
 
-Create a dedicated Protection Bypass for Automation secret in the Vercel project and store the same value as the Production `VERCEL_AUTOMATION_BYPASS_SECRET` environment variable.
-
-The Ubuntu agent sends that value only as the `x-vercel-protection-bypass` request header. It is never exposed to browser JavaScript or returned by the agent health endpoint.
+The repository intentionally contains no `VERCEL_AUTOMATION_BYPASS_SECRET` configuration for the remote agent.
 
 ## Ubuntu agent variables
 
@@ -38,7 +35,6 @@ CONTROL_PLANE_URL=<current Vercel production URL for the logistics project>
 CONTROL_PLANE_TOKEN=<same value as REMOTE_AGENT_TOKEN>
 # Optional: pre-provision a per-agent credential. Otherwise bootstrap is automatic.
 CONTROL_AGENT_TOKEN=<per-agent control token, when pre-provisioned>
-VERCEL_AUTOMATION_BYPASS_SECRET=<same value as the Vercel automation bypass secret>
 AGENT_NAME=arm-server-01
 AGENT_HEARTBEAT_SECONDS=30
 ```
@@ -89,4 +85,4 @@ Open the current production project URL. The root page is the mobile-friendly Lo
 - Commands are still constrained by the agent allowlist and shell-composition protection.
 - High-risk command patterns are marked `REVIEW` and are not dispatched automatically.
 - V21 business autonomy/approval controls remain independent of this infrastructure control plane.
-- This setup does not bypass provider protections or authorization gates.
+- Provider deployment protections and authorization gates are not bypassed by the remote agent.
