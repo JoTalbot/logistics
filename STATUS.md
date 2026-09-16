@@ -18,6 +18,7 @@ SCOPE: V43.3 формализует machine-readable target-host readiness contr
 - `target_host_readiness=READY` означает только наличие prerequisites для opt-in target-host rehearsal; это не означает, что runtime per-task cgroup isolation уже внедрена.
 - `target_host_readiness=BLOCKED` означает поддерживаемый Linux/cgroup-v2/systemd contour с недостаточными правами/делегацией текущей identity.
 - `target_host_readiness=UNSUPPORTED` означает отсутствие требуемого Linux/cgroup-v2/systemd backend.
+- Readiness contract отдельно требует доступности и записи в `cgroup.kill`; отсутствие права kill переводит capability result в `BLOCKED`, даже если остальные cgroup files доступны.
 - `deploy/remote-agent/cgroup_gate.py` запускает destructive rehearsal только при явном `LOGISTICS_CGROUP_REHEARSAL=1`, non-root identity и `READY` probe result.
 - `deploy/remote-agent/cgroup_rehearsal.py` остаётся отдельной target-host проверкой: реальный task, detached-session descendant, общая task cgroup и fencing через `cgroup.kill`.
 - Нормальный CI не выполняет destructive target-host rehearsal.
@@ -37,13 +38,13 @@ Queued tasks не уничтожаются при credential revoke автома
 
 ## Verification state
 
-**SOFTWARE CONTOUR: VERIFIED GREEN** — current code head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл CI run `35114968033` / job `104857943877` с результатом `success`. Включая read-only cgroup capability probe, dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build.
+**SOFTWARE CONTOUR: VERIFIED GREEN** — current code head `877f6e16fe232fb2934fe6e351974471119bb03a` (`test(remote-agent): cover cgroup kill permission gate`) прошёл CI run `35115862943` / job `104860991416` с результатом `success`. Job также успешно выполнил read-only cgroup capability probe, dependency consistency, pip-audit, migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract, local release smoke и hardened API image build.
 
-**COMPOSE E2E: VERIFIED GREEN** — current head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл Compose E2E run `35114968036` / job `104857943691` с результатом `success`.
+**COMPOSE E2E: VERIFIED GREEN** — current head `877f6e16fe232fb2934fe6e351974471119bb03a` прошёл Compose E2E run `35115862995` / job `104860991003` с результатом `success`.
 
-**BACKUP RESTORE E2E: VERIFIED GREEN** — current head `68ed136ff4081fe38ab0a2a26929c8313c26ed73` прошёл Backup Restore E2E run `35114968060` / job `104857943476` с результатом `success`.
+**BACKUP RESTORE E2E: VERIFIED GREEN** — current head `877f6e16fe232fb2934fe6e351974471119bb03a` прошёл Backup Restore E2E run `35115863047` / job `104860991875` с результатом `success`.
 
-**CURRENT CODE HEAD:** `68ed136ff4081fe38ab0a2a26929c8313c26ed73` — `docs: advance remote-agent readiness status to V43.3`.
+**CURRENT CODE HEAD:** `877f6e16fe232fb2934fe6e351974471119bb03a` — `test(remote-agent): cover cgroup kill permission gate`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
@@ -56,7 +57,7 @@ Queued tasks не уничтожаются при credential revoke автома
 3. Lardi access/mapping: **BLOCKED BY PROVIDER**; previous live smoke returned HTTP 403 Cloudflare Error 1010 / `browser_signature_banned`; retry/bypass не выполняется.
 4. Publication/contact permissions: **PENDING EXPLICIT PROVIDER/LEGAL/OPERATOR AUTHORIZATION**.
 5. Real booked/delivered outcomes: **PENDING OPERATIONAL DATA**.
-6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status on `68ed136ff4081fe38ab0a2a26929c8313c26ed73` reports `Vercel=failure` and `Vercel Deployments=pending`; no successful Vercel deployment is claimed.
+6. Vercel main deployment integration: **BLOCKED BY VERCEL ACCOUNT STATUS**; current combined status on `877f6e16fe232fb2934fe6e351974471119bb03a` reports `Vercel=failure` and `Vercel Deployments=pending`; no successful Vercel deployment is claimed.
 7. Authorized Telegram credentials/source access: **PENDING EXTERNAL AUTHORIZATION**.
 8. Target-host cgroup rehearsal: **PENDING AUTHORIZED TARGET HOST**; CI validates the contract and gate logic, but normal CI does not constitute evidence of target-host delegation or detached-descendant fencing.
 
