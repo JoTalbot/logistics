@@ -1,22 +1,22 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.8 — Current test-head CI verification and external readiness gates
-STATUS: v43.8_verified_external_gates_blocked
+CURRENT_STEP: V43.9 — Verified remote-control reenrollment fencing and external readiness gates
+STATUS: v43.9_verified_external_gates_blocked
 UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — the latest application-bearing software head remains `362968477c368f4efd1b263715f86109c957bb37` (`fix(compose-e2e): apply remote-control migrations before verification`). The subsequent test-only commit `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` changes only `tests/test_remote_agent_install.py`; the later commits are documentation-only and change verification records only.
+**SOFTWARE CONTOUR: GREEN** — the latest application-bearing change is `bb9bb7f449eb73af0b376fe23d34162c9e98d5fd` (`fix(remote-control): cancel active leases on credential reenrollment`), which is covered by the subsequent regression-test head `327aa1a3d120911428b9f8448f00ae233ea43d2b`. The test head adds direct reenrollment coverage for cancellation of the old active lease.
 
-**MAIN DOCUMENTATION STATE: DOCUMENTATION-ONLY CONTINUATION** — documentation commits after the verified application/test contour do not change application or test behavior. The latest verified application/test behavior was exercised successfully by GitHub Actions: CI run `35147015884`, Compose E2E run `35147015810`, and Backup Restore E2E run `35147015835` on `0d9085a87201badf484748f9bcf74a76dd094135`; the earlier test-only head `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` was also covered successfully by CI/Compose/Backup Restore runs `35145045520`, `35145045527`, and `35145045536`. This status intentionally does not self-reference the commit that contains it, because every documentation update necessarily creates a new commit.
+**CURRENT TEST HEAD: GREEN** — GitHub Actions completed successfully for `327aa1a3d120911428b9f8448f00ae233ea43d2b`: `test` run `35152852804`, `compose-e2e` run `35152852738`, and `backup-restore-e2e` run `35152852822`. The three checks all completed with conclusion `success`.
 
-**COMPOSE E2E: GREEN** — the latest verified application/test contour has a successful Compose E2E verification. Target infrastructure rehearsal remains separate evidence from CI.
+**COMPOSE E2E: GREEN** — the current test head passed the hardened Compose E2E workflow. Target infrastructure rehearsal remains separate evidence from CI.
 
-**BACKUP RESTORE E2E: GREEN** — the latest verified application/test contour has a successful Backup Restore E2E verification. CI restore rehearsal is not treated as proof of target production backup/restore readiness.
+**BACKUP RESTORE E2E: GREEN** — the current test head passed the Backup Restore E2E workflow. CI restore rehearsal is not treated as proof of target production backup/restore readiness.
 
-**LATEST VERIFIED APPLICATION/TEST HEAD:** `0d9085a87201badf484748f9bcf74a76dd094135` — this is the latest application/test verification point with successful CI, Compose E2E, and Backup Restore E2E runs. The latest functional implementation remains `362968477c368f4efd1b263715f86109c957bb37`; newer changes are test-only or documentation-only and do not change application behavior.
+**LATEST VERIFIED APPLICATION/TEST HEAD:** `327aa1a3d120911428b9f8448f00ae233ea43d2b` — this head has successful CI, Compose E2E, and Backup Restore E2E verification and covers the latest remote-control reenrollment lease-cancellation behavior.
 
-**CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is runtime-correct and covered by the lifecycle regression test; credential-generation lease fencing and deterministic lock regression coverage remain validated. The latest functional change remains the Compose E2E migration-order fix at `362968477c368f4efd1b263715f86109c957bb37`.
+**CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is runtime-correct and covered by regression testing; credential-generation lease fencing is enforced; deterministic lock fencing is covered; direct bootstrap reenrollment now cancels active running leases so credential rotation does not leave stale tasks marked `running`.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe and opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. The design gate requires a real Linux rehearsal with a detached descendant before enforcement is enabled.
 
