@@ -25,6 +25,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - name: Probe remote-agent cgroup capabilities
+        run: python3 deploy/remote-agent/cgroup_probe.py
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
