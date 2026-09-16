@@ -5,9 +5,6 @@ import asyncio
 import importlib.util
 from pathlib import Path
 
-import pytest
-
-
 ROOT = Path(__file__).parents[1]
 AGENT_PATH = ROOT / "deploy" / "remote-agent" / "agent.py"
 
