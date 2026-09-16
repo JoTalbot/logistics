@@ -6,13 +6,15 @@ UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` passed CI run `35127838683` / job `104901178059` (#577), including unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed. The current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` subsequently passed CI #580 (`35129737194`) successfully.
+**SOFTWARE CONTOUR: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed CI #582 (`35131552215`) successfully, including dependency consistency, dependency audit, SQL migrations, unit/integration tests, V20 baseline replay, hardened Compose contract, local release smoke checks, hardened API image build, and the read-only cgroup capability probe. The suite reported 314 tests passed with 10 warnings; the pytest integration marker warning is resolved, while the remaining warnings are the FastAPI `on_event("startup")` deprecation. The previous implementation head `0d18f75f484b90ef1ff4549c664dc8ecc438a959` and documentation head `9a92ef149f20d490e7c688442743ff61d419e757` remain validated by earlier green CI runs.
 
-**COMPOSE E2E: GREEN** — current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` passed Compose E2E #152 (`35129737137`) successfully.
+**COMPOSE E2E: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed Compose E2E #154 (`35131552162`) successfully.
 
-**BACKUP RESTORE E2E: GREEN** — current documentation head `9a92ef149f20d490e7c688442743ff61d419e757` passed Backup Restore E2E #150 (`35129737135`) successfully.
+**BACKUP RESTORE E2E: GREEN** — repository head `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` passed Backup Restore E2E #152 (`35131552208`) successfully.
 
-**CURRENT CODE HEAD:** `9a92ef149f20d490e7c688442743ff61d419e757` — `docs(remote-agent): restore README content and fix rehearsal paths`. The last functional implementation head remains `0d18f75f484b90ef1ff4549c664dc8ecc438a959`; `9a92ef1` is documentation-only and does not change runtime behavior.
+**REPOSITORY HEAD:** `38e1c329868e99b50d784ec9ef506fa6ed0b44e9` — `test: register integration pytest marker`. This is test/CI configuration only and does not change application runtime behavior.
+
+**CURRENT FUNCTIONAL IMPLEMENTATION HEAD:** `0d18f75f484b90ef1ff4549c664dc8ecc438a959` — credential-generation lease fencing and deterministic lock regression coverage remain the latest functional runtime contour.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe и opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. Design gate требует реального Linux rehearsal с detached descendant до включения enforcement.
 
