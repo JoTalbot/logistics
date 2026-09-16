@@ -1,22 +1,22 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.9 — Verified remote-control reenrollment fencing and external readiness gates
-STATUS: v43.9_verified_external_gates_blocked
+CURRENT_STEP: V43.10 — Verified remote-agent authentication hardening and external readiness gates
+STATUS: v43.10_verified_external_gates_blocked
 UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — the latest application-bearing change is `bb9bb7f449eb73af0b376fe23d34162c9e98d5fd` (`fix(remote-control): cancel active leases on credential reenrollment`), which is covered by the subsequent regression-test head `327aa1a3d120911428b9f8448f00ae233ea43d2b`. The test head adds direct reenrollment coverage for cancellation of the old active lease.
+**SOFTWARE CONTOUR: GREEN** — the latest verified application-bearing change is `bb9bb7f449eb73af0b376fe23d34162c9e98d5fd` (`fix(remote-control): cancel active leases on credential reenrollment`). Subsequent commits add regression coverage for direct reenrollment and bearer authentication. The current verified test head is `b881ecce78896fc2b20770d40e99e671bd8d5ba8`.
 
-**CURRENT TEST HEAD: GREEN** — GitHub Actions completed successfully for `327aa1a3d120911428b9f8448f00ae233ea43d2b`: `test` run `35152852804`, `compose-e2e` run `35152852738`, and `backup-restore-e2e` run `35152852822`. The three checks all completed with conclusion `success`.
+**CURRENT TEST HEAD: GREEN** — GitHub Actions completed successfully for `b881ecce78896fc2b20770d40e99e671bd8d5ba8`: `test` run `35159690286`, `compose-e2e` run `35159690256`, and `backup-restore-e2e` run `35159690279`. The three checks all completed with conclusion `success`.
 
 **COMPOSE E2E: GREEN** — the current test head passed the hardened Compose E2E workflow. Target infrastructure rehearsal remains separate evidence from CI.
 
 **BACKUP RESTORE E2E: GREEN** — the current test head passed the Backup Restore E2E workflow. CI restore rehearsal is not treated as proof of target production backup/restore readiness.
 
-**LATEST VERIFIED APPLICATION/TEST HEAD:** `327aa1a3d120911428b9f8448f00ae233ea43d2b` — this head has successful CI, Compose E2E, and Backup Restore E2E verification and covers the latest remote-control reenrollment lease-cancellation behavior.
+**LATEST VERIFIED APPLICATION/TEST HEAD:** `b881ecce78896fc2b20770d40e99e671bd8d5ba8` — this head has successful CI, Compose E2E, and Backup Restore E2E verification. It adds explicit regression coverage that agent credentials require the `Bearer` scheme and preserves the accepted bearer path.
 
-**CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is runtime-correct and covered by regression testing; credential-generation lease fencing is enforced; deterministic lock fencing is covered; direct bootstrap reenrollment now cancels active running leases so credential rotation does not leave stale tasks marked `running`.
+**CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is runtime-correct and covered by regression testing; credential-generation lease fencing is enforced; deterministic lock fencing is covered; direct bootstrap reenrollment cancels active running leases so credential rotation does not leave stale tasks marked `running`; agent credential authentication requires an explicit `Bearer` scheme.
 
 **CURRENT DESIGN STATE:** readiness contract, capability probe and opt-in target-host rehearsal implemented; runtime per-task cgroup isolation не реализована. The design gate requires a real Linux rehearsal with a detached descendant before enforcement is enabled.
 
