@@ -11,6 +11,7 @@ import signal
 import time
 import urllib.error
 import urllib.request
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,6 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-APP = FastAPI(title="Logistics Remote Agent", version="0.3.0")
 TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
@@ -134,10 +134,19 @@ def resolve_model() -> str:
     raise HTTPException(status_code=502, detail="no AI Gateway model is available for the configured key")
 
 
-@APP.on_event("startup")
-async def start_control_channel() -> None:
+async def lifespan(app: FastAPI):
+    control_task = None
     if CONTROL_URL and CONTROL_TOKEN:
-        asyncio.create_task(control_loop())
+        control_task = asyncio.create_task(control_loop())
+    try:
+        yield
+    finally:
+        if control_task is not None:
+            control_task.cancel()
+            await asyncio.gather(control_task, return_exceptions=True)
+
+
+APP = FastAPI(title="Logistics Remote Agent", version="0.3.0", lifespan=lifespan)
 
 
 @APP.get("/health")
