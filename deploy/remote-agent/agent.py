@@ -31,7 +31,6 @@ MAX_SECONDS = int(os.environ.get("AGENT_COMMAND_TIMEOUT", "120"))
 CONTROL_URL = os.environ.get("CONTROL_PLANE_URL", "").rstrip("/")
 CONTROL_TOKEN = os.environ.get("CONTROL_PLANE_TOKEN", "")
 CONTROL_AGENT_TOKEN = os.environ.get("CONTROL_AGENT_TOKEN", "")
-VERCEL_BYPASS_SECRET = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET", "")
 AGENT_NAME = os.environ.get("AGENT_NAME", os.uname().nodename)
 HEARTBEAT_SECONDS = int(os.environ.get("AGENT_HEARTBEAT_SECONDS", "30"))
 
@@ -150,7 +149,6 @@ async def health() -> dict[str, Any]:
         "model_resolved": MODEL_CACHE.get("model") if MODEL_RAW.strip().lower() == "auto" else MODEL_RAW,
         "control_plane": bool(CONTROL_URL and CONTROL_TOKEN),
         "control_credential_mode": "per_agent" if CONTROL_AGENT_TOKEN else "bootstrap_pending",
-        "vercel_bypass": bool(VERCEL_BYPASS_SECRET),
         "agent_name": AGENT_NAME,
     }
 
@@ -324,8 +322,6 @@ def control_request(
         "Content-Type": "application/json",
         "User-Agent": "logistics-remote-agent/0.3.0",
     }
-    if VERCEL_BYPASS_SECRET:
-        headers["x-vercel-protection-bypass"] = VERCEL_BYPASS_SECRET
     req = urllib.request.Request(f"{CONTROL_URL}{path}", data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=20) as response:
