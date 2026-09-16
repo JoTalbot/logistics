@@ -6,15 +6,15 @@ UPDATED: 2026-09-16
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN** — the latest application-bearing software head remains `362968477c368f4efd1b263715f86109c957bb37` (`fix(compose-e2e): apply remote-control migrations before verification`). The subsequent test-only commit `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` changes only `tests/test_remote_agent_install.py` and was verified by the current GitHub Actions CI/Compose/Backup Restore checks.
+**SOFTWARE CONTOUR: GREEN** — the latest application-bearing software head remains `362968477c368f4efd1b263715f86109c957bb37` (`fix(compose-e2e): apply remote-control migrations before verification`). The subsequent test-only commit `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` changes only `tests/test_remote_agent_install.py`; the documentation-only commits `bed12953cd005cb4a107d9a96675efc2ddebc145` and `0d9085a87201badf484748f9bcf74a76dd094135` change verification records only.
 
-**CURRENT TEST HEAD: GREEN** — `main` is currently at `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` (`test(remote-agent): assert cgroup rehearsal stays opt-in`). Its GitHub Actions checks completed successfully: CI run `35145045520`, Compose E2E run `35145045527`, and Backup Restore E2E run `35145045536`. The CI job executed the repository pytest suite, including the remote-agent install regression, and completed dependency audit, migrations, baseline replay, hardened Compose validation, release smoke checks, API image build, and cleanup successfully.
+**CURRENT TEST/DOCUMENTATION HEAD: GREEN** — `main` is currently at `0d9085a87201badf484748f9bcf74a76dd094135` (`docs(status): record current V43 test-head evidence`). The application/test behavior represented by the preceding `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` head was exercised successfully by CI run `35145045520`, Compose E2E run `35145045527`, and Backup Restore E2E run `35145045536`. The current documentation head `0d9085a87201badf484748f9bcf74a76dd094135` was then independently exercised by fresh CI run `35147015884`, Compose E2E run `35147015810`, and Backup Restore E2E run `35147015835`, all successful.
 
-**COMPOSE E2E: GREEN** — the current test-head Compose E2E contour is green. Target infrastructure rehearsal remains separate evidence from CI.
+**COMPOSE E2E: GREEN** — the current documentation head has a successful Compose E2E verification. Target infrastructure rehearsal remains separate evidence from CI.
 
-**BACKUP RESTORE E2E: GREEN** — the current test-head Backup Restore E2E contour is green. CI restore rehearsal is not treated as proof of target production backup/restore readiness.
+**BACKUP RESTORE E2E: GREEN** — the current documentation head has a successful Backup Restore E2E verification. CI restore rehearsal is not treated as proof of target production backup/restore readiness.
 
-**LATEST VERIFIED APPLICATION-BEARING SOFTWARE HEAD:** `362968477c368f4efd1b263715f86109c957bb37` — latest functional implementation point. The newer `9a9f7f064000e21521bd2eeac7a3dbbb91f4c6f7` commit is test-only and does not change application behavior.
+**LATEST VERIFIED APPLICATION-BEARING SOFTWARE HEAD:** `362968477c368f4efd1b263715f86109c957bb37` — latest functional implementation point. The newer commits are test-only and documentation-only and do not change application behavior.
 
 **CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is runtime-correct and covered by the lifecycle regression test; credential-generation lease fencing and deterministic lock regression coverage remain validated. The latest functional change remains the Compose E2E migration-order fix at `362968477c368f4efd1b263715f86109c957bb37`.
 
