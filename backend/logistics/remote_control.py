@@ -32,10 +32,10 @@ def _require(value: str | None, expected: str, detail: str) -> None:
 
 
 def _require_hash(value: str | None, credential_hash: str | None) -> None:
-    if not value or not credential_hash:
+    if not value or not credential_hash or not value.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="agent credential required")
     presented = value.removeprefix("Bearer ")
-    if not hmac.compare_digest(hashlib.sha256(presented.encode()).hexdigest(), credential_hash):
+    if not presented or not hmac.compare_digest(hashlib.sha256(presented.encode()).hexdigest(), credential_hash):
         raise HTTPException(status_code=401, detail="agent credential invalid")
 
 
