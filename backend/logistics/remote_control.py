@@ -141,6 +141,7 @@ def control_heartbeat(req: AgentHeartbeat, authorization: str | None = Header(de
                     raise HTTPException(status_code=403, detail="tenant mismatch")
                 tenant_id = existing_tenant
                 conn.execute("UPDATE remote_agents SET last_seen=now(),status='online',metadata=%s,credential_hash=%s,credential_created_at=now(),credential_revoked_at=NULL,credential_generation=credential_generation+1 WHERE id=%s", (Jsonb(req.metadata), credential_hash, agent_id))
+                conn.execute("UPDATE remote_tasks SET status='cancelled',cancel_requested=true,lease_expires_at=NULL,finished_at=COALESCE(finished_at,now()) WHERE agent_id=%s AND status='running'", (agent_id,))
             else:
                 agent_id, tenant_id = uuid4(), req.tenant_id
                 conn.execute("INSERT INTO remote_agents(id,name,tenant_id,last_seen,status,metadata,credential_hash,credential_created_at) VALUES(%s,%s,%s,now(),'online',%s,%s,now())", (agent_id, req.name, tenant_id, Jsonb(req.metadata), credential_hash))
@@ -270,11 +271,3 @@ def control_tasks(authorization: str | None = Header(default=None)) -> list[dict
         {"id": str(r[0]), "agent_id": str(r[1]), "tenant_id": str(r[2]) if r[2] else None, "command": r[3], "cwd": r[4], "status": r[5], "approval": r[6], "requested_by": r[7], "returncode": r[8], "stdout": r[9], "stderr": r[10], "created_at": r[11].isoformat(), "started_at": r[12].isoformat() if r[12] else None, "finished_at": r[13].isoformat() if r[13] else None, "lease_expires_at": r[14].isoformat() if r[14] else None, "heartbeat_at": r[15].isoformat() if r[15] else None}
         for r in rows
     ]
-
-
-@app.get("/api/v1/control/tasks/{task_id}/events")
-def control_task_events(task_id: UUID, authorization: str | None = Header(default=None)) -> list[dict[str, object]]:
-    _require(authorization, _operator_token(), "operator unauthorized")
-    with _db() as conn:
-        rows = conn.execute("SELECT stream,message,created_at FROM remote_task_events WHERE task_id=%s ORDER BY id", (task_id,)).fetchall()
-    return [{"stream": r[0], "message": r[1], "created_at": r[2].isoformat()} for r in rows]
