@@ -17,7 +17,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-APP = FastAPI(title="Logistics Remote Agent", version="0.2.1")
+APP = FastAPI(title="Logistics Remote Agent", version="0.3.0")
 TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
 WORKSPACE = Path(os.environ.get("AGENT_WORKSPACE", "/opt/logistics"))
 GATEWAY_URL = os.environ.get("AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1")
@@ -182,6 +182,78 @@ async def run_command(command: str, cwd: str | None = None) -> dict[str, Any]:
     return {"ok": proc.returncode == 0, "returncode": proc.returncode, "stdout": stdout.decode(errors="replace"), "stderr": stderr.decode(errors="replace"), "command": command, "cwd": str(target)}
 
 
+async def run_leased_command(item: dict[str, Any]) -> dict[str, Any]:
+    """Execute a leased command while renewing its lease and fencing the local process on loss."""
+    target = safe_cwd(item.get("cwd"))
+    argv = validate_command(item["command"])
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="cwd does not exist")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *argv,
+            cwd=str(target),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(Path.home())},
+        )
+    except Exception:
+        raise
+
+    async def lease_watchdog() -> str | None:
+        interval = max(5, min(HEARTBEAT_SECONDS, 30))
+        while proc.returncode is None:
+            await asyncio.sleep(interval)
+            try:
+                response = await asyncio.to_thread(
+                    control_request,
+                    f"/api/v1/control/tasks/{item['id']}/events",
+                    "POST",
+                    {"stream": "heartbeat", "message": ""},
+                )
+                if response.get("error") in (401, 409):
+                    return "task lease lost; local process terminated"
+            except urllib.error.HTTPError as exc:
+                if exc.code in (401, 409):
+                    return "task lease lost; local process terminated"
+                print(f"task lease heartbeat error: HTTP {exc.code}", flush=True)
+            except Exception as exc:
+                print(f"task lease heartbeat error: {type(exc).__name__}: {exc}", flush=True)
+        return None
+
+    communication = asyncio.create_task(proc.communicate())
+    watchdog = asyncio.create_task(lease_watchdog())
+    try:
+        done, _ = await asyncio.wait({communication, watchdog}, return_when=asyncio.FIRST_COMPLETED)
+        if watchdog in done:
+            reason = watchdog.result()
+            if reason:
+                proc.kill()
+                stdout, stderr = await communication
+                return {
+                    "ok": False,
+                    "returncode": proc.returncode if proc.returncode is not None else -9,
+                    "stdout": stdout.decode(errors="replace"),
+                    "stderr": (stderr.decode(errors="replace") + "\n" + reason).strip(),
+                    "command": item["command"],
+                    "cwd": str(target),
+                    "lease_lost": True,
+                }
+        stdout, stderr = await communication
+        return {
+            "ok": proc.returncode == 0,
+            "returncode": proc.returncode,
+            "stdout": stdout.decode(errors="replace"),
+            "stderr": stderr.decode(errors="replace"),
+            "command": item["command"],
+            "cwd": str(target),
+            "lease_lost": False,
+        }
+    finally:
+        if not watchdog.done():
+            watchdog.cancel()
+            await asyncio.gather(watchdog, return_exceptions=True)
+
+
 @APP.post("/v1/chat")
 async def chat(req: ChatRequest, authorization: str | None = Header(default=None)) -> JSONResponse:
     auth(authorization)
@@ -213,7 +285,7 @@ def control_request(
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
-        "User-Agent": "logistics-remote-agent/0.2.1",
+        "User-Agent": "logistics-remote-agent/0.3.0",
     }
     if VERCEL_BYPASS_SECRET:
         headers["x-vercel-protection-bypass"] = VERCEL_BYPASS_SECRET
@@ -230,7 +302,7 @@ def control_request(
 async def execute_control_task(item: dict[str, Any]) -> None:
     """Run a leased task and always attempt to move it to a terminal state."""
     try:
-        result = await run_command(item["command"], item.get("cwd"))
+        result = await run_leased_command(item)
     except HTTPException as exc:
         result = {
             "returncode": exc.status_code or 1,
