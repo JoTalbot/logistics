@@ -106,3 +106,28 @@ def test_run_command_kills_process_tree_on_timeout(monkeypatch):
         raise AssertionError("run_command must reject a timed-out process")
 
     assert process.killed is True
+
+
+def test_lifespan_cancels_control_task(monkeypatch):
+    agent = _load_agent()
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def fake_control_loop():
+        started.set()
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    monkeypatch.setattr(agent, "CONTROL_URL", "https://control.example")
+    monkeypatch.setattr(agent, "CONTROL_TOKEN", "bootstrap-token")
+    monkeypatch.setattr(agent, "control_loop", fake_control_loop)
+
+    async def exercise():
+        async with agent.lifespan(agent.APP):
+            await asyncio.wait_for(started.wait(), timeout=1)
+        assert cancelled.is_set()
+
+    asyncio.run(exercise())
