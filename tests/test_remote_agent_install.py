@@ -11,12 +11,12 @@ def test_install_script_prepares_agent_evidence_directory_with_service_ownership
     assert "install -d -o logistics-agent -g logistics-agent -m 0750 /var/lib/logistics-agent/evidence" in text
 
 
-def test_install_script_does_not_require_agent_to_create_system_evidence_directory():
+def test_install_script_keeps_cgroup_rehearsal_opt_in():
     text = INSTALL.read_text(encoding="utf-8")
-    evidence_create = "install -d -o logistics-agent -g logistics-agent -m 0750 /var/lib/logistics-agent/evidence"
 
-    assert evidence_create in text
-    assert "LOGISTICS_CGROUP_EVIDENCE_PATH" not in text
+    assert "cgroup_rehearsal.py" not in text
+    assert "cgroup_gate.py" not in text
+    assert "LOGISTICS_CGROUP_REHEARSAL=1" not in text
 
 
 def test_install_script_preserves_read_write_path_for_evidence_store():
