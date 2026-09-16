@@ -208,7 +208,7 @@ def control_create_task(req: TaskRequest, authorization: str | None = Header(def
 @app.get("/api/v1/control/agents/{agent_id}/tasks/next")
 def control_next_task(agent_id: UUID, authorization: str | None = Header(default=None)) -> dict[str, object]:
     with _db() as conn:
-        agent = conn.execute("SELECT credential_hash,credential_generation FROM remote_agents WHERE id=%s", (agent_id,)).fetchone()
+        agent = conn.execute("SELECT credential_hash,credential_generation FROM remote_agents WHERE id=%s FOR UPDATE", (agent_id,)).fetchone()
         if not agent:
             raise HTTPException(status_code=404, detail="agent not found")
         _require_hash(authorization, agent[0])
