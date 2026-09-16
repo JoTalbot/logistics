@@ -35,7 +35,7 @@ A future implementation is acceptable only if all of the following are true:
 
 ### Model A: per-task systemd scope
 
-A supervisor asks systemd to create a transient scope for each task and starts the command in that scope. Termination targets the scope rather than a PID. This gives a system-manager-owned lifecycle and naturally groups descendants.
+A supervisor asks systemd to create a transient scope for each task and starts the command in that scope. This gives a system-manager-owned lifecycle and naturally groups descendants.
 
 **Open deployment requirement:** the service user must be authorized to create and control the scopes it owns. `Delegate=yes` alone is not evidence that arbitrary scope creation is permitted. The installer must therefore probe the actual supported systemd/user-manager model before enabling this path.
 
@@ -44,6 +44,8 @@ A supervisor asks systemd to create a transient scope for each task and starts t
 The agent creates a child cgroup below its delegated service subtree, moves the task leader into it, and starts the command so descendants inherit membership. Termination writes the appropriate PID(s) to `cgroup.kill` where supported, followed by cleanup after the cgroup becomes empty.
 
 **Open deployment requirement:** the delegated subtree must expose the required controller/filesystem operations to `logistics-agent`. File ownership, controller availability, `cgroup.subtree_control`, and kernel support must be checked on the target host. A directory that merely exists is not sufficient evidence of containment.
+
+**Important spawn invariant:** a naive `fork/exec -> write PID to cgroup.procs` sequence does **not** satisfy the one-task/one-boundary requirement. There is a race window before the leader is moved during which it can fork descendants in the parent cgroup; those descendants would not inherit the eventual task boundary. Model B therefore requires a spawn primitive or synchronization design that closes this pre-membership window, or it must remain disabled. A post-spawn PID move alone is insufficient evidence of containment.
 
 ## Decision gate
 
