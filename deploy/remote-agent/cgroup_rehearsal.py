@@ -87,6 +87,15 @@ def _systemd_scope_exists(unit: str) -> bool:
     return completed.returncode == 0 and completed.stdout.strip() not in {"", "not-found"}
 
 
+def _wait_for_scope_cleanup(unit: str, timeout: float = 3.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not _systemd_scope_exists(unit):
+            return True
+        time.sleep(POLL_SECONDS)
+    return not _systemd_scope_exists(unit)
+
+
 def _write_evidence(evidence: dict[str, object]) -> None:
     destination = os.environ.get(EVIDENCE_PATH)
     if not destination:
@@ -277,7 +286,7 @@ def main() -> int:
                     process.kill()
                     process.wait(timeout=3)
             process.communicate()
-            evidence["cleanup"] = not _systemd_scope_exists(unit)
+            evidence["cleanup"] = _wait_for_scope_cleanup(unit)
             if evidence["result"] == "PASS" and not evidence["cleanup"]:
                 evidence["result"] = "CLEANUP_INCOMPLETE"
                 print("FAIL: transient systemd scope was not confirmed collected", file=sys.stderr)
