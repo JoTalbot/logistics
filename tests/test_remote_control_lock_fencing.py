@@ -8,8 +8,8 @@ from uuid import UUID
 import psycopg
 import pytest
 
-from backend.logistics.remote_control import AgentHeartbeat, TaskRequest, _dsn
-from backend.logistics.remote_control import control_create_task, control_heartbeat, control_next_task
+from logistics.remote_control import AgentHeartbeat, TaskRequest, _dsn
+from logistics.remote_control import control_create_task, control_heartbeat, control_next_task
 
 
 @pytest.mark.integration
