@@ -7,9 +7,10 @@ from uuid import UUID
 
 import psycopg
 import pytest
-from fastapi.testclient import TestClient
 
-from backend.logistics.api import app, _dsn
+from backend.logistics.api import app
+from backend.logistics.remote_control import _dsn, control_heartbeat, control_create_task, control_next_task
+from backend.logistics.remote_control import AgentHeartbeat, TaskRequest
 
 
 @pytest.mark.integration
@@ -20,25 +21,18 @@ def test_next_task_rechecks_credential_after_agent_row_lock(
     monkeypatch.setenv("REMOTE_AGENT_TOKEN", "bootstrap-test-token")
     monkeypatch.setenv("CONTROL_PLANE_OPERATOR_TOKEN", "operator-test-token")
 
-    client = TestClient(app)
-    agent_name = "lock-fencing-test-agent"
-    enrolled = client.post(
-        "/api/v1/control/agents/heartbeat",
-        headers={"Authorization": "Bearer bootstrap-test-token"},
-        json={"name": agent_name},
+    enrolled = control_heartbeat(
+        AgentHeartbeat(name="lock-fencing-test-agent"),
+        "Bearer bootstrap-test-token",
     )
-    assert enrolled.status_code == 200
-    enrollment = enrolled.json()
-    agent_id = UUID(enrollment["agent_id"])
-    old_token = enrollment["control_token"]
+    agent_id = UUID(enrolled["agent_id"])
+    old_token = enrolled["control_token"]
 
-    task = client.post(
-        "/api/v1/control/tasks",
-        headers={"Authorization": "Bearer operator-test-token"},
-        json={"agent_id": str(agent_id), "command": "date"},
+    task = control_create_task(
+        TaskRequest(agent_id=agent_id, command="date"),
+        "Bearer operator-test-token",
     )
-    assert task.status_code == 200
-    task_id = UUID(task.json()["task_id"])
+    task_id = UUID(task["task_id"])
 
     with psycopg.connect(_dsn()) as blocker:
         blocker.execute("SELECT id FROM remote_agents WHERE id=%s FOR UPDATE", (agent_id,))
@@ -48,12 +42,10 @@ def test_next_task_rechecks_credential_after_agent_row_lock(
 
         def poll() -> None:
             started.set()
-            response = client.get(
-                f"/api/v1/control/agents/{agent_id}/tasks/next",
-                headers={"Authorization": f"Bearer {old_token}"},
-            )
-            result["status"] = response.status_code
-            result["body"] = response.json()
+            try:
+                result["value"] = control_next_task(agent_id, f"Bearer {old_token}")
+            except Exception as exc:  # FastAPI HTTPException is intentionally asserted below.
+                result["error"] = exc
 
         worker = threading.Thread(target=poll, daemon=True)
         worker.start()
@@ -89,8 +81,10 @@ def test_next_task_rechecks_credential_after_agent_row_lock(
         worker.join(timeout=10)
         assert not worker.is_alive(), "next-task request remained blocked after commit"
 
-    assert result["status"] == 401
-    assert result["body"] == {"detail": "agent credential invalid"}
+    error = result.get("error")
+    assert getattr(error, "status_code", None) == 401
+    assert getattr(error, "detail", None) == "agent credential invalid"
+    assert "value" not in result
 
     with psycopg.connect(_dsn()) as verify:
         row = verify.execute(
