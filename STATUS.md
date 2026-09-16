@@ -39,7 +39,7 @@ Queued tasks не уничтожаются при credential revoke автома
 
 **CURRENT CODE HEAD:** `bc9be7b57d30802ee55b6684642acd067678479c` — cgroup documentation regression alignment.
 
-**CURRENT TEST FILE:** `tests/test_remote_agent_systemd.py` содержит отдельную проверку, что документация не выдаёт `Delegate=yes` за уже реализованную per-task cgroup isolation. fileciteturn437file0
+**CURRENT TEST FILE:** `tests/test_remote_agent_systemd.py` содержит отдельную проверку, что документация не выдаёт `Delegate=yes` за уже реализованную per-task cgroup isolation.
 
 **PRODUCTION ACTIVATION: BLOCKED EXTERNALLY** — кодовая готовность не используется как доказательство фактической готовности внешней инфраструктуры, провайдеров или операторских разрешений.
 
