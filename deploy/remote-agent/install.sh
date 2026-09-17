@@ -82,8 +82,8 @@ EOF
 systemctl daemon-reload
 systemctl enable "$SERVICE"
 
-if grep -q 'generate-a-long-random-secret' "$ENV_DIR/agent.env" || grep -q 'replace-with-vercel-ai-gateway-key' "$ENV_DIR/agent.env"; then
-  echo "Service installed but NOT started because secrets are still placeholders."
+if grep -Eq 'generate-a-long-random-secret|replace-with-vercel-ai-gateway-key|<current Vercel production URL for the logistics project>|use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN' "$ENV_DIR/agent.env"; then
+  echo "Service installed but NOT started because secrets or control-plane settings are still placeholders."
   echo "Edit: $ENV_DIR/agent.env"
   echo "Then run: systemctl restart $SERVICE"
 else
