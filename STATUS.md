@@ -12,11 +12,11 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `24e3b85055e6ded38ec60327af57321fef6c32b4` passed CI run #637. The completed test job passed the cgroup capability probe, dependency checks, `pip-audit`, SQL migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract validation, release smoke checks, and hardened API image build.
+**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `9738c1c5e105c0afbf22902c687a6d19082ecb62` passed CI run #638. The completed test job passed the cgroup capability probe, dependency checks, `pip-audit`, SQL migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract validation, release smoke checks, and hardened API image build.
 
-**COMPOSE E2E: GREEN / FRESH** — Compose E2E run #209 for the same commit completed successfully, including the hardened Compose stack rehearsal.
+**COMPOSE E2E: GREEN / FRESH** — Compose E2E run #210 for commit `9738c1c5e105c0afbf22902c687a6d19082ecb62` completed successfully, including the hardened Compose stack rehearsal.
 
-**BACKUP/RESTORE E2E: EXISTING GREEN EVIDENCE** — the repository retains the dedicated backup/restore workflow and its previous successful rehearsal evidence. A fresh backup/restore result for commit `24e3b85055e6ded38ec60327af57321fef6c32b4` is not claimed here.
+**BACKUP/RESTORE E2E: GREEN / FRESH** — Backup Restore E2E run #208 for commit `9738c1c5e105c0afbf22902c687a6d19082ecb62` completed successfully, providing fresh CI evidence for the backup/restore rehearsal on the current main commit.
 
 **CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is covered by regression testing; credential-generation lease fencing is enforced; deterministic lock fencing is covered; direct bootstrap reenrollment cancels active running leases; agent credential authentication requires an explicit `Bearer` scheme; local agent execution fences the POSIX process group on timeout/lease loss. The control-plane AUTO classifier rejects Python path traversal, absolute paths, arbitrary pytest configuration/plugin selectors, and unsupported compiler flags.
 
@@ -24,6 +24,7 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Latest hardening
 
+- `9738c1c5e105c0afbf22902c687a6d19082ecb62`: updated status after fresh verification; CI, Compose E2E, and Backup Restore E2E subsequently passed on the same commit.
 - `24e3b85055e6ded38ec60327af57321fef6c32b4`: aligned the static cgroup rehearsal identity guard with the implementation; fresh CI subsequently passed.
 - `5ee4cfa3914d76eb49004964e3e2d1f25e947c77`: added regression coverage for autonomous Python path/configuration boundaries.
 - `b8b930403a013cfed42c13cb37d4b72b2a46d449`: tightened `_approval()` so AUTO Python execution validates all arguments instead of trusting only the module prefix.
@@ -35,7 +36,7 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## CI surface
 
-The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new command-policy tests are part of the normal unit-test surface, while the destructive cgroup rehearsal remains intentionally excluded from CI. Fresh CI #637 is the current software verification evidence.
+The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new command-policy tests are part of the normal unit-test surface, while the destructive cgroup rehearsal remains intentionally excluded from CI. Fresh CI #638 is the current software verification evidence.
 
 ## External production gates
 
