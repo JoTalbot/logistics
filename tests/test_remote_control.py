@@ -180,6 +180,15 @@ def test_auto_policy_is_strict_about_shell_composition_and_arguments():
     assert _approval("git status") == "AUTO"; assert _approval("uname -a") == "AUTO"
     assert _approval("git status; rm -rf /tmp/example") == "REVIEW"; assert _approval("git status && whoami") == "REVIEW"
     assert _approval("git status --output=/tmp/task") == "REVIEW"; assert _approval("python -c 'print(1)'") == "REVIEW"; assert _approval("python -m pytest -q") == "AUTO"
+    assert _approval("python -m pytest tests/test_remote_control.py") == "AUTO"
+    assert _approval("python -m pytest ../outside") == "REVIEW"
+    assert _approval("python -m pytest /tmp/outside") == "REVIEW"
+    assert _approval("python -m pytest -p malicious_plugin") == "REVIEW"
+    assert _approval("python -m pytest -c outside.ini") == "REVIEW"
+    assert _approval("python -m pytest -o addopts=--capture=no") == "REVIEW"
+    assert _approval("python -m compileall backend") == "AUTO"
+    assert _approval("python -m compileall ../outside") == "REVIEW"
+    assert _approval("python -m compileall -j 4 backend") == "REVIEW"
 
 def test_cancelling_running_task_finalizes_it(configured):
     agent = _agent(f"pytest-agent-{uuid4().hex[:12]}"); agent_id = UUID(str(agent["agent_id"]))
