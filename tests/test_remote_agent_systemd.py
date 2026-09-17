@@ -54,6 +54,10 @@ def test_remote_agent_systemd_rechecks_credentials_on_every_start() -> None:
     assert 'test "$${CONTROL_PLANE_URL}" != "<current Vercel production URL for the logistics project>"' in text
     assert 'test "$${CONTROL_PLANE_TOKEN}" != "use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN"' in text
     assert "Do not rely only on installer-time checks." in text
+    assert '[[ "$${AGENT_AUTH_TOKEN}" =~ [^[:space:]] ]]' in text
+    assert '[[ "$${AI_GATEWAY_API_KEY}" =~ [^[:space:]] ]]' in text
+    assert '[[ "$${CONTROL_PLANE_URL}" =~ [^[:space:]] ]]' in text
+    assert '[[ "$${CONTROL_PLANE_TOKEN}" =~ [^[:space:]] ]]' in text
 
 
 def test_documentation_does_not_overclaim_per_task_cgroup_isolation() -> None:
