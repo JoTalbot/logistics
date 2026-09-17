@@ -58,6 +58,9 @@ User=logistics-agent
 Group=logistics-agent
 WorkingDirectory=$AGENT_DIR
 EnvironmentFile=$ENV_DIR/agent.env
+# Enforce the same fail-closed credential boundary at every service start,
+# including reboot/manual restart. Do not rely only on installer-time checks.
+ExecStartPre=/usr/bin/bash -c 'test -n "$${AGENT_AUTH_TOKEN}" && test -n "$${AI_GATEWAY_API_KEY}" && test "$${AGENT_AUTH_TOKEN}" != "generate-a-long-random-secret" && test "$${AI_GATEWAY_API_KEY}" != "replace-with-vercel-ai-gateway-key" && test "$${CONTROL_PLANE_URL}" != "<current Vercel production URL for the logistics project>" && test "$${CONTROL_PLANE_TOKEN}" != "use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN" && { { test -z "$${CONTROL_PLANE_URL}" && test -z "$${CONTROL_PLANE_TOKEN}"; } || { test -n "$${CONTROL_PLANE_URL}" && test -n "$${CONTROL_PLANE_TOKEN}"; }; }'
 ExecStart=$AGENT_DIR/.venv/bin/uvicorn agent:APP --host 127.0.0.1 --port 8787
 Restart=always
 RestartSec=3
