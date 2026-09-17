@@ -75,6 +75,42 @@ class CompleteRequest(BaseModel):
     stderr: str = Field(default="", max_length=200000)
 
 
+def _safe_relative_arg(arg: str) -> bool:
+    """Allow lexical workspace-relative paths only; reject traversal/absolute paths."""
+    if not arg or arg.startswith("/") or "\\" in arg:
+        return False
+    return all(part not in ("", "..") for part in arg.split("/"))
+
+
+def _safe_python_auto(argv: list[str]) -> bool:
+    """Keep AUTO Python execution to bounded test/compile invocations only."""
+    if len(argv) < 3:
+        return False
+    module = argv[2]
+    args = argv[3:]
+    if module == "pytest":
+        safe_flags = {"-q", "-v", "-x", "--maxfail=1", "--disable-warnings"}
+        for arg in args:
+            if arg in safe_flags:
+                continue
+            if arg.startswith("-"):
+                return False
+            if not _safe_relative_arg(arg):
+                return False
+        return True
+    if module == "compileall":
+        safe_flags = {"-q", "-f", "-l"}
+        for arg in args:
+            if arg in safe_flags:
+                continue
+            if arg.startswith("-"):
+                return False
+            if not _safe_relative_arg(arg):
+                return False
+        return True
+    return False
+
+
 def _approval(command: str) -> str:
     """Classify commands conservatively using parsed argv, not string prefixes."""
     if any(token in command for token in ("&&", "||", ";", "|", ">", "<", "`", "$(")):
@@ -97,7 +133,7 @@ def _approval(command: str) -> str:
     if argv in (["git", "status"], ["git", "diff"], ["git", "log"]):
         return "AUTO"
     if len(argv) >= 3 and argv[:3] in (["python", "-m", "pytest"], ["python", "-m", "compileall"]):
-        return "AUTO"
+        return "AUTO" if _safe_python_auto(argv) else "REVIEW"
     return "REVIEW"
 
 
