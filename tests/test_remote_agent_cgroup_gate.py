@@ -6,10 +6,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 GATE_PATH = ROOT / "deploy" / "remote-agent" / "cgroup_gate.py"
+REHEARSAL_PATH = ROOT / "deploy" / "remote-agent" / "cgroup_rehearsal.py"
 
 
 def _load_gate():
     spec = importlib.util.spec_from_file_location("logistics_remote_agent_cgroup_gate", GATE_PATH)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_rehearsal():
+    spec = importlib.util.spec_from_file_location("logistics_remote_agent_cgroup_rehearsal", REHEARSAL_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -125,3 +134,17 @@ def test_gate_normalizes_rehearsal_failure(monkeypatch, capsys):
 
     assert gate.main() == gate.EXIT_REHEARSAL_FAILED
     assert "exited with status 9" in capsys.readouterr().err
+
+
+def test_direct_rehearsal_refuses_wrong_execution_identity(monkeypatch, capsys):
+    rehearsal = _load_rehearsal()
+    monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    monkeypatch.setattr(rehearsal.os, "geteuid", lambda: 1001)
+    monkeypatch.setattr(
+        rehearsal,
+        "_readiness",
+        lambda: {"execution_identity": "ubuntu", "target_host_readiness": "READY"},
+    )
+
+    assert rehearsal.main() == 3
+    assert "expected execution identity 'logistics-agent'" in capsys.readouterr().err
