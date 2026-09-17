@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PROBE_PATH = ROOT / "cgroup_probe.py"
 REHEARSAL_PATH = ROOT / "cgroup_rehearsal.py"
+EXPECTED_IDENTITY = "logistics-agent"
 
 EXIT_PASS = 0
 EXIT_NOT_READY = 3
@@ -50,6 +51,14 @@ def main() -> int:
         return EXIT_INTERNAL
 
     print(json.dumps(probe, indent=2, sort_keys=True))
+    identity = probe.get("execution_identity")
+    if identity != EXPECTED_IDENTITY:
+        print(
+            f"BLOCKED: execution_identity={identity!r}; expected {EXPECTED_IDENTITY!r}",
+            file=sys.stderr,
+        )
+        return EXIT_NOT_READY
+
     if probe.get("target_host_readiness") != "READY":
         print(
             f"BLOCKED: target_host_readiness={probe.get('target_host_readiness')!r}; "
