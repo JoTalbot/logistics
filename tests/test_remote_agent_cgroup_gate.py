@@ -33,11 +33,40 @@ def test_gate_refuses_root_even_with_opt_in(monkeypatch, capsys):
     assert "non-root logistics-agent" in capsys.readouterr().err
 
 
+def test_gate_refuses_wrong_execution_identity(monkeypatch, capsys):
+    gate = _load_gate()
+    monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
+    monkeypatch.setattr(
+        gate,
+        "_load_probe",
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "ubuntu", "target_host_readiness": "READY"})},
+        )(),
+    )
+    calls = []
+    monkeypatch.setattr(gate.subprocess, "run", lambda *args, **kwargs: calls.append(args))
+
+    assert gate.main() == gate.EXIT_NOT_READY
+    assert calls == []
+    assert "expected 'logistics-agent'" in capsys.readouterr().err
+
+
 def test_gate_refuses_blocked_readiness_without_running_rehearsal(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
-    monkeypatch.setattr(gate, "_load_probe", lambda: type("Probe", (), {"probe": staticmethod(lambda: {"target_host_readiness": "BLOCKED"})})())
+    monkeypatch.setattr(
+        gate,
+        "_load_probe",
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "logistics-agent", "target_host_readiness": "BLOCKED"})},
+        )(),
+    )
     calls = []
     monkeypatch.setattr(gate.subprocess, "run", lambda *args, **kwargs: calls.append(args))
 
@@ -53,7 +82,11 @@ def test_gate_runs_rehearsal_only_after_ready(monkeypatch, capsys):
     monkeypatch.setattr(
         gate,
         "_load_probe",
-        lambda: type("Probe", (), {"probe": staticmethod(lambda: {"target_host_readiness": "READY"})})(),
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "logistics-agent", "target_host_readiness": "READY"})},
+        )(),
     )
     calls = []
 
@@ -78,7 +111,11 @@ def test_gate_normalizes_rehearsal_failure(monkeypatch, capsys):
     monkeypatch.setattr(
         gate,
         "_load_probe",
-        lambda: type("Probe", (), {"probe": staticmethod(lambda: {"target_host_readiness": "READY"})})(),
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "logistics-agent", "target_host_readiness": "READY"})},
+        )(),
     )
 
     class Completed:
