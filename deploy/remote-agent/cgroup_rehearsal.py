@@ -139,7 +139,6 @@ def _base_evidence() -> dict[str, object]:
 def main() -> int:
     evidence = _base_evidence()
     evidence["kernel"] = Path("/proc/version").read_text(encoding="utf-8", errors="replace").strip() if Path("/proc/version").exists() else None
-    evidence["execution_identity"] = _readiness().get("execution_identity")
 
     if os.name != "posix" or not Path("/proc/version").exists():
         evidence["result"] = "UNSUPPORTED_LINUX"
@@ -156,7 +155,11 @@ def main() -> int:
         _write_evidence(evidence)
         print("REFUSE: run as the dedicated non-root logistics-agent identity", file=sys.stderr)
         return 3
-    if evidence["execution_identity"] != EXPECTED_IDENTITY:
+
+    readiness = _readiness()
+    evidence["readiness"] = readiness
+    evidence["execution_identity"] = readiness.get("execution_identity")
+    if readiness.get("execution_identity") != EXPECTED_IDENTITY:
         evidence["result"] = "IDENTITY_MISMATCH"
         _write_evidence(evidence)
         print(f"REFUSE: expected execution identity {EXPECTED_IDENTITY!r}", file=sys.stderr)
@@ -170,9 +173,6 @@ def main() -> int:
     systemd_run = Path("/usr/bin/systemd-run")
     evidence["cgroup_v2_mount"] = True
     evidence["systemd_run"] = {"path": str(systemd_run), "available": systemd_run.is_file()}
-    readiness = _readiness()
-    evidence["readiness"] = readiness
-    evidence["execution_identity"] = readiness.get("execution_identity")
     if not systemd_run.is_file():
         evidence["result"] = "SYSTEMD_RUN_UNAVAILABLE"
         _write_evidence(evidence)
