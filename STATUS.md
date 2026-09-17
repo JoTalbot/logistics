@@ -1,12 +1,12 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.13 — Direct cgroup rehearsal identity hardening
+CURRENT_STEP: V43.14 — Direct rehearsal static safety coverage
 STATUS: blocked
 UPDATED: 2026-09-17
 AGENT: chatgpt-logistics-20260917
 MACHINE: GitHub-connected execution environment
-SCOPE: Continue V43.12 cgroup hardening, audit direct rehearsal invocation paths, and preserve fail-closed activation boundaries.
-FILES: deploy/remote-agent/cgroup_rehearsal.py; deploy/remote-agent/cgroup_gate.py; tests/test_remote_agent_cgroup_gate.py; STATUS.md; docs/agent-log/chatgpt-logistics-20260917/research-20260917.md
+SCOPE: Continue V43.13 cgroup hardening, add regression coverage for direct rehearsal safety invariants, and preserve fail-closed activation boundaries.
+FILES: deploy/remote-agent/cgroup_rehearsal.py; deploy/remote-agent/cgroup_gate.py; tests/test_remote_agent_cgroup_gate.py; tests/test_remote_agent_cgroup_rehearsal_static.py; STATUS.md; docs/agent-log/chatgpt-logistics-20260917/research-20260917.md
 RESEARCH: Linux kernel cgroup-v2 documentation; systemd resource-control documentation; repository cgroup design/evidence contract; existing remote-agent and remote-control implementation.
 DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive target-host rehearsal must be explicitly opted in, run non-root, report the dedicated `logistics-agent` execution identity, report READY capabilities, contain a deliberately detached descendant, fence through `cgroup.kill`, and clean up successfully. Post-spawn PID migration is not accepted as containment evidence.
 
@@ -18,18 +18,18 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 **CURRENT FUNCTIONAL IMPLEMENTATION:** remote-agent lifecycle context management is covered by regression testing; credential-generation lease fencing is enforced; deterministic lock fencing is covered; direct bootstrap reenrollment cancels active running leases; agent credential authentication requires an explicit `Bearer` scheme; local agent execution fences the POSIX process group on timeout/lease loss.
 
-**CURRENT DESIGN STATE:** read-only cgroup capability probe, target-host evidence contract, opt-in transient-scope rehearsal, and a fail-closed gate are implemented. The gate and the rehearsal itself now require the effective execution identity to be exactly `logistics-agent`. Runtime per-task cgroup isolation is not enabled.
+**CURRENT DESIGN STATE:** read-only cgroup capability probe, target-host evidence contract, opt-in transient-scope rehearsal, and a fail-closed gate are implemented. The gate and the rehearsal itself require the effective execution identity to be exactly `logistics-agent`. Static regression coverage now protects the direct rehearsal's identity/readiness ordering, absence of post-spawn cgroup migration, cgroup.kill fencing, process-death verification, and cleanup verification. Runtime per-task cgroup isolation is not enabled.
 
 ## Latest hardening
 
-- `7fc29710229fbb38d0ccc6243aca28ebd193a51f`: direct rehearsal invocation now independently rejects an unexpected execution identity, so the gate cannot be bypassed by invoking the rehearsal script directly.
+- `044d23ce86e9ec6b454d2a4d3ffba95dee42ae8c`: added static regression coverage for direct rehearsal safety invariants.
+- `7fc29710229fbb38d0ccc6243aca28ebd193a51f`: direct rehearsal invocation independently rejects an unexpected execution identity.
 - `1fc95b8d8f5f6c9092d6ca33fcc2af07b0b8975d`: regression coverage verifies direct invocation is refused for the wrong identity.
 - `3a12b3d3c4027b0a466d57453be1e5478d929aa7`: rehearsal gate rejects unexpected execution identities before destructive execution.
-- `adfbe65f2802e9ece9540a6ff5690149a0067c6c`: regression tests cover the dedicated-identity boundary.
 
 ## CI surface
 
-The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new identity regression is therefore part of the normal unit-test surface, while the destructive rehearsal remains intentionally excluded from CI.
+The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new static safety tests are part of the normal unit-test surface, while the destructive rehearsal remains intentionally excluded from CI.
 
 ## External production gates
 
