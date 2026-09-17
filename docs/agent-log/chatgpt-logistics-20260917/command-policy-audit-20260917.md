@@ -14,35 +14,30 @@ The control plane requires the operator credential to create tasks. The agent on
 
 The classifier rejects shell composition tokens (`&&`, `||`, `;`, `|`, redirection, backticks and command substitution) before parsing. Existing regression coverage also checks representative composed commands and Python `-c` execution.
 
-### 3. Current AUTO argument boundary
+### 3. AUTO argument boundary
 
-The current classifier accepts any command beginning with `python -m pytest` or `python -m compileall` as `AUTO`, because it checks only the first three parsed argv elements. This leaves an argument-level policy gap: absolute paths or `..` traversal can still be supplied after those prefixes.
+The Python AUTO policy now validates every argument rather than trusting only the `python -m pytest` / `python -m compileall` prefix. Absolute paths, backslash-containing paths and lexical `..` traversal are rejected. Pytest plugin/configuration and arbitrary option injection are rejected; only a small explicit set of bounded flags is accepted. Safe relative workspace paths remain supported.
 
-The remote agent separately confines its `cwd` to the configured workspace, but that does not constrain file/path arguments passed to Python tooling. Therefore the workspace policy is stronger for `cwd` than for AUTO command arguments.
+The remote agent separately confines its `cwd` to the configured workspace. The two controls therefore provide defense in depth: control-plane AUTO classification limits the command language, while the agent independently validates the executable and cwd before spawning.
 
 ### 4. Risk assessment
 
-This is a policy-hardening issue, not evidence of an unauthenticated remote execution path. The autonomous surface is already narrower than the direct authenticated `/v1/exec` administrative endpoint, and the service runs under the dedicated non-root identity. Nevertheless, AUTO classification should not rely on a command prefix when the remaining arguments can select filesystem paths or Python/pytest configuration outside the workspace.
+This hardening addresses an argument-level policy gap. It is not evidence of an unauthenticated remote execution path. The autonomous surface remains narrower than the direct authenticated `/v1/exec` administrative endpoint, and the service runs under the dedicated non-root identity.
 
-## Required hardening
+One residual limitation is lexical rather than filesystem-resolved path containment: a symlink already present inside the workspace could point outside it. The current control-plane policy therefore does not claim full filesystem sandboxing. Full containment remains the responsibility of the future runtime cgroup/sandbox design and target-host rehearsal.
 
-Before expanding autonomous execution, change `_approval()` so AUTO Python tooling validates all arguments:
+## Implemented hardening
 
-- reject absolute paths;
-- reject path components containing `..`;
-- reject pytest options that load external plugins/configuration or otherwise redirect discovery outside the workspace;
-- preserve existing safe relative test/module paths and simple flags such as `-q`;
-- keep non-conforming commands at `REVIEW` rather than attempting string-prefix inference.
+Commit `b8b930403a013cfed42c13cb37d4b72b2a46d449` changes `_approval()` to use `_safe_python_auto()` and `_safe_relative_arg()`.
 
-Add regression coverage for at least:
+Commit `5ee4cfa3914d76eb49004964e3e2d1f25e947c77` adds regression coverage for:
 
-- `python -m compileall /tmp` -> `REVIEW`;
-- `python -m compileall ../outside` -> `REVIEW`;
-- `python -m pytest /tmp/test_x.py` -> `REVIEW`;
-- `python -m pytest ../outside` -> `REVIEW`;
-- `python -m pytest -q` -> `AUTO`;
-- `python -m pytest tests/test_remote_control.py` -> `AUTO`;
-- external pytest plugin/configuration selectors -> `REVIEW`.
+- safe pytest invocation and relative test paths;
+- absolute and `..` paths;
+- pytest plugin/configuration selectors;
+- pytest ini overrides;
+- safe compileall paths;
+- unsupported compileall flags.
 
 ## Execution state
 
