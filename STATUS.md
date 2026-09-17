@@ -29,7 +29,7 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## CI surface
 
-The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new identity regression is therefore part of the normal unit-test surface, while the destructive rehearsal remains intentionally excluded from CI. fileciteturn56file0L2-L2
+The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. The new identity regression is therefore part of the normal unit-test surface, while the destructive rehearsal remains intentionally excluded from CI.
 
 ## External production gates
 
