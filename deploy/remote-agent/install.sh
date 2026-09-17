@@ -82,9 +82,46 @@ EOF
 systemctl daemon-reload
 systemctl enable "$SERVICE"
 
+# Never start with missing required credentials. Do not source agent.env here:
+# it is untrusted configuration and must not become shell code at install time.
+required_credentials_missing=0
+if ! awk -F= '
+  $1 == "AGENT_AUTH_TOKEN" && $2 !~ /^[[:space:]]*$/ { found=1 }
+  END { exit(found ? 0 : 1) }
+' "$ENV_DIR/agent.env"; then
+  required_credentials_missing=1
+fi
+if ! awk -F= '
+  $1 == "AI_GATEWAY_API_KEY" && $2 !~ /^[[:space:]]*$/ { found=1 }
+  END { exit(found ? 0 : 1) }
+' "$ENV_DIR/agent.env"; then
+  required_credentials_missing=1
+fi
+
+control_url_configured=0
+control_token_configured=0
+if awk -F= '$1 == "CONTROL_PLANE_URL" && $2 !~ /^[[:space:]]*$/ { found=1 } END { exit(found ? 0 : 1) }' "$ENV_DIR/agent.env"; then
+  control_url_configured=1
+fi
+if awk -F= '$1 == "CONTROL_PLANE_TOKEN" && $2 !~ /^[[:space:]]*$/ { found=1 } END { exit(found ? 0 : 1) }' "$ENV_DIR/agent.env"; then
+  control_token_configured=1
+fi
+
+placeholder_found=0
 if grep -Eq 'generate-a-long-random-secret|replace-with-vercel-ai-gateway-key|<current Vercel production URL for the logistics project>|use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN' "$ENV_DIR/agent.env"; then
-  echo "Service installed but NOT started because secrets or control-plane settings are still placeholders."
+  placeholder_found=1
+fi
+
+control_pair_incomplete=0
+if [[ "$control_url_configured" -ne "$control_token_configured" ]]; then
+  control_pair_incomplete=1
+fi
+
+if [[ "$required_credentials_missing" -ne 0 || "$placeholder_found" -ne 0 || "$control_pair_incomplete" -ne 0 ]]; then
+  echo "Service installed but NOT started because required credentials or control-plane settings are incomplete."
   echo "Edit: $ENV_DIR/agent.env"
+  echo "Required: non-empty AGENT_AUTH_TOKEN and AI_GATEWAY_API_KEY."
+  echo "CONTROL_PLANE_URL and CONTROL_PLANE_TOKEN must either both be set or both be empty."
   echo "Then run: systemctl restart $SERVICE"
 else
   systemctl restart "$SERVICE"
