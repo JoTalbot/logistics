@@ -10,11 +10,13 @@ REHEARSAL = ROOT / "deploy" / "remote-agent" / "cgroup_rehearsal.py"
 def test_rehearsal_enforces_dedicated_identity_before_scope_start() -> None:
     text = REHEARSAL.read_text(encoding="utf-8")
 
-    identity_guard = 'readiness.get("execution_identity") != "logistics-agent"'
+    identity_guard = 'if evidence["execution_identity"] != EXPECTED_IDENTITY:'
+    expected_identity = 'EXPECTED_IDENTITY = "logistics-agent"'
     readiness_guard = 'readiness.get("target_host_readiness") != "READY"'
     scope_start = "subprocess.Popen(command"
 
     assert identity_guard in text
+    assert expected_identity in text
     assert readiness_guard in text
     assert text.index(identity_guard) < text.index(scope_start)
     assert text.index(readiness_guard) < text.index(scope_start)
