@@ -22,6 +22,7 @@ from pathlib import Path
 
 ENABLE = "LOGISTICS_CGROUP_REHEARSAL"
 EVIDENCE_PATH = "LOGISTICS_CGROUP_EVIDENCE_PATH"
+EXPECTED_IDENTITY = "logistics-agent"
 POLL_SECONDS = 0.1
 EVIDENCE_SCHEMA_VERSION = "1"
 
@@ -154,6 +155,11 @@ def main() -> int:
         evidence["result"] = "ROOT_REFUSED"
         _write_evidence(evidence)
         print("REFUSE: run as the dedicated non-root logistics-agent identity", file=sys.stderr)
+        return 3
+    if evidence["execution_identity"] != EXPECTED_IDENTITY:
+        evidence["result"] = "IDENTITY_MISMATCH"
+        _write_evidence(evidence)
+        print(f"REFUSE: expected execution identity {EXPECTED_IDENTITY!r}", file=sys.stderr)
         return 3
     if not Path("/sys/fs/cgroup/cgroup.controllers").is_file():
         evidence["result"] = "CGROUP_V2_UNAVAILABLE"
