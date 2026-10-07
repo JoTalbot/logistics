@@ -45,7 +45,6 @@ def test_gate_refuses_root_even_with_opt_in(monkeypatch, capsys):
 def test_gate_refuses_wrong_execution_identity(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
-    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", "/tmp/logistics-cgroup-evidence.json")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
     monkeypatch.setattr(
         gate,
@@ -67,7 +66,6 @@ def test_gate_refuses_wrong_execution_identity(monkeypatch, capsys):
 def test_gate_refuses_blocked_readiness_without_running_rehearsal(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
-    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", "/tmp/logistics-cgroup-evidence.json")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
     monkeypatch.setattr(
         gate,
@@ -89,6 +87,7 @@ def test_gate_refuses_blocked_readiness_without_running_rehearsal(monkeypatch, c
 def test_gate_runs_rehearsal_only_after_ready(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", "/tmp/logistics-cgroup-evidence.json")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
     monkeypatch.setattr(
         gate,
@@ -125,6 +124,7 @@ def test_gate_runs_rehearsal_only_after_ready(monkeypatch, capsys):
 def test_gate_normalizes_rehearsal_failure(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", "/tmp/logistics-cgroup-evidence.json")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
     monkeypatch.setattr(
         gate,
