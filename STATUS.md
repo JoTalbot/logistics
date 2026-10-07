@@ -27,6 +27,8 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 ## Latest hardening
 
 - `cadaa315c5576c51f519a9bfe9f0291c938bdc48`: added regression coverage that the cgroup gate accepts activation only when the archived machine-readable evidence proves `result=PASS` and successful cleanup.
+- `b4629a2591c1ec737ec01e6ae9fa7e08e6d751ee`: added negative regression coverage for missing evidence and evidence that reports `cleanup=false`; both must fail closed.
+- `8ef4fc64c44a984041d75e32d3bc2759bb7cc9e2`: clarified that the target-host evidence directory must be created writable by `logistics-agent` before running the gate.
 - `0cd40ead06a0fd6be3856d9f4700b021fb1765b1`: strengthened the cgroup gate to require an explicit evidence archive path and validate the rehearsal evidence before reporting PASS.
 - `c2ed91515098db46486de957a1180a215dd38e08`: documented the evidence archive requirement in the controlled production activation runbook.
 
