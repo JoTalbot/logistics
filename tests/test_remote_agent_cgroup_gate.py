@@ -45,6 +45,7 @@ def test_gate_refuses_root_even_with_opt_in(monkeypatch, capsys):
 def test_gate_refuses_wrong_execution_identity(monkeypatch, capsys):
     gate = _load_gate()
     monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", "/tmp/logistics-cgroup-evidence.json")
     monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
     monkeypatch.setattr(
         gate,
