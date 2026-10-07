@@ -26,6 +26,10 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Latest hardening
 
+- `cadaa315c5576c51f519a9bfe9f0291c938bdc48`: added regression coverage that the cgroup gate accepts activation only when the archived machine-readable evidence proves `result=PASS` and successful cleanup.
+- `0cd40ead06a0fd6be3856d9f4700b021fb1765b1`: strengthened the cgroup gate to require an explicit evidence archive path and validate the rehearsal evidence before reporting PASS.
+- `c2ed91515098db46486de957a1180a215dd38e08`: documented the evidence archive requirement in the controlled production activation runbook.
+
 - `4c847c3b1f5bda8d354f93a4878459a14ccf197f`: added `docs/PRODUCTION_ACTIVATION_RUNBOOK.md` with the controlled activation sequence, evidence package, and explicit stop criteria. The runbook preserves the fail-closed boundary and does not authorize external production actions.
 
 - `f2b01935f9261dd9ff21d057984196b89e78b8d5`: synchronized this status with the latest green CI #650, Compose E2E #222, and Backup Restore E2E #220 verification.
