@@ -45,19 +45,19 @@ def test_remote_agent_systemd_rechecks_credentials_on_every_start() -> None:
     text = INSTALL.read_text(encoding="utf-8")
 
     assert "ExecStartPre=/usr/bin/bash -c" in text
-    assert '$${AGENT_AUTH_TOKEN}' in text
-    assert '$${AI_GATEWAY_API_KEY}' in text
-    assert '$${CONTROL_PLANE_URL}' in text
-    assert '$${CONTROL_PLANE_TOKEN}' in text
-    assert 'test "$${AGENT_AUTH_TOKEN}" != "generate-a-long-random-secret"' in text
-    assert 'test "$${AI_GATEWAY_API_KEY}" != "replace-with-vercel-ai-gateway-key"' in text
-    assert 'test "$${CONTROL_PLANE_URL}" != "<current Vercel production URL for the logistics project>"' in text
-    assert 'test "$${CONTROL_PLANE_TOKEN}" != "use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN"' in text
+    assert '\${AGENT_AUTH_TOKEN}' in text
+    assert '\${AI_GATEWAY_API_KEY}' in text
+    assert '\${CONTROL_PLANE_URL}' in text
+    assert '\${CONTROL_PLANE_TOKEN}' in text
+    assert 'test "\${AGENT_AUTH_TOKEN}" != "generate-a-long-random-secret"' in text
+    assert 'test "\${AI_GATEWAY_API_KEY}" != "replace-with-vercel-ai-gateway-key"' in text
+    assert 'test "\${CONTROL_PLANE_URL}" != "<current Vercel production URL for the logistics project>"' in text
+    assert 'test "\${CONTROL_PLANE_TOKEN}" != "use-the-same-secret-as-Vercel-REMOTE_AGENT_TOKEN"' in text
     assert "Do not rely only on installer-time checks." in text
-    assert '[[ "$${AGENT_AUTH_TOKEN}" =~ [^[:space:]] ]]' in text
-    assert '[[ "$${AI_GATEWAY_API_KEY}" =~ [^[:space:]] ]]' in text
-    assert '[[ "$${CONTROL_PLANE_URL}" =~ [^[:space:]] ]]' in text
-    assert '[[ "$${CONTROL_PLANE_TOKEN}" =~ [^[:space:]] ]]' in text
+    assert '[[ "\${AGENT_AUTH_TOKEN}" =~ [^[:space:]] ]]' in text
+    assert '[[ "\${AI_GATEWAY_API_KEY}" =~ [^[:space:]] ]]' in text
+    assert '[[ "\${CONTROL_PLANE_URL}" =~ [^[:space:]] ]]' in text
+    assert '[[ "\${CONTROL_PLANE_TOKEN}" =~ [^[:space:]] ]]' in text
 
 
 def test_documentation_does_not_overclaim_per_task_cgroup_isolation() -> None:
