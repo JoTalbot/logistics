@@ -23,7 +23,8 @@ Do not enable autonomous external actions until every applicable gate below has 
 Run the existing gate as the dedicated non-root identity:
 
 ```bash
-sudo -u logistics-agent --preserve-env=LOGISTICS_CGROUP_REHEARSAL=1 \
+LOGISTICS_CGROUP_EVIDENCE_PATH=/var/lib/logistics/cgroup-rehearsal-evidence.json \
+  sudo -u logistics-agent --preserve-env=LOGISTICS_CGROUP_REHEARSAL=1,LOGISTICS_CGROUP_EVIDENCE_PATH \
   python deploy/remote-agent/cgroup_gate.py
 ```
 
