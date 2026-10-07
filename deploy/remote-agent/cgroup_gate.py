@@ -25,6 +25,7 @@ EXIT_NOT_OPTED_IN = 4
 EXIT_REHEARSAL_FAILED = 5
 EXIT_INTERNAL = 6
 EXIT_EVIDENCE_INVALID = 7
+EXIT_EVIDENCE_INVALID = 7
 
 
 def _load_probe():
@@ -40,6 +41,11 @@ def main() -> int:
     if os.environ.get("LOGISTICS_CGROUP_REHEARSAL") != "1":
         print("BLOCKED: set LOGISTICS_CGROUP_REHEARSAL=1 to authorize the destructive rehearsal", file=sys.stderr)
         return EXIT_NOT_OPTED_IN
+
+    evidence_path = os.environ.get("LOGISTICS_CGROUP_EVIDENCE_PATH")
+    if not evidence_path:
+        print("BLOCKED: set LOGISTICS_CGROUP_EVIDENCE_PATH to archive machine-readable rehearsal evidence", file=sys.stderr)
+        return EXIT_EVIDENCE_INVALID
 
     evidence_path = os.environ.get("LOGISTICS_CGROUP_EVIDENCE_PATH")
     if not evidence_path:
@@ -82,6 +88,17 @@ def main() -> int:
     except OSError as exc:
         print(f"INTERNAL: cannot start cgroup rehearsal: {exc}", file=sys.stderr)
         return EXIT_INTERNAL
+
+    evidence_file = Path(evidence_path)
+    if completed.returncode == 0:
+        try:
+            evidence = json.loads(evidence_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"FAILED: machine-readable evidence is missing or invalid: {exc}", file=sys.stderr)
+            return EXIT_EVIDENCE_INVALID
+        if evidence.get("result") != "PASS" or evidence.get("cleanup") is not True:
+            print("FAILED: machine-readable evidence does not prove PASS + cleanup", file=sys.stderr)
+            return EXIT_EVIDENCE_INVALID
 
     evidence_file = Path(evidence_path)
     if completed.returncode == 0:
