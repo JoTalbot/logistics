@@ -1,6 +1,6 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.19 — Remote-agent cgroup target-host gate preparation
+CURRENT_STEP: V43.20 — Production verification state synchronized
 STATUS: blocked
 UPDATED: 2026-10-07
 AGENT: chatgpt-logistics-20260917
@@ -12,11 +12,11 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `f2b01935f9261dd9ff21d057984196b89e78b8d5` passed CI #650. The completed test job passed the cgroup capability probe, dependency checks, `pip-audit`, SQL migrations, unit/integration tests, V20 commercial baseline replay, hardened Compose contract validation, release smoke checks, and hardened API image build.
+**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` passed CI #666.
 
-**HARDENED COMPOSE E2E: GREEN / FRESH** — Compose E2E #222 for commit `f2b01935f9261dd9ff21d057984196b89e78b8d5` completed successfully.
+**HARDENED COMPOSE E2E: GREEN / FRESH** — Compose E2E #238 for commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully.
 
-**BACKUP/RESTORE E2E: GREEN / FRESH** — Backup Restore E2E #220 for commit `f2b01935f9261dd9ff21d057984196b89e78b8d5` completed successfully, including migrations, disposable seed, logical backup, restore, schema/marker verification, and cleanup.
+**BACKUP/RESTORE E2E: GREEN / FRESH** — Backup Restore E2E #236 for commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully.
 
 **REMOTE-AGENT STARTUP HARDENING: GREEN / CI VERIFIED** — `install.sh` rejects missing, whitespace-only, or known-placeholder values for `AGENT_AUTH_TOKEN` and `AI_GATEWAY_API_KEY`, and validates the configured control-plane URL/token pair. The installed systemd unit repeats the credential gate on every service start through `ExecStartPre`, so a later configuration regression cannot bypass the installer-time checks. The service remains installable while intentionally unconfigured, but startup is fail-closed until required configuration is valid.
 
@@ -26,28 +26,17 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Latest hardening
 
-- `cadaa315c5576c51f519a9bfe9f0291c938bdc48`: added regression coverage that the cgroup gate accepts activation only when the archived machine-readable evidence proves `result=PASS` and successful cleanup.
+- `0196b5f502a8d482d0d1ff78a5e28b36a996e868`: fixed cgroup gate regression fixtures so evidence-path configuration exists only in tests that reach the evidence-validation path.
+- `cadaa315c5576c51f519a9bfe9f0291c938bdc48`: added regression coverage that the cgroup gate accepts activation only when archived machine-readable evidence proves `result=PASS` and successful cleanup.
 - `b4629a2591c1ec737ec01e6ae9fa7e08e6d751ee`: added negative regression coverage for missing evidence and evidence that reports `cleanup=false`; both must fail closed.
 - `8ef4fc64c44a984041d75e32d3bc2759bb7cc9e2`: clarified that the target-host evidence directory must be created writable by `logistics-agent` before running the gate.
-- `0cd40ead06a0fd6be3856d9f4700b021fb1765b1`: strengthened the cgroup gate to require an explicit evidence archive path and validate the rehearsal evidence before reporting PASS.
+- `0cd40ead06a0fd6be3856d9f4700b021fb1765b1`: strengthened the cgroup gate to require an explicit evidence archive path and validate rehearsal evidence before reporting PASS.
 - `c2ed91515098db46486de957a1180a215dd38e08`: documented the evidence archive requirement in the controlled production activation runbook.
-
-- `4c847c3b1f5bda8d354f93a4878459a14ccf197f`: added `docs/PRODUCTION_ACTIVATION_RUNBOOK.md` with the controlled activation sequence, evidence package, and explicit stop criteria. The runbook preserves the fail-closed boundary and does not authorize external production actions.
-
-- `f2b01935f9261dd9ff21d057984196b89e78b8d5`: synchronized this status with the latest green CI #650, Compose E2E #222, and Backup Restore E2E #220 verification.
-- `36e5bf253cbcb9595ce5bd47a27dbe48e394a102`: added CI coverage for whitespace-only startup credentials; CI #649 and Backup Restore E2E #219 passed.
-- `4d291ec0c1b5e165ccd3481eec3238026b91f82d`: strengthened the systemd startup credential gate to reject whitespace-only required values and preserve fail-closed control-plane pairing.
-- `6e8378ea57411a3d54cd6caee71c9f35b6311428`: added regression coverage for missing credential fail-closed behavior; subsequent Compose E2E and Backup Restore E2E passed.
-- `f90f8d2c90db298a7536fa47636925211be67d7a`: introduced fail-closed remote-agent startup behavior for missing credentials.
-- `cb26594c9a3c5a16909cf65f0b695af1192a819c`: added regression coverage requiring install-time fail-closed handling of control-plane placeholders.
-- `ec4747ff4852122551471139904d3dc9124a4bfe`: tightened remote-agent installation so known secret/control-plane placeholders prevent service startup.
-- `24e3b85055e6ded38ec60327af57321fef6c32b4`: aligned the static cgroup rehearsal identity guard with the implementation; fresh CI subsequently passed.
-- `5ee4cfa3914d76eb49004964e3e2d1f25e947c77`: added regression coverage for autonomous Python path/configuration boundaries.
-- `b8b930403a013cfed42c13cb37d4b72b2a46d449`: tightened `_approval()` so AUTO Python execution validates all arguments instead of trusting only the module prefix.
+- `4c847c3b1f5bda8d354f93a4878459a14ccf197f`: added `docs/PRODUCTION_ACTIVATION_RUNBOOK.md` with the controlled activation sequence, evidence package, and explicit stop criteria.
 
 ## CI surface
 
-The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. CI #650 for `f2b01935f9261dd9ff21d057984196b89e78b8d5` completed successfully. Compose E2E #222 and Backup Restore E2E #220 also completed successfully on that commit. The destructive cgroup rehearsal remains intentionally excluded from CI because it requires an authorized dedicated target host and is explicitly destructive.
+The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. CI #666 for `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully. Compose E2E #238 and Backup Restore E2E #236 also completed successfully on that commit. The destructive cgroup rehearsal remains intentionally excluded from CI because it requires an authorized dedicated target host and is explicitly destructive.
 
 ## External production gates
 
