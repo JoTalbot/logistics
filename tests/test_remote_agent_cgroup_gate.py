@@ -156,3 +156,54 @@ def test_direct_rehearsal_refuses_wrong_execution_identity(monkeypatch, capsys):
 
     assert rehearsal.main() == 3
     assert "expected execution identity 'logistics-agent'" in capsys.readouterr().err
+
+def test_gate_rejects_missing_evidence_after_success(monkeypatch, capsys):
+    gate = _load_gate()
+    monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    missing = "/tmp/logistics-cgroup-missing-evidence.json"
+    Path(missing).unlink(missing_ok=True)
+    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", missing)
+    monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
+    monkeypatch.setattr(
+        gate,
+        "_load_probe",
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "logistics-agent", "target_host_readiness": "READY"})},
+        )(),
+    )
+
+    class Completed:
+        returncode = 0
+
+    monkeypatch.setattr(gate.subprocess, "run", lambda *args, **kwargs: Completed())
+
+    assert gate.main() == gate.EXIT_EVIDENCE_INVALID
+    assert "evidence is missing or invalid" in capsys.readouterr().err
+
+
+def test_gate_rejects_evidence_without_cleanup(monkeypatch, capsys):
+    gate = _load_gate()
+    monkeypatch.setenv("LOGISTICS_CGROUP_REHEARSAL", "1")
+    evidence = "/tmp/logistics-cgroup-invalid-evidence.json"
+    Path(evidence).write_text('{"result":"PASS","cleanup":false}\n', encoding="utf-8")
+    monkeypatch.setenv("LOGISTICS_CGROUP_EVIDENCE_PATH", evidence)
+    monkeypatch.setattr(gate.os, "geteuid", lambda: 1001)
+    monkeypatch.setattr(
+        gate,
+        "_load_probe",
+        lambda: type(
+            "Probe",
+            (),
+            {"probe": staticmethod(lambda: {"execution_identity": "logistics-agent", "target_host_readiness": "READY"})},
+        )(),
+    )
+
+    class Completed:
+        returncode = 0
+
+    monkeypatch.setattr(gate.subprocess, "run", lambda *args, **kwargs: Completed())
+
+    assert gate.main() == gate.EXIT_EVIDENCE_INVALID
+    assert "does not prove PASS + cleanup" in capsys.readouterr().err
