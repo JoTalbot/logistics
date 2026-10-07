@@ -2,11 +2,11 @@
 
 CURRENT_STEP: V43.19 — Remote-agent cgroup target-host gate preparation
 STATUS: blocked
-UPDATED: 2026-09-17
+UPDATED: 2026-10-07
 AGENT: chatgpt-logistics-20260917
 MACHINE: GitHub-connected execution environment
 SCOPE: Continue remote-agent production hardening after fresh green verification; preserve fail-closed activation boundaries and separate software verification from target-host containment evidence.
-FILES: deploy/remote-agent/install.sh; tests/test_remote_agent_systemd.py; deploy/remote-agent/cgroup_probe.py; deploy/remote-agent/cgroup_rehearsal.py; deploy/remote-agent/cgroup_gate.py; tests/test_remote_agent_cgroup_gate.py; tests/test_remote_agent_cgroup_rehearsal_static.py; backend/logistics/remote_control.py; tests/test_remote_control.py; STATUS.md
+FILES: deploy/remote-agent/install.sh; tests/test_remote_agent_systemd.py; deploy/remote-agent/cgroup_probe.py; deploy/remote-agent/cgroup_rehearsal.py; deploy/remote-agent/cgroup_gate.py; tests/test_remote_agent_cgroup_gate.py; tests/test_remote_agent_cgroup_rehearsal_static.py; backend/logistics/remote_control.py; tests/test_remote_control.py; STATUS.md; docs/PRODUCTION_ACTIVATION_RUNBOOK.md
 RESEARCH: Linux kernel cgroup-v2 documentation; systemd resource-control documentation; repository cgroup design/evidence contract; existing remote-agent and remote-control implementation.
 DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive target-host rehearsal must be explicitly opted in, run non-root, report the dedicated `logistics-agent` execution identity, report READY capabilities, contain a deliberately detached descendant, fence through `cgroup.kill`, and clean up successfully. Post-spawn PID migration is not accepted as containment evidence. Autonomous Python tooling is argument-bounded rather than prefix-trusted. Remote-agent installation and every subsequent systemd service start fail closed when required credentials are missing, whitespace-only, or still set to known placeholders; control-plane URL/token must also be both configured or both absent.
 
@@ -25,6 +25,8 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 **CURRENT DESIGN STATE:** read-only cgroup capability probe, target-host evidence contract, opt-in transient-scope rehearsal, and a fail-closed gate are implemented. The gate and the rehearsal require the effective execution identity to be exactly `logistics-agent`. Static regression coverage protects direct rehearsal identity/readiness ordering, absence of post-spawn cgroup migration, cgroup.kill fencing, process-death verification, and cleanup verification. Runtime per-task cgroup isolation is not enabled.
 
 ## Latest hardening
+
+- `4c847c3b1f5bda8d354f93a4878459a14ccf197f`: added `docs/PRODUCTION_ACTIVATION_RUNBOOK.md` with the controlled activation sequence, evidence package, and explicit stop criteria. The runbook preserves the fail-closed boundary and does not authorize external production actions.
 
 - `f2b01935f9261dd9ff21d057984196b89e78b8d5`: synchronized this status with the latest green CI #650, Compose E2E #222, and Backup Restore E2E #220 verification.
 - `36e5bf253cbcb9595ce5bd47a27dbe48e394a102`: added CI coverage for whitespace-only startup credentials; CI #649 and Backup Restore E2E #219 passed.
@@ -59,7 +61,7 @@ Evidence-only. No provider protection bypass, autonomous publication, messaging/
 ## Handoff
 
 IN_PROGRESS: target-host cgroup enforcement gate and external production-readiness gates.
-NEXT: obtain an authorized target host, run `deploy/remote-agent/cgroup_gate.py` as the dedicated non-root `logistics-agent` identity with explicit rehearsal opt-in, capture the machine-readable evidence artifact, review every acceptance field, and only then design/implement runtime per-task cgroup enforcement if the gate passes. After runtime implementation, require lifecycle tests for restart, timeout, lease loss, cleanup, and detached descendants plus normal CI, Compose E2E, and Backup Restore E2E verification.
+NEXT: use the corrected runbook command on an authorized target host, obtain the machine-readable cgroup evidence, run `deploy/remote-agent/cgroup_gate.py` as the dedicated non-root `logistics-agent` identity with explicit rehearsal opt-in, capture the machine-readable evidence artifact, review every acceptance field, and only then design/implement runtime per-task cgroup enforcement if the gate passes. After runtime implementation, require lifecycle tests for restart, timeout, lease loss, cleanup, and detached descendants plus normal CI, Compose E2E, and Backup Restore E2E verification.
 BLOCKERS: no authorized target host in the current execution surface; Vercel account block; provider access/mapping; external publication/contact authorization; authorized Telegram source access; target production backup/restore rehearsal; real commercial outcome telemetry.
 
 LOG: `docs/agent-log/chatgpt-logistics-20260917/research-20260917.md`; `docs/agent-log/chatgpt-logistics-20260917/command-policy-audit-20260917.md`
