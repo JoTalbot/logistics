@@ -20,9 +20,10 @@ Do not enable autonomous external actions until every applicable gate below has 
 
 ## 2. Cgroup gate
 
-Run the existing gate as the dedicated non-root identity:
+Run the existing gate as the dedicated non-root identity. First create a dedicated evidence directory writable by `logistics-agent`; the path below is an example target-host location, not an assumption that the directory already exists:
 
 ```bash
+sudo install -d -o logistics-agent -g logistics-agent -m 0750 /var/lib/logistics
 LOGISTICS_CGROUP_EVIDENCE_PATH=/var/lib/logistics/cgroup-rehearsal-evidence.json \
   sudo -u logistics-agent --preserve-env=LOGISTICS_CGROUP_REHEARSAL=1,LOGISTICS_CGROUP_EVIDENCE_PATH \
   python deploy/remote-agent/cgroup_gate.py
