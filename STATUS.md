@@ -1,8 +1,8 @@
 # Project Status — AI Logistics OS
 
-CURRENT_STEP: V43.20 — Production verification state synchronized
+CURRENT_STEP: V43.31 — Remote-agent installer hardening verified
 STATUS: blocked
-UPDATED: 2026-10-07
+UPDATED: 2026-10-08
 AGENT: chatgpt-logistics-20260917
 MACHINE: GitHub-connected execution environment
 SCOPE: Continue remote-agent production hardening after fresh green verification; preserve fail-closed activation boundaries and separate software verification from target-host containment evidence.
@@ -12,11 +12,11 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Verification state
 
-**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` passed CI #666.
+**SOFTWARE CONTOUR: GREEN / FRESH CI VERIFIED** — commit `e3c502101cd9ca60ca50c6fa8e13e1a7a2b86ff2` passed CI #669.
 
-**HARDENED COMPOSE E2E: GREEN / FRESH** — Compose E2E #238 for commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully.
+**HARDENED COMPOSE E2E: GREEN / FRESH** — Compose E2E #241 for commit `e3c502101cd9ca60ca50c6fa8e13e1a7a2b86ff2` completed successfully.
 
-**BACKUP/RESTORE E2E: GREEN / FRESH** — Backup Restore E2E #236 for commit `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully.
+**BACKUP/RESTORE E2E: GREEN / FRESH** — Backup Restore E2E #239 for commit `e3c502101cd9ca60ca50c6fa8e13e1a7a2b86ff2` completed successfully.
 
 **REMOTE-AGENT STARTUP HARDENING: GREEN / CI VERIFIED** — `install.sh` rejects missing, whitespace-only, or known-placeholder values for `AGENT_AUTH_TOKEN` and `AI_GATEWAY_API_KEY`, and validates the configured control-plane URL/token pair. The installed systemd unit repeats the credential gate on every service start through `ExecStartPre`, so a later configuration regression cannot bypass the installer-time checks. The service remains installable while intentionally unconfigured, but startup is fail-closed until required configuration is valid.
 
@@ -26,6 +26,8 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## Latest hardening
 
+- `e3c502101cd9ca60ca50c6fa8e13e1a7a2b86ff2`: fixed remote-agent installer systemd environment expansion and added regression coverage so credential variables remain runtime-expanded rather than being consumed by the installer shell.
+- `e8e4c7039c519d5f6831a114f14902f835f3c0a2`: corrected systemd environment expansion in the generated service unit.
 - `0196b5f502a8d482d0d1ff78a5e28b36a996e868`: fixed cgroup gate regression fixtures so evidence-path configuration exists only in tests that reach the evidence-validation path.
 - `cadaa315c5576c51f519a9bfe9f0291c938bdc48`: added regression coverage that the cgroup gate accepts activation only when archived machine-readable evidence proves `result=PASS` and successful cleanup.
 - `b4629a2591c1ec737ec01e6ae9fa7e08e6d751ee`: added negative regression coverage for missing evidence and evidence that reports `cleanup=false`; both must fail closed.
@@ -36,7 +38,7 @@ DECISIONS: Runtime per-task cgroup enforcement remains disabled. The destructive
 
 ## CI surface
 
-The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. CI #666 for `0196b5f502a8d482d0d1ff78a5e28b36a996e868` completed successfully. Compose E2E #238 and Backup Restore E2E #236 also completed successfully on that commit. The destructive cgroup rehearsal remains intentionally excluded from CI because it requires an authorized dedicated target host and is explicitly destructive.
+The main CI workflow runs the read-only cgroup capability probe before package installation and executes the repository pytest suite. CI #669 for `e3c502101cd9ca60ca50c6fa8e13e1a7a2b86ff2` completed successfully. Compose E2E #241 and Backup Restore E2E #239 also completed successfully on that commit. The destructive cgroup rehearsal remains intentionally excluded from CI because it requires an authorized dedicated target host and is explicitly destructive.
 
 ## External production gates
 
