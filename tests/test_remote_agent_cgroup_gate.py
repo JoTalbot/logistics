@@ -103,7 +103,14 @@ def test_gate_runs_rehearsal_only_after_ready(monkeypatch, capsys):
     class Completed:
         returncode = 0
 
-    monkeypatch.setattr(gate.subprocess, "run", lambda *args, **kwargs: calls.append((args, kwargs)) or Completed())
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        Path("/tmp/logistics-cgroup-evidence.json").write_text(
+            '{"result":"PASS","cleanup":true}\n', encoding="utf-8"
+        )
+        return Completed()
+
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
 
     assert gate.main() == gate.EXIT_PASS
     assert len(calls) == 1
